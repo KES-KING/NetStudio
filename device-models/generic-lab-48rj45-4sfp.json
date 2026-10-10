@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "model_key": "generic-lab-48rj45-4sfp",
+  "rendering_mode": "schematic",
+  "chassis": {"view_box": [0, 0, 1600, 260]},
+  "port_groups": [
+    {
+      "id": "access",
+      "connector": "rj45",
+      "count": 48,
+      "rows": 2,
+      "columns": 24,
+      "row_labels": [[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47], [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48]],
+      "origin": [100, 72],
+      "port_size": [40, 38],
+      "gap": [6, 10]
+    },
+    {
+      "id": "uplink",
+      "connector": "sfp",
+      "count": 4,
+      "rows": 2,
+      "columns": 2,
+      "row_labels": [["U1", "U3"], ["U2", "U4"]],
+      "origin": [1320, 72],
+      "port_size": [68, 42],
+      "gap": [12, 12]
+    }
+  ],
+  "binding_strategy": "explicit_inventory_mapping",
+  "unknown_ports_policy": "show_unmapped_section"
+}
+

@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: stocc
+      POSTGRES_USER: stocc
+      POSTGRES_PASSWORD: stocc
+    ports:
+      - "5432:5432"
+    volumes:
+      - stocc-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stocc -d stocc"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  stocc-postgres:
+

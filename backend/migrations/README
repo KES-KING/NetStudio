@@ -1,0 +1,6 @@
+# Alembic migrations
+
+`0001_initial` defines the inventory and job boundary. `0002_job_claim_and_observations`
+adds lease/heartbeat/idempotency metadata and observation snapshots used by the
+poll worker. Runtime falls back to an in-memory repository only when
+`DATABASE_URL` is not configured.
