@@ -3,6 +3,7 @@ export const theme = {
   surface: "#FFFFFF",
   secondary: "#F3F4F6",
   nav: "#272B30",
+  "nav-header": "#DDE1E5",
   "nav-secondary": "#42474D",
   text: "#171A1F",
   muted: "#5C626B",

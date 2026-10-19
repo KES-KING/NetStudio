@@ -143,20 +143,31 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--nav);
-  color: #eceef1;
-  border-bottom: 1px solid #474b51;
+  background: var(--nav-header);
+  color: var(--text);
+  border-bottom: 1px solid var(--unknown);
   padding: 0 26px;
 }
 .brand {
-  color: white;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 12px;
+  background: transparent;
   text-decoration: none;
-  font-size: 20px;
-  letter-spacing: -0.5px;
 }
-.brand strong {
-  font-weight: 400;
-  color: #bfc5cc;
+.brand-art {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.brand-wordmark {
+  width: 104px;
+}
+.brand-emblem {
+  display: none;
+  width: 48px;
 }
 .session-nav {
   display: flex;
@@ -166,8 +177,12 @@ h3 {
 }
 .topbar button {
   background: transparent;
-  color: #e2e5e9;
-  border-color: #626971;
+  color: var(--text);
+  border-color: var(--down);
+}
+.topbar button:hover {
+  background: var(--secondary);
+  border-color: var(--muted);
 }
 .console-layout {
   display: grid;
@@ -884,9 +899,8 @@ dd {
   background: white;
 }
 .login-brand {
-  color: var(--accent);
-  font-size: 20px;
-  margin-bottom: 32px;
+  width: min(100%, 224px);
+  margin-bottom: 28px;
 }
 .login-panel h1 {
   font-size: 23px;
@@ -1059,7 +1073,13 @@ td.mono {
     gap: 10px;
   }
   .brand {
-    font-size: 17px;
+    padding: 6px 9px;
+  }
+  .brand-wordmark {
+    display: none;
+  }
+  .brand-emblem {
+    display: block;
   }
   .session-nav {
     gap: 8px;

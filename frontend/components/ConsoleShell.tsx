@@ -14,6 +14,7 @@ import {
 import useSWR, { useSWRConfig } from "swr";
 import { api, errorMessage, fetchSession, setSessionToken } from "../lib/api";
 import type { Session } from "../lib/contracts";
+import { Brand } from "./Brand";
 
 const SessionContext = createContext<Session | null>(null);
 export function useSession() {
@@ -65,6 +66,9 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
     return (
       <div className="auth-page">
         <section className="login-panel">
+          <div className="login-brand">
+            <Brand />
+          </div>
           <h1>Bağlantı kurulamadı</h1>
           <p role="alert">{errorMessage(error)}</p>
           <button onClick={() => mutate()}>Yeniden dene</button>
@@ -86,8 +90,13 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
         İçeriğe geç
       </a>
       <header className="topbar">
-        <Link href="/" className="brand">
-          Stocc <strong>NetStudio</strong>
+        <Link href="/" className="brand" aria-label="NetStudio — Ağ cihazları">
+          <span className="brand-wordmark">
+            <Brand decorative />
+          </span>
+          <span className="brand-emblem">
+            <Brand variant="emblem" decorative />
+          </span>
         </Link>
         <button
           className="mobile-menu"
@@ -189,7 +198,7 @@ function Login({ onLogin }: { onLogin: (user: Session) => void }) {
     <main className="auth-page">
       <section className="login-panel">
         <div className="login-brand">
-          Stocc <strong>NetStudio</strong>
+          <Brand />
         </div>
         <h1>Yönetim oturumu</h1>
         <p>Ağ cihazlarınızı ve gözlemlerinizi yönetin.</p>

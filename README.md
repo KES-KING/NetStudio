@@ -4,6 +4,8 @@ Ağ cihazlarının envanterini, erişilebilirliğini, fiziksel portlarını, tra
 
 Arayüz: Next.js 16 / React 19 / TypeScript, Apache ECharts, xterm.js ve SWR. Backend: FastAPI, SQLAlchemy, PostgreSQL, AsyncSSH, Argon2id ve AES-256-GCM. Varsayılan kurulumda cihaz, kullanıcı veya örnek telemetri **oluşturulmaz**.
 
+Marka varlıkları `frontend/public/branding/` içindedir: `netstudio-logo.png` giriş ekranı ve masaüstü üst barda, `netstudio-emblem.png` mobil üst bar ve sekme simgesinde kullanılır. Orijinal PNG içerikleri korunur; ortak `Brand` bileşeni yalnız şeffaf kenar boşluklarını görünümde çerçeveler. Logoların arkasında ayrı bir zemin yoktur; üst barın tamamı okunabilirlik için `nav-header` tokenıyla açık gri tutulur. Sekme simgesi `app/icon.tsx` ile amblemden şeffaf zemin üzerinde üretilir. Docker web imajı `public/` dizinini de içerir.
+
 ## Docker ile kurulum
 
 Docker Engine ve Compose v2 gerekir. TLS override dosyasındaki `!override` için Compose 2.24.4 veya üzerini kullanın. Makinede Python veya Node kurulu olması gerekmez.
