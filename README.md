@@ -8,16 +8,35 @@ Marka varlıkları `frontend/public/branding/` içindedir: `netstudio-logo.png` 
 
 ## Docker ile kurulum
 
-Docker Engine ve Compose v2 gerekir. TLS override dosyasındaki `!override` için Compose 2.24.4 veya üzerini kullanın. Makinede Python veya Node kurulu olması gerekmez.
+Docker Engine veya Docker Desktop ve Compose 2.24.4 veya üzeri gerekir (TLS override dosyasındaki `!override` için). Makinede Make, Python veya Node kurulu olması gerekmez. Aşağıdaki komutları repository kökünde çalıştırın; tüm servisler doğrudan `docker compose` ile yönetilir.
+
+### Docker motorunu seçme
+
+Linux üzerinde Docker Desktop kullanıyorsanız önce uygulamayı açın ve motorun hazır olmasını bekleyin:
+
+```bash
+docker context ls
+docker context use desktop-linux
+docker info
+```
+
+Linux sistem Docker Engine'ini kullanmak istiyorsanız bunun yerine `docker context use default` çalıştırın. Sonraki `docker compose` komutları seçili context üzerinde çalışır; repository herhangi bir context'i zorlamaz. Global seçimi değiştirmeden belirli bir komutu Desktop üzerinde çalıştırmak için `docker --context desktop-linux compose ...` kullanılabilir.
+
+**Docker Desktop'ta görünürlük:** Linux'ta `default` ve `desktop-linux` ayrı motorlardır. `default` üzerinde oluşturulan container'lar Docker Desktop'ın container listesinde görünmez; container, imaj ve volume'ler context değiştirince taşınmaz. Desktop üzerinde ilk çalıştırma ayrı bir veritabanı ve anahtar deposu oluşturur. Önceki kayıtlar gerekiyorsa eski motoru ve volume'lerini koruyun; veritabanı ile şifreleme anahtarını birlikte planlanmış bir taşıma kapsamında aktarın. Ayrıntılar: [Docker Desktop Linux belgeleri](https://docs.docker.com/desktop/setup/install/linux/).
+
+Kabukta tanımlı `DOCKER_HOST` veya `DOCKER_CONTEXT` değerleri motor seçimini etkileyebilir. Beklenmedik motora bağlanıyorsanız bunları kontrol edin; yalnız o kabuk için temizlemek üzere `unset DOCKER_HOST DOCKER_CONTEXT` kullanabilirsiniz. Projenin `.env` dosyası Docker CLI context seçimi için kullanılmaz. Motor hatasında başka context'e sessiz geçiş yapılmaz.
+
+### Başlatma
 
 ```bash
 # .env zaten varsa üzerine yazmayın.
 test -f .env || cp .env.example .env
-make docker-up
-make user-create USERNAME=admin
+docker compose config --quiet
+docker compose up --build -d --wait
+docker compose exec api python -m app.admin create-user --username admin --role admin --site '*'
 ```
 
-Son komut parolayı etkileşimli olarak iki kez ister; en az 12 karakter gerekir. Varsayılan yönetici parolası yoktur. Web: <http://127.0.0.1:3000>. `make` varsayılan olarak `default` Docker context'ini kullanır; gerektiğinde `DOCKER_CONTEXT=...` verin.
+Son komut ilk yönetici hesabını oluşturur ve parolayı etkileşimli olarak iki kez ister; en az 12 karakter gerekir. Sonraki başlatmalarda hesabı tekrar oluşturmayın. Varsayılan yönetici parolası yoktur. Web: <http://127.0.0.1:3000>. Desktop motoru seçiliyken servisler Docker Desktop'ın Containers ekranında `stocc-netstudio` grubu altında görünür (`COMPOSE_PROJECT_NAME` değiştirilmişse o ad kullanılır).
 
 `POSTGRES_PASSWORD` ve `DATABASE_URL` birbiriyle tutarlı olmalıdır. `.env.example` yalnızca loopback geliştirme varsayılanları içerir. Var olan PostgreSQL volume'ünde ortam değişkenini değiştirmek mevcut veritabanı parolasını değiştirmez.
 
@@ -39,19 +58,35 @@ Başlatma: PostgreSQL healthy → Alembic migrate → API ready → web → gate
 
 Gateway WebSocket upgrade ve uzun süreli SSH akışını destekler. API tek Uvicorn süreciyle çalışır; terminal limiti ve oturum köprüsü bu sürece aittir. Birden fazla API worker/replica, ortak broker ve oturum yönlendirmesi eklenmeden kullanılmamalıdır. PostgreSQL ve anahtarlar iki ayrı kalıcı volume'dedir. Anahtar dosyası API kullanıcısına ait, `0600` izinlidir; frontend imajına veya ortam değişkenine girmez.
 
+### Günlük yönetim
+
 ```bash
-make docker-ps
-make docker-logs
-make docker-down        # Volume'leri silmez.
-make docker-up          # Migration ve hazır olma kontrollerini tekrar çalıştırır.
+docker compose ps -a                    # Başlatma işleri dahil tüm servisler.
+docker compose logs -f --tail=200        # Tüm servislerin logları; Ctrl+C yalnız izlemeyi bitirir.
+docker compose logs -f --tail=200 api    # Yalnız API logları.
+docker compose stop                     # Container'lar ve volume'ler korunur; Desktop'ta kalır.
+docker compose up -d --wait              # Durdurulmuş sistemi tekrar başlatır.
+docker compose up --build -d --wait      # Kod/imaj değişikliklerini uygular, migration ve sağlık kontrollerini çalıştırır.
 ```
+
+İsteğe bağlı, ayrı ayrı çalıştırılabilecek komutlar:
+
+```bash
+docker compose build                    # Yalnız imajları oluşturur.
+docker compose up --build               # Ön planda çalışır; Ctrl+C servisleri durdurur.
+docker compose up -d --build --no-deps web # Yalnız frontend'i günceller; bağımlılıklar zaten hazır olmalıdır.
+docker compose run --rm migrate         # PostgreSQL hazır olduğunda migration'ı ayrıca çalıştırır.
+docker compose down                     # Container/ağları kaldırır; kalıcı volume'leri silmez.
+```
+
+`secrets-init` ve `migrate` tek seferlik başlatma işleridir; başarılı çalışmadan sonra `Exited (0)` görünmeleri normaldir. `down` sonrasında grubun Desktop'ın container listesinden kalkması beklenir; listede tutmak için `stop` kullanın. `COMPOSE_PROJECT_NAME` değerini değiştirmek başka bir proje ve volume kümesi seçer; mevcut kurulumda bu değeri sabit tutun. Makefile yalnız isteğe bağlı yerel geliştirme/test yardımcılarını içerir; Docker hedefleri yoktur.
 
 Mevcut verileri korumak için normal işletimde volume silme komutları kullanmayın. Migration `0003_enterprise_console`, mevcut tabloları/işleri silmeden yeni yönetim tablolarını ekler. Eski fixture kayıtları korunur fakat gerçek envanter olarak sunulmaz.
 
 ## Gerçek cihazı bağlama
 
 1. **Cihaz Ekle** ile yönetim IP'sini, siteyi, SSH portunu ve cihaz türünü kaydedin. İsteğe bağlı olarak SSH kullanıcı adı ve parola ya da özel anahtar/passphrase tanımlayın. Eksik kimlik bilgilerini daha sonra **Bağlantı bilgileri** üzerinden tamamlayabilirsiniz.
-2. `.env` içindeki `STOCC_SSH_ALLOWED_CIDRS` değerine yalnızca izin verilen yönetim ağlarını yazın; örneğin kendi ağınıza ait belirli bir CIDR. **Boş değer tüm dış SSH bağlantılarını reddeder.** Değişiklikten sonra `make docker-up` çalıştırın.
+2. `.env` içindeki `STOCC_SSH_ALLOWED_CIDRS` değerine yalnızca izin verilen yönetim ağlarını yazın; örneğin kendi ağınıza ait belirli bir CIDR. **Boş değer tüm dış SSH bağlantılarını reddeder.** Değişiklikten sonra `docker compose up -d --wait` çalıştırın (TLS kurulumunda aşağıdaki iki `-f` dosyasını da kullanın).
 3. Cihazın OpenSSH **public host anahtarını** ve bağımsız, güvenilir bir kanaldan doğruladığınız SHA256 fingerprint'i **Bağlantı bilgileri** ekranına girin. Bu alan cihazın host anahtarıdır; kullanıcının oturum açma public anahtarı değildir. Anahtarın yalnız ağdan alınması kimliğini doğrulamaz. Otomatik TOFU/`known_hosts=None` kullanılmaz.
 4. **Bağlantıyı test et** ile gerçek SSH el sıkışmasını kontrol edin. **SSH** üst paneli böler; cihaz solda, terminal sağda kalır. Dar ekranda iki alan alt alta geçer. Terminal açıkken yeniden tıklamak ikinci oturum oluşturmaz.
 5. Veri toplama yöntemini seçin:
@@ -77,8 +112,10 @@ TLS_PORT=443
 Sertifika dizininde `fullchain.pem` ve `privkey.pem` bulunmalı; yalnızca gateway kullanıcısının (UID/GID 101) okuyabileceği uygun izinler verilmeli. Özel anahtarı herkes tarafından okunabilir yapmayın. Ardından:
 
 ```bash
-docker --context default compose -f docker-compose.yml -f docker-compose.tls.yml up --build -d --wait
+docker compose -f docker-compose.yml -f docker-compose.tls.yml up --build -d --wait
 ```
+
+TLS kurulumunda sonraki Compose işlemlerinde de `-f docker-compose.yml -f docker-compose.tls.yml` seçeneklerini birlikte kullanın; yalnız ana dosyayla `up` çalıştırmak HTTP yapılandırmasına döndürür.
 
 TLS override; üretim modunu etkinleştirir, PostgreSQL/API host portlarını kaldırır ve yalnız HTTPS gateway portunu yayımlar. API üretimde HTTP'yi ve terminal WS'yi reddeder; cookie `Secure`, `HttpOnly`, `SameSite=Strict` olur. Proxy, istemcinin gönderdiği forwarded başlıklarını kendi değerleriyle değiştirir. API'nin proxy güveni Docker iç ağına dayanır; API'yi doğrudan internete açmayın veya güvenilmeyen container'ları bu ağa katmayın.
 
@@ -91,8 +128,8 @@ Kimlik doğrulama, yerel Argon2id kullanıcıları ve veritabanındaki iptal edi
 | Yönetici | İzinli siteler | Evet | Evet | Evet | Yalnız global site yetkisiyle |
 
 ```bash
-docker --context default compose exec api python -m app.admin create-user --username operator --role operator --site merkez
-docker --context default compose exec api python -m app.admin disable-user --username operator
+docker compose exec api python -m app.admin create-user --username operator --role operator --site merkez
+docker compose exec api python -m app.admin disable-user --username operator
 ```
 
 Terminal ticket'ı 30 saniye geçerli, tek kullanımlı ve oluşturan oturuma bağlıdır; tek başına bearer token değildir. Hedef host/port tarayıcıdan alınmaz. Kullanıcı başına 3, süreç başına 20 terminal; aynı kullanıcı/cihaz için 1 oturum sınırı vardır. Bağlantı 12 sn, varsayılan boşta kalma 300 sn, toplam oturum 3600 sn; giriş mesajı 16 KiB ve 64 KiB/sn ile sınırlıdır. Süreler `STOCC_SSH_IDLE_SECONDS` / `STOCC_SSH_MAX_SECONDS` backend ortam değişkenleriyle ayarlanabilir. Yetki/oturum iptali en geç izleme döngüsünün yaklaşık 1 saniyelik kontrolünde uygulanır. Bağlantı kurulma aşamasında tekrar doğrulama PTY açılmadan yapılır.
@@ -108,8 +145,8 @@ Anahtar deposu hazır değilse veya şifre çözme doğrulanamazsa bağlantı re
 Kontrollü rotasyon (önce iki deponun korumalı yedeğini alın; rotasyon sırasında kimlik bilgisi yazımlarını durdurun):
 
 ```bash
-docker --context default compose run --rm secrets-init python -m app.keyring add-key
-docker --context default compose exec api python -m app.admin rotate-secrets
+docker compose run --rm secrets-init python -m app.keyring add-key
+docker compose exec api python -m app.admin rotate-secrets
 ```
 
 İlk komut eski anahtarları koruyup yeni aktif anahtar ekler. İkincisi mevcut kayıtları yeni anahtarla tek işlemde yeniden şifreler. API anahtar dosyasını bağlantıda yeniden okur. Eski anahtarları, yedeklerin saklama politikasını ve şifre çözme doğrulamasını tamamlamadan kaldırmayın.
@@ -147,8 +184,9 @@ Telemetride envanterdeki aynı `interface_id` kullanılır; `rx_bps`, `tx_bps`, 
 ## Geliştirme ve doğrulama
 
 ```bash
-make backend-install
-make backend-test
+python3 -m venv .venv
+.venv/bin/python -m pip install -e 'backend[test]'
+.venv/bin/pytest backend/tests
 cd frontend
 npm ci
 npm run lint
@@ -170,7 +208,7 @@ export COMPOSE_PROJECT_NAME=stocc-redesign-qa IMAGE_TAG=redesign-qa
 export POSTGRES_DB=stocc_qa POSTGRES_PORT=18432 API_PORT=18000 WEB_PORT=13000
 export DATABASE_URL=postgresql+psycopg://stocc:stocc@postgres:5432/stocc_qa
 export STOCC_ALLOWED_ORIGINS=http://127.0.0.1:13000 STOCC_SSH_ALLOWED_CIDRS=172.16.0.0/12
-docker --context default compose -f docker-compose.yml -f deploy/compose.qa.yml up --build -d --wait
+docker compose -f docker-compose.yml -f deploy/compose.qa.yml up --build -d --wait
 STOCC_TEST_DATABASE_URL=postgresql+psycopg://stocc:stocc@127.0.0.1:18432/stocc_qa .venv/bin/python backend/tests/seed_browser.py
 cd frontend
 STOCC_QA=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:13000 npm run test:e2e -- --workers=1
