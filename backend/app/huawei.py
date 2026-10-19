@@ -156,6 +156,29 @@ def interface_kind(name):
     return None  # NULL/tunnel/unknown types are not physical sockets.
 
 
+def connector_kind(name, text):
+    """Classify only connector families evidenced by the interface output.
+
+    Huawei reports the active medium separately from module presence. GE,
+    XGE/10GE and 25GE optical interfaces use the small-form-factor cage family
+    represented by ``sfp`` in our inventory contract (SFP/SFP+/SFP28). Faster
+    optical interfaces remain unknown unless the CLI explicitly names QSFP.
+    """
+    if re.search(r"\bPort Mode\s*:\s*(?:COMMON|FORCE)\s+COPPER\b", text, re.I):
+        return "rj45"
+    upper = text.upper()
+    if re.search(r"(?:^|[^A-Z0-9])QSFP(?:\+|28|DD)?(?:[^A-Z0-9]|$)", upper):
+        return "qsfp"
+    if re.search(r"(?:^|[^A-Z0-9Q])SFP(?:\+|28)?(?:[^A-Z0-9]|$)", upper):
+        return "sfp"
+    if not re.search(r"\bPort Mode\s*:\s*(?:COMMON|FORCE)\s+FIBER\b", text, re.I):
+        return "unknown"
+    value = canonical(name)
+    if re.match(r"(?:gigabitethernet|xgigabitethernet|10ge|25ge)\d+/\d+/\d+$", value):
+        return "sfp"
+    return "unknown"
+
+
 def parse_interfaces(raw):
     headers = list(HEADER.finditer(raw))
     if not headers or len(headers) > 8192:
@@ -177,8 +200,7 @@ def parse_interfaces(raw):
         vlan = vlan if vlan and 1 <= vlan <= 4094 else None
         mode = match_value(r"\bLink-type\s*:\s*(access|trunk)\b", text, str)
         duplex = match_value(r"\bDuplex\s*:\s*(FULL|HALF)\b", text, str)
-        connector = "rj45" if re.search(r"Port Mode\s*:\s*(?:COMMON )?COPPER\b", text, re.I) else "unknown"
-        # FIBER does not distinguish SFP/QSFP or prove module presence.
+        connector = connector_kind(name, text)
         description = match_value(r"^\s*Description\s*:[ \t]*([^\n]*)", text, str)
         sample = {"admin_up": admin, "oper_up": oper, "capacity_bps": speed * 1_000_000 if speed else None,
                   "duplex": duplex.lower() if duplex else "unknown", "pvid": vlan,

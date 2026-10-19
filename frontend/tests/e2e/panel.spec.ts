@@ -41,6 +41,49 @@ async function expectCopperBanks(panel: Locator, count: number) {
   expect(second!.x - (first!.x + first!.width)).toBeGreaterThanOrEqual(8);
 }
 
+async function expectTopologyFits(page: Page, width: number) {
+  const stage = page.locator(".device-topology-stage");
+  await expect(stage).toHaveAttribute("data-layout", width < 520 ? "compact" : "wide");
+  const chart = stage.locator(".topology-chart");
+  await expect(chart.locator("svg")).toBeVisible();
+  const bounds = await chart.boundingBox();
+  const nodes = await chart.locator("svg path").evaluateAll((paths) =>
+    paths
+      .filter((path) => path.getAttribute("fill") && path.getAttribute("fill") !== "none")
+      .map((path) => {
+        const box = path.getBoundingClientRect();
+        return { left: box.left, right: box.right, width: box.width, height: box.height };
+      })
+      .filter((box) => box.width > 80 && box.height > 20),
+  );
+  expect(nodes).toHaveLength(7);
+  for (const node of nodes) {
+    expect(node.left).toBeGreaterThanOrEqual(bounds!.x - 1);
+    expect(node.right).toBeLessThanOrEqual(bounds!.x + bounds!.width + 1);
+  }
+  const before = nodes.map(({ width: nodeWidth, height }) => ({ width: nodeWidth, height }));
+  await stage.getByRole("button", { name: "Topolojiyi yakınlaştır" }).click();
+  await expect(stage.getByLabel("Yakınlaştırma oranı")).toHaveText("115%");
+  const after = await chart.locator("svg path").evaluateAll((paths) =>
+    paths
+      .filter((path) => path.getAttribute("fill") && path.getAttribute("fill") !== "none")
+      .map((path) => {
+        const box = path.getBoundingClientRect();
+        return { width: box.width, height: box.height };
+      })
+      .filter((box) => box.width > 80 && box.height > 20),
+  );
+  expect(after).toHaveLength(before.length);
+  after.forEach((box, index) => {
+    expect(Math.abs(box.width - before[index].width)).toBeLessThan(1);
+    expect(Math.abs(box.height - before[index].height)).toBeLessThan(1);
+  });
+  await stage.getByRole("button", { name: "Ortala ve sıfırla", exact: true }).click();
+  await expect(stage.getByLabel("Yakınlaştırma oranı")).toHaveText("100%");
+  const overflow = await stage.evaluate((element) => ({ client: element.clientWidth, scroll: element.scrollWidth }));
+  expect(overflow.scroll).toBeLessThanOrEqual(overflow.client);
+}
+
 for (const width of [1536, 390]) {
   test(`rack nameplate, horizontal optics and keyboard selection at ${width}px`, async ({ page }) => {
     const errors: string[] = [];
@@ -79,6 +122,7 @@ for (const width of [1536, 390]) {
     await expect(panel.locator(".down .port-indicator").first()).toHaveCSS("background-color", "rgb(127, 137, 146)");
     await expect(panel.locator(".unknown .port-indicator").first()).toHaveCSS("border-top-style", "dashed");
     await expectOpticsOnRight(panel);
+    await expectTopologyFits(page, width);
     const port = panel.locator('[data-port-id="p25"]');
     await port.focus();
     await page.keyboard.press("Enter");

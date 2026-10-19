@@ -8,7 +8,7 @@ import asyncssh
 import pytest
 import sqlalchemy as sa
 
-from app.huawei import COMMANDS, VRPReader, merge_snapshot, parse_snapshot
+from app.huawei import COMMANDS, VRPReader, connector_kind, merge_snapshot, parse_snapshot
 from app.ssh import ConnectionPolicyError, algorithm_options, target_allowed
 from app.telemetry import normalize, topology
 from conftest import ORIGIN, add_device, inventory, login
@@ -59,7 +59,7 @@ def test_vrp5120_real_format_ports_and_directional_metrics(system):
     device, batch = snapshot(system)
     assert device.os_version == "5.120 (S5700 V200R002C00SPC100)"
     assert len(device.physical_ports) == 2  # Never manufacture the model's 28 ports.
-    assert [p.connector for p in device.physical_ports] == ["rj45", "unknown"]
+    assert [p.connector for p in device.physical_ports] == ["rj45", "sfp"]
     assert not any(p.verified_layout for p in device.physical_ports)
     assert device.physical_ports[0].label == "1" and device.physical_ports[0].group == "GigabitEthernet0/0"
     port = batch.interfaces[0]
@@ -83,6 +83,38 @@ def test_vrp5120_real_format_ports_and_directional_metrics(system):
     updated, second = merge_snapshot(device, parse_snapshot(device, OUTPUTS))
     assert [i.id for i in updated.interfaces] == [i.id for i in device.interfaces]
     assert [p.id for p in updated.physical_ports] == [p.id for p in device.physical_ports]
+
+
+@pytest.mark.parametrize(
+    "name,text,expected",
+    [
+        ("GE0/0/25", "Port Mode: COMMON FIBER\nSpeed : 1000", "sfp"),
+        ("XGigabitEthernet0/0/1", "Port Mode: FORCE FIBER\nSpeed : 10000", "sfp"),
+        ("25GE0/0/1", "Port Mode: COMMON FIBER\nSpeed : 25000", "sfp"),
+        ("40GE0/0/1", "Port Mode: COMMON FIBER\nSpeed : 40000", "unknown"),
+        ("40GE0/0/1", "Port Mode: COMMON FIBER\nTransceiver Type: 40GBASE-SR4-QSFP+", "qsfp"),
+        ("100GE0/0/1", "Port Mode: COMMON FIBER\nTransceiver Type: 100GBASE-LR4-QSFP28", "qsfp"),
+        ("GigabitEthernet0/0/1", "Port Mode: FORCE COPPER\nTransceiver Type: 1000_BASE_T_SFP", "rj45"),
+        ("Ethernet0/0/1", "Port Mode: COMMON FIBER\nSpeed : 100", "unknown"),
+    ],
+)
+def test_connector_classification_uses_medium_and_interface_evidence(name, text, expected):
+    assert connector_kind(name, text) == expected
+
+
+def test_s5700_style_inventory_keeps_all_four_optical_uplinks_as_sfp(system):
+    interfaces = []
+    for number in range(1, 29):
+        entry = INTERFACE.replace("0/0/1", f"0/0/{number}")
+        if number >= 25:
+            entry = entry.replace("COMMON COPPER", "COMMON FIBER")
+        interfaces.append(entry)
+    device, _ = snapshot(system, {**OUTPUTS, "display interface": "".join(interfaces)})
+    assert len(device.physical_ports) == 28
+    assert [port.connector for port in device.physical_ports[:24]] == ["rj45"] * 24
+    assert [(port.label, port.connector) for port in device.physical_ports[24:]] == [
+        ("25", "sfp"), ("26", "sfp"), ("27", "sfp"), ("28", "sfp"),
+    ]
 
 
 def test_unrecognized_arp_is_partial_and_unknown_vrf_does_not_merge_subnets(system):

@@ -35,7 +35,7 @@ Aşağıdaki üç görüntü çalışan uygulamanın izole QA ortamından alınm
 
 **Güncellik kuralı:** Her görsel arayüz güncellemesinde aşağıdaki üç görüntünün tamamı güncel koddan yeniden alınır ve aynı değişiklik/PR içinde teslim edilir. İnsanlar ve yapay zekâ için ayrıntılar [rule.md](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile), ajanların uygulama adımları [agent.md](agent.md) içindedir.
 
-Son set: **19 Ekim 2026**, `stocc-panel-qa-20261019` izole Docker ortamı, Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `6ca5044` üzerine RJ45 banka ayrımı değişikliklerini içerir; mevcut kullanıcı kurulumu değiştirilmemiştir.
+Son set: **20 Ekim 2026**, `stocc-sfp-topology-qa-20261020` izole Docker ortamı, Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `6022616` üzerine SFP sınıflandırması ve responsive IP topolojisi değişikliklerini içerir; mevcut kullanıcı kurulumu değiştirilmemiştir.
 
 ### Ana sayfa
 
@@ -45,11 +45,11 @@ Cihaz filtresi ve zaman aralığıyla aynı kapsamı paylaşan Apache ECharts gr
 
 ### Cihaz detayı — SSH kapalı
 
-Tam genişlikte etkileşimli cihaz ön paneli; kasa üzerinde envanterdeki cihaz adı/modeli, iki yanda şematik rack montaj delikleri, solda RJ45 ve sağda tek sıra SFP/QSFP grupları. İki sıralı RJ45 görünümünde her altı sütundan sonra ölçülü bir banka ayrımı bulunur. Mat grafit/metal yüzeyler marka bağımsızdır; montaj geometrisi ve port yerleşimi üretici kasasının birebir ölçülü çizimi değildir. Altında IP topolojisi, teknik bilgiler ve sağlık değerlendirmesi bulunur.
+Tam genişlikte etkileşimli cihaz ön paneli; kasa üzerinde envanterdeki cihaz adı/modeli, iki yanda şematik rack montaj delikleri, solda RJ45 ve sağda tek sıra SFP/QSFP grupları. İki sıralı RJ45 görünümünde her altı sütundan sonra ölçülü bir banka ayrımı bulunur. Mat grafit/metal yüzeyler marka bağımsızdır; montaj geometrisi ve port yerleşimi üretici kasasının birebir ölçülü çizimi değildir. Altındaki IP topolojisi sabit boyutlu düğümler, kontrollü yakınlaştırma ve kaydırma kullanır; geniş panelde üç, dar panelde iki kolonlu yerleşime geçerek taşmadan çalışır. İlişki türleri lejantta korunur. Sağda teknik bilgiler ve sağlık değerlendirmesi bulunur.
 
 Port yuvalarının yanındaki göstergeler aynı telemetri durumunu kullanır: **UP** yeşil, **DOWN** sönük gri, **ADM** idari kapalı, **?** bilinmiyor. İdari kapalı port arızalı sayılmaz; güncelliğini kaybeden veri aktif LED olarak gösterilmez. Port seçimi dış çerçeveyle ayrıca belirtilir. Dar alanda panel yatay kayar; portlar okunamayacak kadar küçültülmez.
 
-![NetStudio cihaz detayı: isim ve model etiketli rack paneli, yatay SFP portları, UP/DOWN göstergeleri, IP topolojisi ve teknik bilgiler](docs/screenshots/device-detail.png)
+![NetStudio cihaz detayı: isim ve model etiketli rack paneli, yatay SFP portları, UP/DOWN göstergeleri ve taşmayan sabit boyutlu IP topolojisi](docs/screenshots/device-detail.png)
 
 ### Cihaz detayı — SSH açık
 
@@ -459,5 +459,13 @@ Yeni kullanıcı akışları için HTTPS/WSS, Safari/Firefox, yük testi, yedekt
 - `http://127.0.0.1:13003` üzerindeki izole `stocc-huawei-qa-20261019` projesinde **23 Playwright senaryosu geçti**. Huawei/legacy form akışı 1536×1024 ve 390×844 boyutlarında; genel regresyonlar 320–2560 px genişliklerde doğrulandı. Browser eklentisi bulunmadığından mevcut Playwright ve sistem Chrome kullanıldı. Sayfa kimliği/içerik, framework hata katmanı, konsol, klavye/SSH etkileşimi ve görüntüler kontrol edildi; beklenen giriş öncesi 401 dışında ilgili konsol hatası yoktu.
 - README'nin üç görüntüsü aynı güncel çalışma ağacından yenilendi. QA'da ek CIDR sınırı boş bırakılarak kayıtlı hedef onayı gerçek SSH zincirinde denendi. Çalışan `stocc-netstudio-fresh` kurulumu, `.env`, kullanıcı kayıtları ve anahtarları değiştirilmedi; yeni özellikler için mevcut kurulumun imajları ayrıca yeniden build edilmelidir. Yeni DB migration gerekmez.
 - Fiziksel Huawei switch'e canlı bağlantı, yeni akışta HTTPS/WSS, Firefox/Safari ve yük testi bu koşuda yapılmadı. Gerçek cihazın bağımsız host anahtarı doğrulaması hâlâ gereklidir. Starlette/httpx, Alembic, Vite ve legacy FFDH deprecation uyarıları başarısız test değildir. Kullanım ve ölçüm sınırları [Huawei VRP rehberinde](docs/huawei-vrp.md) açıklanır.
+
+### SFP sınıflandırması ve cihaz detay topolojisi doğrulaması — 2026-10-20
+
+- Backend: **88 test geçti, 1 isteğe bağlı PostgreSQL migration testi atlandı**. Huawei VRP sınıflandırma testleri açık bakır/fiber port modu, GE/XGE/10GE/25GE SFP ailesi, açık QSFP belirteçleri, belirsiz 40GE/100GE ve 24 RJ45 + 4 SFP envanterini kapsar. Model adından port üretilmez; modül takılı kabul edilmez.
+- Frontend: ESLint, TypeScript, **30 birim testi** ve Docker production build geçti. Apache ECharts korunur; cihaz detay topolojisi geniş panelde üç kolon, dar panelde iki kolon kullanır. Düğüm boyutu yakınlaştırmadan bağımsızdır; kaydırma, kontrollü yakınlaştırma ve sıfırlama sağlanır.
+- İzole `stocc-sfp-topology-qa-20261020` Docker projesinde sistem Chrome ile **26 Playwright senaryosu geçti**. Cihaz detay topolojisi 1536 px ve 390 px genişlikte düğüm sınırları, yatay taşma, yakınlaştırma ve sıfırlama açısından doğrulandı; genel regresyon 320–2560 px aralığını ve gerçek izole SSH oturumunu kapsadı.
+- README'nin ana sayfa, SSH kapalı detay ve SSH açık detay görüntülerinin üçü de aynı güncel çalışma ağacından yenilendi. Kullanıcının çalışan `stocc-netstudio-fresh` kurulumu, verileri, anahtarları ve volume'leri değiştirilmedi; QA volume'leri ayrı tutuldu. Yeni DB migration gerekmez.
+- Bu koşuda fiziksel Huawei switch'e bağlanılmadı. Otomatik üretilmiş VRP envanteri bir sonraki başarılı veri toplamada yeni kuralla güncellenir; elle aktarılmış cihaz geometrisi korunur. HTTPS/WSS, Firefox/Safari ve büyük filo yük testi bu değişiklik için ayrıca doğrulanmadı. Starlette/httpx, Alembic, Vite ve legacy FFDH deprecation uyarıları başarısız test değildir.
 
 Önceki kapsam ve kararların tarihsel kaydı: [ilk uygulama raporu](stocc-netstudio-uygulama-raporu.md). Güncel çalışma sınırları bu README ve kaynak koddaki sözleşmelerdir.

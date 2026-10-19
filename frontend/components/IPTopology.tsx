@@ -1,17 +1,12 @@
 "use client";
-import { theme } from "../lib/theme";
 import { recordActivity } from "../lib/activity";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { EChartsCoreOption } from "echarts/core";
 import type { PhysicalPort, Projection } from "../lib/contracts";
+import { ipTopologyOption, IP_TOPOLOGY_ZOOM } from "../lib/ip-topology";
 import { formatTime, sampleForPort } from "../lib/metrics";
 import { Chart, Empty } from "./OperationSummary";
 
-const relations = {
-  l3: "L3 / IP",
-  l2: "L2 komşuluk",
-  physical: "Fiziksel bağlantı",
-};
 export function IPTopology({
   row,
   port,
@@ -23,6 +18,8 @@ export function IPTopology({
     [zoom, setZoom] = useState(1),
     [revision, setRevision] = useState(0);
   const [scope, setScope] = useState("all");
+  const stage = useRef<HTMLDivElement>(null);
+  const [stageWidth, setStageWidth] = useState(0);
   function selectNode(id: string) {
     setSelectedId(id);
     if (id) recordActivity({ action: "topology.select", page: "device", device_id: row.device.id, node_id: id });
@@ -45,109 +42,43 @@ export function IPTopology({
     return row.topology.nodes.filter((node) => ids.has(node.id));
   }, [scope, port, related, row.topology]);
   const selected = nodes.find((n) => n.id === selectedId);
-  const option = useMemo<EChartsCoreOption>(() => {
-    const groups = ["interface", "subnet", "neighbor"].map((kind) =>
-      nodes.filter((n) => n.kind === kind),
-    );
-    const nodeIds = new Set(nodes.map((n) => n.id));
-    return {
-      tooltip: { renderMode: "richText", formatter: "{b}" },
-      series: [
-        {
-          id: `${row.device.id}:ip-topology`,
-          type: "graph",
-          layout: "none",
-          roam: true,
-          zoom,
-          scaleLimit: { min: 0.4, max: 3 },
-          symbol: "rect",
-          symbolSize: [122, 36],
-          left: 80,
-          right: 80,
-          top: 38,
-          bottom: 38,
-          data: groups.flatMap((group, col) =>
-            group.map((n, index) => ({
-              id: n.id,
-              name: n.name,
-              x: col * 260,
-              y: (index - (group.length - 1) / 2) * 140,
-              itemStyle: {
-                color:
-                  selectedId === n.id
-                    ? theme["accent"]
-                    : related.has(n.id)
-                      ? theme["selected"]
-                      : theme["secondary"],
-                borderColor: related.has(n.id)
-                  ? theme["accent"]
-                  : theme["node-border"],
-                borderWidth: related.has(n.id) ? 2 : 1,
-              },
-              label: {
-                show: true,
-                color: selectedId === n.id ? theme["surface"] : theme["text"],
-                fontSize: 10,
-                width: 116,
-                overflow: "truncate",
-              },
-            })),
-          ),
-          links: row.topology.links
-            .filter((l) => nodeIds.has(l.source) && nodeIds.has(l.target))
-            .map((l) => ({
-              ...l,
-              label: {
-                show: true,
-                formatter: relations[l.relation],
-                fontSize: 9,
-                color: theme["muted"],
-              },
-              lineStyle: {
-                color: related.has(l.source) ? theme["accent"] : theme["down"],
-                width: 1.5,
-                type: l.relation === "physical" ? "solid" : "dashed",
-              },
-            })),
-          emphasis: { focus: "adjacency" },
-          lineStyle: { curveness: 0.05 },
-        },
-      ],
+  const activeSelectedId = selected?.id ?? "";
+  const compact = stageWidth > 0 && stageWidth < 520;
+  useEffect(() => {
+    const element = stage.current;
+    if (!element) return;
+    const update = () => {
+      const width = Math.round(element.getBoundingClientRect().width);
+      setStageWidth((current) => current === width ? current : width);
     };
-  }, [nodes, row, zoom, selectedId, related]);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [nodes.length]);
+  const option = useMemo<EChartsCoreOption>(() => {
+    return ipTopologyOption({
+      deviceId: row.device.id,
+      nodes,
+      links: row.topology.links,
+      zoom,
+      selectedId: activeSelectedId,
+      related,
+      compact,
+    });
+  }, [activeSelectedId, compact, nodes, related, row.device.id, row.topology.links, zoom]);
   return (
     <section className="topology-panel panel">
       <div className="panel-heading">
         <h2>IP topolojisi</h2>
-        <div className="small-actions">
-          <button
-            onClick={() => setZoom(Math.min(3, zoom + 0.25))}
-            aria-label="Topolojiyi yakınlaştır"
-          >
-            +
-          </button>
-          <button
-            onClick={() => setZoom(Math.max(0.4, zoom - 0.25))}
-            aria-label="Topolojiyi uzaklaştır"
-          >
-            −
-          </button>
-          <button
-            onClick={() => {
-              setZoom(1);
-              setRevision((v) => v + 1);
-            }}
-          >
-            Sıfırla
-          </button>
-        </div>
+        <span>Arayüz · alt ağ · komşu</span>
       </div>
       {!!row.topology.nodes.length && (
         <div className="topology-controls">
           <label>
             Düğüm seç
             <select
-              value={selected?.id ?? ""}
+              value={activeSelectedId}
               onChange={(e) => selectNode(e.target.value)}
             >
               <option value="">Bir düğüm seçin</option>
@@ -170,30 +101,58 @@ export function IPTopology({
         </div>
       )}
       {nodes.length ? (
-        <div
-          className="topology-scroll"
-          tabIndex={0}
-          aria-label="Kaydırılabilir topoloji görünümü"
-        >
-          <Chart
-            key={`${row.device.id}-${revision}`}
-            className="topology-chart"
-            option={option}
-            label="Doğrulanmış IP alt ağları ve türü belirtilmiş komşu ilişkileri. Düğüm seçimi için açılır listeyi de kullanabilirsiniz."
-            onSelect={selectNode}
-          />
+        <div className="device-topology-stage" ref={stage} data-layout={compact ? "compact" : "wide"}>
+          <div className="device-topology-camera" aria-label="Topoloji görünüm kontrolleri">
+            <button
+              onClick={() => setZoom(Math.min(IP_TOPOLOGY_ZOOM.max, zoom + IP_TOPOLOGY_ZOOM.step))}
+              aria-label="Topolojiyi yakınlaştır"
+            >
+              +
+            </button>
+            <button
+              onClick={() => setZoom(Math.max(IP_TOPOLOGY_ZOOM.min, zoom - IP_TOPOLOGY_ZOOM.step))}
+              aria-label="Topolojiyi uzaklaştır"
+            >
+              −
+            </button>
+            <button
+              onClick={() => {
+                setZoom(1);
+                setRevision((value) => value + 1);
+              }}
+            >
+              Ortala ve sıfırla
+            </button>
+            <span className="device-topology-zoom" aria-label="Yakınlaştırma oranı">
+              {Math.round(zoom * 100)}%
+            </span>
+          </div>
+          <div className="topology-scroll">
+            <Chart
+              key={`${row.device.id}-${revision}`}
+              className="topology-chart"
+              option={option}
+              label="Doğrulanmış IP alt ağları ve türü belirtilmiş komşu ilişkileri. Düğümler sabit ölçülüdür; görünümü kaydırabilir veya yakınlaştırabilirsiniz. Düğüm seçimi için açılır listeyi de kullanabilirsiniz."
+              onSelect={selectNode}
+            />
+          </div>
+          <div className="device-topology-legend" aria-label="Topoloji ilişki türleri">
+            <span className="l3">L3 / IP</span>
+            <span className="l2">L2 komşuluk</span>
+            <span className="physical">Fiziksel bağlantı</span>
+          </div>
         </div>
       ) : (
         <Empty text="Bu kapsamda doğrulanmış IP veya komşuluk ilişkisi yok." />
       )}
-      {selected && (
+      {selected ? (
         <div className="topology-selection">
           <strong>{selected.name}</strong>
           <p className="mono">{selected.detail}</p>
           {selected.vrf && <p>VRF: {selected.vrf}</p>}
           {selected.vlan != null && <p>VLAN: {selected.vlan}</p>}
         </div>
-      )}
+      ) : null}
       <p className="source-note">
         L3: atanmış IP / alt ağ · L2 ve fiziksel: açık kanıtlı komşu kaydı.
         Yönetim IP’sinden bağlantı üretilmez.
