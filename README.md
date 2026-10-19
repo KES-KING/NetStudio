@@ -7,7 +7,7 @@
 [![CI](https://github.com/KES-KING/stocc-netstudio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/KES-KING/stocc-netstudio/actions/workflows/ci.yml)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-365A73)](LICENSE)
 
-[Kurulum](#docker-ile-kurulum) · [Cihaz bağlantısı](#gerçek-cihazı-bağlama) · [Geliştirme](#geliştirme-ve-doğrulama) · [Katkı rehberi](CONTRIBUTING.md) · [Tartışmalar](https://github.com/KES-KING/stocc-netstudio/discussions) · [Lisans](#lisans)
+[Ekran görüntüleri](#ekran-görüntüleri) · [Kurulum](#docker-ile-kurulum) · [Cihaz bağlantısı](#gerçek-cihazı-bağlama) · [Geliştirme](#geliştirme-ve-doğrulama) · [Katkı rehberi](CONTRIBUTING.md) · [Tartışmalar](https://github.com/KES-KING/stocc-netstudio/discussions) · [Lisans](#lisans)
 
 Ağ cihazlarının envanterini, erişilebilirliğini, fiziksel portlarını, trafik gözlemlerini ve IP ilişkilerini aynı konsolda yönetin. Cihaz detayında açılan SSH terminali, backend üzerinden doğrulanmış cihaz kaydına bağlanır.
 
@@ -25,6 +25,28 @@ Arayüz: Next.js 16 / React 19 / TypeScript, Apache ECharts, xterm.js ve SWR. Ba
 Bu proje geliştirme aşamasındadır. Fiziksel cihaz/üretim kabulü, çok worker desteği ve üreticiye özgü konfigürasyon uygulama/yedekleme yetenekleri varmış gibi sunulmaz. CI rozeti GitHub'daki gerçek durumu gösterir; aşağıdaki tarihli yerel doğrulama sonuçları onun yerine geçmez.
 
 Marka varlıkları `frontend/public/branding/` içindedir: `netstudio-logo.png` README, giriş ekranı ve masaüstü üst barda, `netstudio-emblem.png` mobil üst bar ve sekme simgesinde kullanılır. Orijinal PNG içerikleri ve şeffaflık korunur; ortak `Brand` bileşeni uygulama içinde yalnız şeffaf kenar boşluklarını görünümde çerçeveler. Logoların arkasında ayrı bir zemin yoktur; üst barın tamamı okunabilirlik için `nav-header` tokenıyla açık gri tutulur. Sekme simgesi `app/icon.tsx` ile amblemden şeffaf zemin üzerinde üretilir. Docker web imajı `public/` dizinini de içerir.
+
+## Ekran görüntüleri
+
+Aşağıdaki üç görüntü çalışan uygulamanın izole QA ortamından alınmıştır. Cihazlar, adresler ve telemetri test verisidir; SSH görüntüsü izole test cihazıyla kurulan gerçek oturumu gösterir. Üretim cihazı bilgisi veya bağlantı sırrı içermez. Varsayılan kurulum bu örnek verileri oluşturmaz.
+
+### Ana sayfa
+
+Cihaz filtresi ve zaman aralığıyla aynı kapsamı paylaşan Apache ECharts grafikleri, port kullanımı ve dikey cihaz envanteri.
+
+![NetStudio ana sayfası: QA-Core-01 filtresiyle erişilebilirlik, port, trafik ve kapasite grafikleri ile cihaz envanteri](docs/screenshots/dashboard.png)
+
+### Cihaz detayı — SSH kapalı
+
+Tam genişlikte etkileşimli cihaz ön paneli; altında IP topolojisi, teknik bilgiler ve sağlık değerlendirmesi.
+
+![NetStudio cihaz detayı: SSH paneli kapalıyken cihaz portları, IP topolojisi ve teknik bilgiler](docs/screenshots/device-detail.png)
+
+### Cihaz detayı — SSH açık
+
+Aynı cihazın ön paneli ve bağlı SSH terminali yan yana; topoloji ve teknik bilgi alanları alt bölümde korunur.
+
+![NetStudio cihaz detayı: cihaz ön panelinin yanında bağlı SSH terminali ve alt bölümde IP topolojisi ile teknik bilgiler](docs/screenshots/device-detail-ssh.png)
 
 ## Katkı ve iletişim
 
