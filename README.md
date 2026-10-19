@@ -22,10 +22,10 @@ Demo profili gerçek ağ bağlantısı açmaz; gerçek cihaz desteği veya yazma
 
 ```bash
 # backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e backend
-uvicorn app.main:app --reload --app-dir backend
+make backend-install
+make postgres-up
+make backend-migrate
+make backend-run
 
 # web (ayrı terminal)
 cd frontend
@@ -33,11 +33,13 @@ npm install
 npm run dev
 ```
 
-İsteğe bağlı PostgreSQL:
+`make` hedefleri komutları doğrudan `.venv/bin` altından çalıştırır; sistem geneline `alembic` veya `uvicorn` kurulması gerekmez. Bu makinede Docker Desktop bağlamı yerine çalışan sistem engine'i kullanılır. Başka bir Docker bağlamı gerekiyorsa `DOCKER_CONTEXT=desktop-linux make postgres-up` biçiminde değiştirilebilir.
+
+PostgreSQL olmadan yalnızca fixture/bellek profiliyle çalıştırmak için:
 
 ```bash
-docker compose up -d postgres
-alembic -c backend/alembic.ini upgrade head
+make backend-install
+make backend-run
 ```
 
 Frontend `http://localhost:3000`, API `http://localhost:8000` adresindedir. `NEXT_PUBLIC_API_URL` ile API adresi değiştirilebilir.
@@ -45,7 +47,7 @@ Frontend `http://localhost:3000`, API `http://localhost:8000` adresindedir. `NEX
 ## Testler
 
 ```bash
-pytest backend/tests
+make backend-test
 cd frontend && npm test
 cd frontend && npm run test:e2e
 ```
