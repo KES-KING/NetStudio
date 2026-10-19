@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import os
+import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from uuid import uuid4
 
 import sqlalchemy as sa
 
 from .contracts import ManagedDevice
+from .auditing import audit_request, safe_details, safe_text
 from .repositories import SqlAlchemyJobRepository
 
 
@@ -29,6 +32,10 @@ class Store:
             sa.Column("id", sa.String(64), primary_key=True),
             sa.Column("username", sa.String(160), nullable=False, unique=True),
             sa.Column("password_hash", sa.Text(), nullable=False),
+            sa.Column("display_name", sa.String(100), nullable=False, server_default=""),
+            sa.Column("created_at", sa.DateTime(timezone=True)),
+            sa.Column("updated_at", sa.DateTime(timezone=True)),
+            sa.Column("avatar_version", sa.String(36)),
             sa.Column("roles", sa.JSON(), nullable=False),
             sa.Column("sites", sa.JSON(), nullable=False),
             sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.true()))
@@ -37,6 +44,10 @@ class Store:
             sa.Column("user_id", sa.String(64), sa.ForeignKey("app_users.id"), nullable=False),
             sa.Column("csrf", sa.String(128), nullable=False),
             sa.Column("expires_at", sa.Float(), nullable=False))
+        sa.Index("ix_app_sessions_user", self.sessions.c.user_id)
+        self.avatars = sa.Table("user_avatars", self.meta,
+            sa.Column("user_id", sa.String(64), sa.ForeignKey("app_users.id", ondelete="CASCADE"), primary_key=True),
+            sa.Column("png", sa.LargeBinary(), nullable=False))
         self.secrets = sa.Table("device_secrets", self.meta,
             sa.Column("device_id", sa.String(64), sa.ForeignKey("devices.id"), primary_key=True),
             sa.Column("key_id", sa.String(80), nullable=False),
@@ -61,13 +72,74 @@ class Store:
             sa.Column("event", sa.String(80), nullable=False),
             sa.Column("outcome", sa.String(100), nullable=False),
             sa.Column("session_id", sa.String(64)),
+            sa.Column("username", sa.String(160)),
+            sa.Column("roles", sa.JSON()),
+            sa.Column("target_type", sa.String(40)),
+            sa.Column("target_id", sa.String(160)),
+            sa.Column("request_id", sa.String(36)),
+            sa.Column("method", sa.String(10)),
+            sa.Column("route", sa.String(200)),
+            sa.Column("remote_address", sa.String(100)),
+            sa.Column("user_agent", sa.String(256)),
+            sa.Column("status_code", sa.Integer()),
+            sa.Column("duration_ms", sa.Integer()),
+            sa.Column("details", sa.JSON(), nullable=False, server_default="{}"),
             sa.Column("occurred_at", sa.DateTime(timezone=True), nullable=False))
         sa.Index("ix_audit_events_time", self.audit.c.occurred_at)
+        sa.Index("ix_audit_cursor", self.audit.c.occurred_at, self.audit.c.id)
+        sa.Index("ix_audit_actor_time", self.audit.c.user_id, self.audit.c.occurred_at, self.audit.c.id)
+        sa.Index("ix_audit_event_time", self.audit.c.event, self.audit.c.occurred_at, self.audit.c.id)
+        sa.Index("ix_audit_target_time", self.audit.c.target_id, self.audit.c.occurred_at, self.audit.c.id)
 
-    def record(self, user_id, event, outcome, device_id=None, session_id=None):
-        with self.engine.begin() as conn:
-            conn.execute(self.audit.insert().values(id=str(uuid4()), user_id=user_id, event=event,
-                outcome=outcome, device_id=device_id, session_id=session_id, occurred_at=now()))
+    @contextmanager
+    def user_transaction(self):
+        """Serialize account changes and login finalization, including last-admin checks."""
+        with self.engine.connect() as conn:
+            if conn.dialect.name == "sqlite":
+                conn.exec_driver_sql("BEGIN IMMEDIATE")
+            else:
+                conn.begin()
+                conn.execute(sa.text("SELECT pg_advisory_xact_lock(730201904)"))
+            try:
+                yield conn
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
+
+    def record(self, user_id, event, outcome, device_id=None, session_id=None, *, details=None,
+               target_type=None, target_id=None, conn=None, status_code=None, actor_name=None, actor_roles=None):
+        current = audit_request.get()
+        metadata = {}
+        if current:
+            current.recorded = True
+            metadata = {key: getattr(current, key) for key in (
+                "request_id", "username", "roles", "method", "route", "remote_address", "user_agent", "status_code", "duration_ms")}
+            metadata["duration_ms"] = current.duration_ms if current.duration_ms is not None else round((time.monotonic() - current.started) * 1000)
+            if current.user_id != user_id:
+                metadata.pop("username", None)
+                metadata.pop("roles", None)
+        if actor_name:
+            metadata["username"] = safe_text(actor_name, 160)
+        if actor_roles is not None:
+            metadata["roles"] = list(actor_roles)
+        if status_code is not None:
+            metadata["status_code"] = status_code
+        values = dict(id=str(uuid4()), user_id=safe_text(user_id, 160), event=event,
+            outcome=safe_text(outcome, 100), device_id=device_id, session_id=session_id, occurred_at=now(),
+            target_type=target_type or ("device" if device_id else None), target_id=target_id or device_id,
+            details=safe_details(details or {}), **metadata)
+        def write(connection):
+            if "username" not in values:
+                actor = connection.execute(sa.select(self.users.c.username, self.users.c.roles).where(self.users.c.id == user_id)).mappings().first()
+                if actor:
+                    values.update(username=safe_text(actor["username"], 160), roles=actor["roles"])
+            connection.execute(self.audit.insert().values(**values))
+        if conn is not None:
+            write(conn)
+        else:
+            with self.engine.begin() as connection:
+                write(connection)
 
     def save_device(self, device: ManagedDevice, conn=None):
         values = {key: getattr(device, key) for key in (

@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { api, errorMessage } from "../lib/api";
+import { recordActivity } from "../lib/activity";
 import type { Overview, Projection } from "../lib/contracts";
 import {
   displayProjection,
@@ -32,6 +33,11 @@ export default function Dashboard() {
   const requested = Number(search.get("minutes") ?? 60),
     minutes = [15, 60, 360, 1440].includes(requested) ? requested : 60;
   const page = Math.max(1, Number(search.get("page")) || 1);
+  useEffect(() => {
+    const timer = window.setTimeout(() => recordActivity({ action: "inventory.filter", page: "dashboard",
+      q: query.slice(0, 160), type, status, minutes }), 1000);
+    return () => window.clearTimeout(timer);
+  }, [query, type, status, minutes]);
   const { data, error, isLoading, isValidating, mutate } = useSWR<Overview>(
     `/api/v1/overview?minutes=${minutes}`,
     api,
@@ -80,6 +86,7 @@ export default function Dashboard() {
           Cihaz ara
           <input
             type="search"
+            maxLength={160}
             value={query}
             onChange={(e) => filter("q", e.target.value)}
             placeholder="Cihaz adı veya IP adresi"
@@ -214,9 +221,10 @@ function DeviceRow({ row }: { row: Projection }) {
             row={row}
             compact
             selectedId={port?.id}
-            onSelect={(p) =>
-              setSelectedId(p.id === selectedId ? undefined : p.id)
-            }
+            onSelect={(p) => {
+              setSelectedId(p.id === selectedId ? undefined : p.id);
+              if (p.id !== selectedId) recordActivity({ action: "port.select", page: "dashboard", device_id: row.device.id, port_id: p.id });
+            }}
           />
           <span className="schematic-label">Şematik görünüm</span>
         </div>

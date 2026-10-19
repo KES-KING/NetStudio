@@ -17,18 +17,25 @@ def main():
     parsed = urlparse(url)
     if parsed.hostname not in {"127.0.0.1", "localhost"} or parsed.path != "/stocc_qa":
         raise SystemExit("This script only supports a loopback stocc_qa database.")
+    origin = os.getenv("STOCC_TEST_ORIGIN", "http://127.0.0.1:13000")
+    key_url = os.getenv("STOCC_TEST_SSH_KEY_URL", "http://127.0.0.1:12223")
+    for endpoint in (origin, key_url):
+        target = urlparse(endpoint)
+        if target.scheme != "http" or target.hostname not in {"127.0.0.1", "localhost"} or target.username or target.password or target.path not in {"", "/"} or target.query or target.fragment:
+            raise SystemExit("QA bootstrap endpoints must be plain loopback HTTP origins.")
     store = Store(url)
     if store.list_devices():
         raise SystemExit("QA database already contains inventory. No data overwritten.")
     with store.engine.begin() as conn:
-        if not conn.execute(sa.select(store.users.c.id).where(store.users.c.id == "qa-admin")).first():
-            conn.execute(store.users.insert().values(id="qa-admin", username="qa-admin", password_hash=hasher.hash(PASSWORD), roles=["admin"], sites=["*"], enabled=True))
-    address = subprocess.check_output(["docker", "--context", "default", "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", "stocc-redesign-qa-ssh-lab-1"], text=True).strip()
-    origin = "http://127.0.0.1:13000"
+        if conn.execute(sa.select(store.users.c.id).limit(1)).first():
+            raise SystemExit("QA database already contains users. No account overwritten; use a new isolated project.")
+        conn.execute(store.users.insert().values(id="qa-admin", username="qa-admin", password_hash=hasher.hash(PASSWORD), roles=["superadmin"], sites=["*"], enabled=True))
+    container = os.getenv("STOCC_TEST_SSH_CONTAINER", "stocc-redesign-qa-ssh-lab-1")
+    address = subprocess.check_output(["docker", "--context", "default", "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", container], text=True).strip()
     client = httpx.Client(base_url=origin, headers={"origin": origin}, timeout=30)
     response = client.post("/api/v1/session/login", json={"username": "qa-admin", "password": PASSWORD}); response.raise_for_status()
     client.headers["x-csrf-token"] = response.json()["csrf_token"]
-    key = httpx.get("http://127.0.0.1:12223").json()
+    key = httpx.get(key_url).json()
     for n, name in enumerate(["QA-Core-01", "QA-Edge-02", "QA-Distribution-03"]):
         response = client.post("/api/v1/devices", json={"name": name, "site": "TEST FIXTURE / isolated", "management_address": address if n == 0 else f"192.0.2.{20+n}", "ssh_port": 2222 if n == 0 else 22, "device_type": "switch" if n < 2 else "router", "credentials": {"username": "lab", "password": "lab-secret"} if n == 0 else None}); response.raise_for_status()
         identifier = response.json()["id"]

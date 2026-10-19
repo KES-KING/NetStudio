@@ -4,6 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 import hmac
 import os
+import time
 from uuid import UUID, uuid4
 
 import asyncssh
@@ -14,6 +15,8 @@ from pydantic import Field, SecretStr
 import sqlalchemy as sa
 
 from .auth import Auth, COOKIE, fail, session_response
+from .account_api import install_account_routes
+from .auditing import AuditRequest, audit_request, safe_text
 from .collector import collect_linux
 from .contracts import Credentials, DeviceCreate, Inventory, ManagedDevice, StrictModel, Telemetry
 from .database import Store, now
@@ -64,8 +67,7 @@ def create_app(store=None, key_file=None):
 
     app = FastAPI(title="Stocc NetStudio API", version="0.2.0", lifespan=lifespan)
 
-    @app.middleware("http")
-    async def boundaries(request, call_next):
+    async def bounded_response(request, call_next):
         if os.getenv("STOCC_ENV") == "production" and request.url.path.startswith("/api/") and request.url.scheme != "https":
             return JSONResponse({"detail": {"code": "https_required"}}, status_code=400)
         try:
@@ -74,7 +76,7 @@ def create_app(store=None, key_file=None):
             return JSONResponse({"detail": {"code": "invalid_content_length"}}, status_code=400)
         if length > 4_000_000:
             return JSONResponse({"detail": {"code": "request_too_large"}}, status_code=413)
-        if request.method in {"POST", "PUT", "PATCH"}:
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             body = bytearray()
             async for chunk in request.stream():
                 body.extend(chunk)
@@ -87,8 +89,61 @@ def create_app(store=None, key_file=None):
         response.headers["X-Frame-Options"] = "DENY"
         return response
 
+    @app.middleware("http")
+    async def boundaries(request, call_next):
+        audit = AuditRequest(method=request.method, remote_address=safe_text(request.client.host if request.client else "", 100),
+            user_agent=safe_text(request.headers.get("user-agent", ""), 256))
+        token = audit_request.set(audit)
+        try:
+            response = await bounded_response(request, call_next)
+            route = request.scope.get("route")
+            audit.route = getattr(route, "path", "unmatched")
+            audit.status_code = response.status_code
+            audit.duration_ms = round((time.monotonic() - audit.started) * 1000)
+            probe = audit.route == "/api/v1/session/me" and response.status_code == 401
+            if request.url.path.startswith("/api/") and not probe:
+                if response.status_code >= 400:
+                    if audit.user_id == "anonymous" and audit.route != "/api/v1/session/login":
+                        try:
+                            from .auditing import identify
+                            identify(app.state.auth.validate(request.cookies.get(COOKIE)).user)
+                        except HTTPException:
+                            pass
+                    app.state.store.record(audit.user_id, "login" if audit.route == "/api/v1/session/login" else "request.denied" if response.status_code in {401, 403} else "request.failed",
+                        "denied" if response.status_code in {401, 403} else "failed",
+                        target_type="user" if "user_id" in request.path_params else "device" if "device_id" in request.path_params else None,
+                        target_id=safe_text(request.path_params.get("user_id", request.path_params.get("device_id", "")), 160) or None,
+                        details={"error_code": audit.error_code or f"http_{response.status_code}",
+                            "input": {"username": audit.username} if audit.route == "/api/v1/session/login" else {}})
+                elif request.method not in {"GET", "HEAD", "OPTIONS"} and not audit.recorded:
+                    app.state.store.record(audit.user_id, "request.completed", "succeeded")
+            response.headers["X-Request-ID"] = audit.request_id
+            return response
+        except Exception:
+            # Preserve the original failure, including an unavailable audit store.
+            # Never serialize exception text or the submitted request body.
+            audit.route = getattr(request.scope.get("route"), "path", "unmatched")
+            audit.status_code = 500
+            audit.duration_ms = round((time.monotonic() - audit.started) * 1000)
+            if request.url.path.startswith("/api/"):
+                try:
+                    app.state.store.record(audit.user_id, "request.failed", "failed", details={"error_code": "internal_error"})
+                except Exception:
+                    pass
+            raise
+        finally:
+            audit_request.reset(token)
+
+    @app.exception_handler(HTTPException)
+    async def http_error(_, error):
+        if current := audit_request.get():
+            current.error_code = error.detail.get("code", "http_error") if isinstance(error.detail, dict) else "http_error"
+        return JSONResponse({"detail": error.detail}, status_code=error.status_code, headers=error.headers)
+
     @app.exception_handler(RequestValidationError)
     async def validation_error(_, error):
+        if current := audit_request.get():
+            current.error_code = "validation_error"
         # Pydantic's default response includes submitted input, including secrets.
         return JSONResponse({"detail": {"code": "validation_error", "fields": [
             {"location": list(e["loc"]), "type": e["type"]} for e in error.errors()]}}, status_code=422)
@@ -96,10 +151,18 @@ def create_app(store=None, key_file=None):
     @app.exception_handler(SecretStoreError)
     @app.exception_handler(ConnectionPolicyError)
     async def policy_error(_, error):
+        if current := audit_request.get():
+            current.error_code = str(error)
         return JSONResponse({"detail": {"code": str(error)}}, status_code=409)
 
     def context(request, mutation=False):
+        if current := audit_request.get():
+            route = request.scope.get("route")
+            current.route = getattr(route, "path", "unmatched")
+            current.status_code = getattr(route, "status_code", None) or 200
         return app.state.auth.request(request, mutation)
+
+    install_account_routes(app, context)
 
     def device_for(request, device_id, permission=Permission.INVENTORY_READ, mutation=False):
         auth = context(request, mutation)
@@ -116,7 +179,8 @@ def create_app(store=None, key_file=None):
     def readyz():
         try:
             with app.state.store.engine.connect() as conn:
-                conn.execute(sa.select(app.state.store.users.c.id).limit(1))
+                conn.execute(sa.select(app.state.store.users.c.display_name).limit(1))
+                conn.execute(sa.select(app.state.store.audit.c.request_id).limit(1))
                 conn.execute(sa.select(app.state.store.devices.c.payload).limit(1))
         except Exception:
             fail("persistence_unavailable", 503)
@@ -124,6 +188,8 @@ def create_app(store=None, key_file=None):
 
     @app.post("/api/v1/session/login")
     def login(value: Login, request: Request, response: Response):
+        if current := audit_request.get():
+            current.route = "/api/v1/session/login"
         app.state.auth.origin(request)
         token, auth = app.state.auth.login(value.username, value.password.get_secret_value(), request.client.host)
         response.set_cookie(COOKIE, token, httponly=True, secure=app.state.auth.production, samesite="strict", max_age=8 * 3600, path="/api")
@@ -174,7 +240,8 @@ def create_app(store=None, key_file=None):
             app.state.store.save_device(device, conn)
             if credentials:
                 app.state.vault.save(device.id, credentials, conn)
-        app.state.store.record(auth.user.user_id, "device.created", "succeeded", device.id)
+        app.state.store.record(auth.user.user_id, "device.created", "succeeded", device.id,
+            details={"input": value.model_dump(mode="json", exclude={"credentials"}), "credential_configured": credentials is not None})
         return app.state.store.get_device(device.id)
 
     @app.put("/api/v1/devices/{device_id}/inventory")
@@ -189,7 +256,9 @@ def create_app(store=None, key_file=None):
             updated = ManagedDevice.model_validate({**device.model_dump(), **update,
                 "inventory_source": value.source, "inventory_observed_at": value.observed_at})
             app.state.store.save_device(updated, conn)
-        app.state.store.record(auth.user.user_id, "inventory.updated", "succeeded", device.id)
+        app.state.store.record(auth.user.user_id, "inventory.updated", "succeeded", device.id, details={"source": value.source,
+            "observed_at": value.observed_at.isoformat(), "physical_port_count": len(value.physical_ports),
+            "interface_count": len(value.interfaces), "binding_count": len(value.bindings)})
         return app.state.store.get_device(device.id)
 
     @app.put("/api/v1/devices/{device_id}/credentials")
@@ -199,12 +268,14 @@ def create_app(store=None, key_file=None):
         if not selected or not selected.get_secret_value():
             if not device.credential_configured:
                 fail("credential_secret_required", 422)
+            app.state.store.record(auth.user.user_id, "credentials.updated", "unchanged", device.id)
             return {"credential_configured": True, "unchanged": True}
         credentials = credential_values(value)
         with app.state.store.engine.begin() as conn:
             app.state.vault.save(device.id, credentials, conn)
         app.state.ssh.revoke(device_id=device.id)
-        app.state.store.record(auth.user.user_id, "credentials.updated", "succeeded", device.id)
+        app.state.store.record(auth.user.user_id, "credentials.updated", "succeeded", device.id,
+            details={"authentication_method": value.method, "credential_configured": True})
         return {"credential_configured": True, "unchanged": False}
 
     @app.delete("/api/v1/devices/{device_id}/credentials")
@@ -239,7 +310,8 @@ def create_app(store=None, key_file=None):
     def observation(device_id: str, value: Telemetry, request: Request):
         auth, device = device_for(request, device_id, Permission.TELEMETRY_WRITE, True)
         result = ingest(app.state.store, device, value)
-        app.state.store.record(auth.user.user_id, "telemetry.received", value.source, device.id)
+        app.state.store.record(auth.user.user_id, "telemetry.received", "succeeded", device.id,
+            details={"source": value.source, "observed_at": value.observed_at.isoformat(), "interface_count": len(value.interfaces)})
         return result
 
     @app.get("/api/v1/devices/{device_id}/observations/latest")
@@ -274,7 +346,8 @@ def create_app(store=None, key_file=None):
             job = job.model_copy(update={"status": "failed", "error_code": code})
         finally:
             repository.update(job.model_copy(update={"finished_at": now()}))
-            app.state.store.record(job.requested_by, "job.finished", job.status, device.id, str(job.id))
+            app.state.store.record(job.requested_by, "job.finished", job.status, device.id, str(job.id),
+                details={"job_id": str(job.id), "error_code": job.error_code, "result_code": job.result_code})
 
     async def queue_job(request, device_id, kind):
         auth, device = device_for(request, device_id, Permission.JOB_CREATE, True)
@@ -284,6 +357,7 @@ def create_app(store=None, key_file=None):
             fail("collector_busy", 429)
         job = Job(kind=kind, device_id=device.id, requested_by=auth.user.user_id)
         app.state.store.jobs_repository.insert(job)
+        app.state.store.record(auth.user.user_id, "job.created", "succeeded", device.id, str(job.id), details={"action": kind, "job_id": str(job.id)})
         task = asyncio.create_task(perform_job(job, device, request.cookies[COOKIE]))
         app.state.jobs.add(task)
         task.add_done_callback(app.state.jobs.discard)
@@ -312,14 +386,6 @@ def create_app(store=None, key_file=None):
             fail("job_not_found", 404)
         device_for(request, result.device_id)
         return result
-
-    @app.get("/api/v1/audit")
-    def audit(request: Request):
-        auth = context(request)
-        if not has_permission(auth.user, Permission.AUDIT_READ, "*"):
-            fail("forbidden", 403)
-        with app.state.store.engine.connect() as conn:
-            return [dict(row) for row in conn.execute(sa.select(app.state.store.audit).order_by(app.state.store.audit.c.occurred_at.desc()).limit(200)).mappings()]
 
     @app.post("/api/v1/devices/{device_id}/ssh-sessions", status_code=201)
     async def start_terminal(device_id: str, request: Request):

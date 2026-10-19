@@ -146,8 +146,10 @@ export type Overview = {
 };
 export type Session = {
   user_id: string;
+  username: string;
   display_name: string;
-  roles: string[];
+  avatar_version: string | null;
+  roles: UserRole[];
   site_ids: string[];
   permissions: string[];
   csrf_token: string;
@@ -174,4 +176,31 @@ export type AuditEvent = {
   outcome: string;
   session_id: string | null;
   occurred_at: string;
+  username: string | null;
+  roles: UserRole[] | null;
+  target_type: string | null;
+  target_id: string | null;
+  request_id: string | null;
+  method: string | null;
+  route: string | null;
+  remote_address: string | null;
+  user_agent: string | null;
+  status_code: number | null;
+  duration_ms: number | null;
+  details: Record<string, unknown>;
 };
+
+export type UserRole = "viewer" | "engineer" | "superadmin";
+export type UserProfile = {
+  id: string;
+  username: string;
+  display_name: string;
+  role: UserRole;
+  sites: string[];
+  enabled: boolean;
+  avatar_version: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  reauthenticate?: boolean;
+};
+export type CursorPage<T> = { items: T[]; next_cursor: string | null };

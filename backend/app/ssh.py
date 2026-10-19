@@ -80,6 +80,8 @@ class TerminalSession:
     user_id: str
     device_id: str
     auth_hash: str
+    username: str = ""
+    roles: list[str] = field(default_factory=list)
     created: float = field(default_factory=time.monotonic)
     attached: bool = False
     stopped: asyncio.Event = field(default_factory=asyncio.Event)
@@ -103,14 +105,17 @@ class SSHBroker:
         host_key(self.store, device.id)
         if not device.credential_configured:
             fail("credentials_missing", 409)
-        session = TerminalSession(str(uuid4()), context.user.user_id, device.id, context.session_hash)
+        session = TerminalSession(str(uuid4()), context.user.user_id, device.id, context.session_hash,
+            username=context.user.username, roles=sorted(str(role) for role in context.user.roles))
         self.store.record(session.user_id, "ssh.created", "pending", device.id, session.id)
         self.sessions[session.id] = session
         return session
 
     def finish(self, session):
         if self.sessions.pop(session.id, None):
-            self.store.record(session.user_id, "ssh.ended", session.reason, session.device_id, session.id)
+            self.store.record(session.user_id, "ssh.ended", session.reason, session.device_id, session.id,
+                details={"duration_seconds": round(time.monotonic() - session.created, 2), "reason": session.reason},
+                actor_name=session.username, actor_roles=session.roles or None)
 
     def expire_pending(self):
         for session in list(self.sessions.values()):
@@ -124,9 +129,9 @@ class SSHBroker:
         if not session.attached:
             self.finish(session)
 
-    def revoke(self, auth_hash=None, device_id=None):
+    def revoke(self, auth_hash=None, device_id=None, user_id=None):
         for session in list(self.sessions.values()):
-            if (auth_hash and session.auth_hash == auth_hash) or (device_id and session.device_id == device_id):
+            if (auth_hash and session.auth_hash == auth_hash) or (device_id and session.device_id == device_id) or (user_id and session.user_id == user_id):
                 self.stop(session, "session_revoked")
 
     async def run(self, ws, session_id):

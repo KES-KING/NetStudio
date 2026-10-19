@@ -8,7 +8,7 @@
 [![CI](https://github.com/KES-KING/stocc-netstudio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/KES-KING/stocc-netstudio/actions/workflows/ci.yml)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-365A73)](LICENSE)
 
-[Ekran görüntüleri](#ekran-görüntüleri) · [Kurulum](#docker-ile-kurulum) · [Cihaz bağlantısı](#gerçek-cihazı-bağlama) · [Geliştirme](#geliştirme-ve-doğrulama) · [Katkı rehberi](CONTRIBUTING.md) · [Tartışmalar](https://github.com/KES-KING/stocc-netstudio/discussions) · [Lisans](#lisans)
+[Ekran görüntüleri](#ekran-görüntüleri) · [Kurulum](#docker-ile-kurulum) · [Cihaz bağlantısı](#gerçek-cihazı-bağlama) · [Kullanıcı ve audit](#kullanıcı-yönetimi-ve-audit) · [Geliştirme](#geliştirme-ve-doğrulama) · [Katkı rehberi](CONTRIBUTING.md) · [Tartışmalar](https://github.com/KES-KING/stocc-netstudio/discussions) · [Lisans](#lisans)
 
 Ağ cihazlarının envanterini, erişilebilirliğini, fiziksel portlarını, trafik gözlemlerini ve IP ilişkilerini aynı konsolda yönetin. Cihaz detayında açılan SSH terminali, backend üzerinden doğrulanmış cihaz kaydına bağlanır.
 
@@ -21,6 +21,7 @@ Arayüz: Next.js 16 / React 19 / TypeScript, Apache ECharts, xterm.js ve SWR. Ba
 - Apache ECharts ile RX/TX, port durumu ve kapasite gösterimleri; bilinmeyen/eski verinin açık ayrımı.
 - Cihaz detayına entegre SSH terminali; backend tarafında site/rol denetimi ve kayıtlı host key doğrulaması.
 - Harici envanter/telemetri aktarımı ve Linux için kullanıcı tarafından başlatılan salt okunur SSH toplama işleri.
+- Kişisel profil/avatar/parola yönetimi; `viewer`, `engineer`, `superadmin` rolleri ve yalnız superadmin'e açık kullanıcı yönetimi/ayrıntılı audit.
 - Docker Compose ile PostgreSQL, migration, sır deposu, API, frontend ve gateway kurulumu.
 
 Bu proje geliştirme aşamasındadır. Fiziksel cihaz/üretim kabulü, çok worker desteği ve üreticiye özgü konfigürasyon uygulama/yedekleme yetenekleri varmış gibi sunulmaz. CI rozeti GitHub'daki gerçek durumu gösterir; aşağıdaki tarihli yerel doğrulama sonuçları onun yerine geçmez.
@@ -88,7 +89,7 @@ Kabukta tanımlı `DOCKER_HOST` veya `DOCKER_CONTEXT` değerleri motor seçimini
 test -f .env || cp .env.example .env
 docker compose config --quiet
 docker compose up --build -d --wait
-docker compose exec api python -m app.admin create-user --username admin --role admin --site '*'
+docker compose exec api python -m app.admin create-user --username admin --role superadmin --site '*'
 ```
 
 Son komut ilk yönetici hesabını oluşturur ve parolayı etkileşimli olarak iki kez ister; en az 12 karakter gerekir. Sonraki başlatmalarda hesabı tekrar oluşturmayın. Varsayılan yönetici parolası yoktur. Web: <http://127.0.0.1:3000>. Desktop motoru seçiliyken servisler Docker Desktop'ın Containers ekranında `stocc-netstudio` grubu altında görünür (`COMPOSE_PROJECT_NAME` değiştirilmişse o ad kullanılır).
@@ -176,20 +177,62 @@ TLS override; üretim modunu etkinleştirir, PostgreSQL/API host portlarını ka
 
 Kimlik doğrulama, yerel Argon2id kullanıcıları ve veritabanındaki iptal edilebilir, 8 saatlik opaque oturumlarla yapılır. Değişiklik isteklerinde exact-origin ve CSRF kontrolü vardır. Roller:
 
-| Rol | Envanter | İş başlatma | Terminal | Sır / envanter yönetimi | Denetim |
+| Rol | Envanter | İş / SSH | Cihaz, sır, envanter / telemetri yönetimi | Kendi profil / avatar / parolası | Kullanıcı yönetimi / audit |
 | --- | --- | --- | --- | --- | --- |
-| Gözlemci | İzinli siteler | Hayır | Hayır | Hayır | Hayır |
-| Operatör | İzinli siteler | Evet | Evet | Hayır | Hayır |
-| Yönetici | İzinli siteler | Evet | Evet | Evet | Yalnız global site yetkisiyle |
+| `viewer` | İzinli lokasyonlar | Hayır | Hayır | Evet | Hayır |
+| `engineer` | İzinli lokasyonlar | İzinli lokasyonlar | İzinli lokasyonlar | Evet | Hayır |
+| `superadmin` | İzinli lokasyonlar | İzinli lokasyonlar | İzinli lokasyonlar | Evet | Global |
+
+Kullanıcı/audit yönetimi yalnız superadmin rolüyle açılır; sadece menü gizlenmez, backend de erişimi reddeder. Superadmin'in cihaz işlemleri dahi kayıtlı lokasyon kapsamına tabidir; `*` tüm lokasyonları kapsar. Konfigürasyon uygulama ve ham yedek dışa aktarma izinleri yalnız superadmin'e ayrılmıştır; bu izinlerin varlığı henüz uygulanmayan cihaz yeteneklerini etkinleştirmez.
 
 ```bash
-docker compose exec api python -m app.admin create-user --username operator --role operator --site merkez
-docker compose exec api python -m app.admin disable-user --username operator
+docker compose exec api python -m app.admin create-user --username engineer --role engineer --site merkez
+docker compose exec api python -m app.admin disable-user --username engineer
 ```
 
 Terminal ticket'ı 30 saniye geçerli, tek kullanımlı ve oluşturan oturuma bağlıdır; tek başına bearer token değildir. Hedef host/port tarayıcıdan alınmaz. Kullanıcı başına 3, süreç başına 20 terminal; aynı kullanıcı/cihaz için 1 oturum sınırı vardır. Bağlantı 12 sn, varsayılan boşta kalma 300 sn, toplam oturum 3600 sn; giriş mesajı 16 KiB ve 64 KiB/sn ile sınırlıdır. Süreler `STOCC_SSH_IDLE_SECONDS` / `STOCC_SSH_MAX_SECONDS` backend ortam değişkenleriyle ayarlanabilir. Yetki/oturum iptali en geç izleme döngüsünün yaklaşık 1 saniyelik kontrolünde uygulanır. Bağlantı kurulma aşamasında tekrar doğrulama PTY açılmadan yapılır.
 
-Panel kapanması, sayfadan çıkış, çıkış yapma, kimlik bilgisi değişimi/silinmesi ve host anahtarı değişimi terminali sonlandırır. Uzak PTY boyutu tarayıcı terminaliyle birlikte güncellenir. Terminal çıktısı xterm'e metin olarak iletilir; HTML olarak işlenmez. Denetim kaydı yalnız kullanıcı, cihaz, oturum kimliği, başlangıç/bitiş zamanı ve sonucu içerir; ham terminal, parola, private key veya cookie loglanmaz.
+Panel kapanması, sayfadan çıkış, çıkış yapma, kimlik bilgisi değişimi/silinmesi ve host anahtarı değişimi terminali sonlandırır. Uzak PTY boyutu tarayıcı terminaliyle birlikte güncellenir. Terminal çıktısı xterm'e metin olarak iletilir; HTML olarak işlenmez. SSH denetimi kullanıcı, cihaz, oturum kimliği, başlangıç/bitiş, süre ve sonucu kapsar; ham terminal, parola, private key veya cookie loglanmaz.
+
+## Kullanıcı yönetimi ve audit
+
+### Hesabım ve yönetici işlemleri
+
+Üst barın en sağındaki avatar/kullanıcı alanı veya yan menünün altındaki **Hesabım** bağlantısı `/account` sayfasını açar. Her kullanıcı kendi görünen adını, isteğe bağlı avatarını ve mevcut parolasını doğrulayarak yeni parolasını değiştirebilir. Superadmin aynı sayfada kullanıcı oluşturur, arar, rol/lokasyon/aktiflik bilgilerini düzenler, başka kullanıcıların parolasını sıfırlar ve kullanıcı adıyla onaylayarak hesap siler. Kayıtlı parola hiçbir okuma API'sine veya düzenleme formuna geri verilmez; düzenlemede boş parola mevcut hash'i korur.
+
+- Yeni parolalar 12–1024 karakterdir ve Argon2id ile hashlenir. Kişisel parola değişimi mevcut parolayı ister; admin düzenleme ekranı bu kontrolü atlatamaz.
+- Rol, lokasyon, kullanıcı adı, aktiflik veya parola değişiminde ilgili kullanıcının tüm uygulama oturumları iptal edilir; SSH oturumları da kapanır. Görünen ad/avatar değişimi oturumu kapatmaz.
+- Kendi hesabını silme, devre dışı bırakma veya superadmin rolünü kaldırma engellenir. Son aktif superadmin korunur. Eşzamanlı kullanıcı değişiklikleri ve girişin son adımı PostgreSQL transaction kilidi altında tekrar yetkilendirilir; hesap değişikliği ve audit aynı transaction'a yazılır. Kullanılan kilit mekanizması [PostgreSQL transaction seviyeli advisory lock](https://www.postgresql.org/docs/current/explicit-locking.html#ADVISORY-LOCKS) yaklaşımıdır.
+- Avatar yalnız PNG/JPEG/WebP olarak, en fazla 2 MiB ve 2048×2048 piksel yüklenebilir. SVG/animasyon reddedilir. [Pillow](https://pillow.readthedocs.io/en/stable/reference/Image.html) ile tür/çözünürlük doğrulaması, metadata temizliği ve en uzun kenarı en fazla 256 piksel olan PNG'ye yeniden kodlama yapılır. Dosya veritabanında saklanır; harici URL, dosya sistemi yükleme yolu veya public avatar servisi yoktur. Yalnız sahibi ve superadmin okuyabilir; HTTP cache'e alınmaz.
+- Hesap silinince profil, avatar ve oturumlar kaldırılır; geçmiş audit satırları ve kayıt anındaki kullanıcı bilgileri korunur.
+
+### Ayrıntılı denetim ve gizlilik sınırı
+
+**Denetim kayıtları** (`/audit`) yalnız superadmin'e açıktır. Kayıtlar kullanıcı adı/kimliği, olay, sonuç, hedef ve tarih aralığıyla filtrelenir; en yeni olaydan başlayarak cursor ile sayfalanır. İlk sayfa 15 saniyede bir yenilenir. Her olayın detayında varsa kullanıcı/rol snapshot'ı, hedef kimliği, UTC zamanı, istek korelasyon kimliği, HTTP yöntemi/route şablonu/durum kodu, kayıt anına kadar geçen süre, uzak adres, istemci tanımı, iş/SSH kimliği ve güvenli değişiklik ayrıntıları görülür. Eski veya arka plan kayıtlarında bulunmayan alanlar sonradan uydurulmaz. İstemci tanımı güvenilmeyen metindir; uzak adres proxy/NAT koşullarına göre gateway adresi olabilir.
+
+Sunucu tarafında giriş/çıkış, kullanıcı CRUD, profil/parola/avatar değişikliği, cihaz/envanter/kimlik bilgisi/host-key işlemleri, telemetri, iş ve SSH yaşam döngüsü, audit görüntüleme ve reddedilen/başarısız API istekleri kaydedilir. Kullanıcı ve profil değişiklikleri güvenli **önce/sonra** değerlerini; cihaz oluşturma izin verilen gönderilmiş alanları içerir. Büyük envanter/telemetri gövdeleri yerine kaynak, zaman ve sayımlar saklanır. Parola/sır işlemlerinin yapıldığı kaydedilir, içerikleri kaydedilmez.
+
+Sayfa görüntüleme, envanter araması/filtreleri, port ve topoloji seçimi ayrıca `client-reported` olarak işaretlenir. Bunlar doğrulanmış sunucu işlemlerinin yerine geçmez; tarayıcı bildirimi engelleyebilir veya değiştirebilir. Arama 1 saniye bekleme sonrası kaydedilir, her tuş vuruşu izlenmez. Kaydetmeden bırakılan form alanları, clipboard ve SSH komutları/giriş/çıktıları toplanmaz.
+
+Audit'e yalnız işlem bazında seçilmiş ve merkezi izin listesinde bulunan alanlar girer; metin/dizi/derinlik sınırları ve ek sır kalıbı maskelemesi uygulanır. Parolalar/hash'ler, private key/passphrase, erişim tokenları, cookie/CSRF, ham HTTP başlık/gövdeleri, avatar bytes/EXIF ve ham terminal içeriği kaydedilmez. Sırları isim/arama gibi sır olmayan alanlara yapıştırmayın; serbest metinde her olası sırrı otomatik tanımak garanti edilemez.
+
+Bu sürümde audit düzenleme/silme API'si, otomatik silme politikası veya kriptografik değişmezlik/WORM iddiası yoktur. Veritabanı yöneticisi kayıtları değiştirebilir. Saklama süresi, korumalı yedekler ve gerekirse bağımsız denetim deposu işletmecinin sorumluluğundadır; ayrıntılı loglama disk kapasitesiyle birlikte izlenmelidir.
+
+### Mevcut kurulumun güncellenmesi
+
+Önce veritabanı ve ayrı anahtar deposunun korumalı yedeğini alın; uygun bir bakım aralığında mevcut Compose projesini güncelleyin:
+
+```bash
+docker compose up --build -d --wait
+```
+
+Üretim TLS kurulumunda bunun yerine mevcut override'ı koruyun:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.tls.yml up --build -d --wait
+```
+
+`migrate` servisi API'den önce `0004_user_management` migration'ını uygular: `admin → superadmin`, `operator → engineer`, `viewer → viewer`. Engineer artık izinli lokasyonlarda cihaz/envanter/kimlik bilgisi yönetebilir; eski operator hesaplarının kapsamını güncellemeden önce gözden geçirin. ID, parola hash'i, lokasyonlar, cihazlar ve geçmiş audit korunur. Tanınmayan rol kaydı güvenli biçimde devre dışı bırakılır; eski kullanıcının bilinmeyen oluşturulma tarihi `null` kalır. Migration ileri yönlüdür; otomatik downgrade veri silmez, açık hata verir. Geri dönüş planı uygun uygulama sürümü ve onaylanmış yedekten geri yüklemedir. Mevcut volume'leri silmeyin ve dolu kuruluma QA seed çalıştırmayın.
 
 ## Sır deposu ve yedekleme
 
@@ -208,11 +251,14 @@ docker compose exec api python -m app.admin rotate-secrets
 
 ## Veri sözleşmesi ve metrik anlamları
 
-Kaynağın gerçek sözleşmesi [contracts.py](backend/app/contracts.py), [models.py](backend/app/models.py), [telemetry.py](backend/app/telemetry.py) ve çalışan API'nin `/openapi.json` çıktısıdır. Tüm aşağıdaki yollar `/api/v1` öneklidir; oturum cookie'si zorunludur. Mutasyonlarda izinli `Origin` ve `/session/me` yanıtındaki `csrf_token` ile `X-CSRF-Token` gerekir.
+Kaynağın gerçek sözleşmesi [contracts.py](backend/app/contracts.py), [models.py](backend/app/models.py), [telemetry.py](backend/app/telemetry.py), [account_api.py](backend/app/account_api.py), [users.py](backend/app/users.py) ve çalışan API'nin `/openapi.json` çıktısıdır. Tüm aşağıdaki yollar `/api/v1` öneklidir; giriş endpoint'i dışında oturum cookie'si zorunludur. Mutasyonlarda izinli `Origin` ve (giriş dışında) `/session/me` yanıtındaki `csrf_token` ile `X-CSRF-Token` gerekir.
 
 | Yol | İşlev |
 | --- | --- |
 | `POST /session/login`, `GET /session/me`, `POST /session/logout` | Kimlik doğrulama / oturum |
+| `GET, PUT /profile`, `PUT /profile/password` | Kendi profili / mevcut parola doğrulamalı değişiklik |
+| `PUT, DELETE /profile/avatar`, `GET /users/{id}/avatar` | Avatar yükleme/kaldırma ve yetkili okuma; yükleme JSON değil binary görseldir |
+| `GET, POST /users`, `GET, PATCH, DELETE /users/{id}` | Yalnız superadmin; liste `q`, `role`, `limit`, `cursor` kabul eder; silme gövdesi `confirmation_username` ister |
 | `GET, POST /devices`, `GET /devices/{id}` | Site kapsamlı envanter |
 | `PUT /devices/{id}/inventory` | Fiziksel bileşen, port, arayüz ve explicit eşlemeler |
 | `POST /devices/{id}/observations` | Kaynak ve zaman içeren doğrulanmış gözlem |
@@ -222,7 +268,8 @@ Kaynağın gerçek sözleşmesi [contracts.py](backend/app/contracts.py), [model
 | `POST /devices/{id}/polls`, `POST /devices/{id}/connection-tests`, `GET /jobs` | Kalıcı iş sonucu |
 | `POST /devices/{id}/ssh-sessions`, `DELETE /ssh-sessions/{id}` | Terminal yaşam döngüsü |
 | `WS /ssh-sessions/{id}/ws` | Kimliği doğrulanmış giriş/çıktı/resize köprüsü |
-| `GET /audit` | Sır içermeyen denetim olayları |
+| `GET /audit` | Yalnız superadmin; `actor` (tam kullanıcı adı/ID), `event`, `outcome`, `target_id`, `since`, `until`, `limit`, `cursor`; `{items, next_cursor}` |
+| `POST /activity` | Sınırlı, kimliği doğrulanmış `client-reported` arayüz olayları; serbest log gövdesi kabul edilmez |
 
 Envanter aktarımı tam snapshot'tır: `components`, `physical_ports`, `interfaces`, `bindings`, `source`, zaman dilimli `observed_at`; opsiyonel `serial`, `os_version`. `Interface` mevcut Observation sözleşmesini korur: `admin_up`, `oper_up`, `speed_mbps` alanlarında `value`, `observed_at`, `stale_after_seconds`, `source`, `quality` gerekir. Bilinmeyen değerde `value:null`, `quality:"unknown"` gönderin. Bunlar port geometrisi değil arayüz gözlemleridir. Envanter içindeki fixture kaynağı kabul edilmez.
 
@@ -269,11 +316,13 @@ cd frontend
 STOCC_QA=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:13000 npm run test:e2e -- --workers=1
 ```
 
-Playwright Chromium kurulu değilse `npx playwright install chromium` çalıştırın; mevcut Chrome için `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome` kullanılabilir. Seed yalnız loopback `stocc_qa` veritabanını kabul eder ve dolu envanterin üzerine yazmaz. QA kullanıcı/parolası yalnız `backend/tests/conftest.py` içindeki test fixture'ıdır; üretimde kullanılmaz. SSH test sunucusu üretim imajına kopyalanmaz.
+Playwright Chromium kurulu değilse `npx playwright install chromium` çalıştırın; mevcut Chrome için `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome` kullanılabilir. Seed yalnız loopback `stocc_qa` veritabanını kabul eder; mevcut envanter veya kullanıcı varsa durur, hiçbir hesabın üzerine yazmaz. QA kullanıcı/parolası yalnız `backend/tests/conftest.py` içindeki test fixture'ıdır; üretimde kullanılmaz. SSH test sunucusu üretim imajına kopyalanmaz.
+
+Mevcut QA projesi kullanılıyorsa veya test hesabı değiştirilmişse hesabı sıfırlamayın. Yeni `COMPOSE_PROJECT_NAME` ve boşta olan PostgreSQL/API/web portlarıyla ayrı proje açın. QA SSH anahtar servisinin portu `STOCC_TEST_SSH_KEY_PORT` ile ayrılabilir. Seed sırasında `STOCC_TEST_ORIGIN`, `STOCC_TEST_SSH_KEY_URL`, `STOCC_TEST_SSH_CONTAINER` ve `STOCC_TEST_DATABASE_URL` değerlerini **aynı yeni projeyi** gösterecek şekilde verin; testlerde de `PLAYWRIGHT_BASE_URL` bu origin olmalıdır. Seed varsayılanları sırasıyla `http://127.0.0.1:13000`, `http://127.0.0.1:12223`, `stocc-redesign-qa-ssh-lab-1` adresleridir. Seed HTTP endpoint'leri yalnız loopback olabilir.
 
 Tarayıcı testleri masaüstü/mobil yerleşim, filtre kapsamı, ECharts, klavye ile port seçimi, form akışı, boş sır alanı, inline SSH giriş/kopyalama/yapıştırma/resize/kapanış ve logout senaryolarını gerçek API/gateway üzerinden denetler. Ayrıca sayfa kimliği, framework hata katmanı, konsol ve cookie güvenlik nitelikleri kontrol edilir. Girişten önceki `/session/me` 401 yanıtı beklenen davranıştır. Ekran görüntüleri işletim sisteminin geçici dizinindeki `stocc-netstudio-qa/` altına, başarısız test izleri `stocc-netstudio-playwright/` altına yazılır; repository'ye eklenmez. Bunlar **sentetik QA envanteridir; fiziksel cihaz kanıtı değildir**.
 
-2026-10-19 doğrulama sonuçları:
+2026-10-19 — kullanıcı yönetimi eklenmeden önceki tasarım/SSH kapsamının tarihsel doğrulama sonuçları:
 
 | Kontrol | Sonuç / kapsam |
 | --- | --- |
@@ -290,5 +339,23 @@ Tarayıcı testleri masaüstü/mobil yerleşim, filtre kapsamı, ECharts, klavye
 Browser eklentisi bulunmadığı için repository'nin Playwright akışı ve yerel Chrome kullanıldı. HTTPS testi geçici, kendinden imzalı **QA** sertifikasıyla yapıldı; `STOCC_QA_TLS=1` yalnız bu testte tarayıcının sertifika güven hatasını atlar. Sertifika ayrıca `curl --cacert` ile doğrulandı. Gerçek sertifika otoritesi/kurum ağı için üretim kabulü yapılmadı. Giriş öncesi beklenen 401 dışında test edilen ana ekran/terminal akışlarında konsol hatası veya framework hata katmanı kalmadı.
 
 Geliştirme audit'indeki 5 kayıt, ESLint'in `braces` bağımlılık zincirine aittir; üretim frontend bağımlılıklarında bildirilmiş açık yoktur. Test araçları Starlette/httpx ve Vite yapılandırmasına ilişkin geçiş uyarıları üretir; testler başarılıdır. Bu sonuç genel bir güvenlik veya üretim kabul sertifikası değildir. Fiziksel switch üretici uyumluluğu, kurumsal SSO, gerçek sertifika/ağ erişimi, yüksek yük ve yedekten geri dönüş kabulü bu yerel testin dışındadır.
+
+### Kullanıcı yönetimi doğrulaması — 2026-10-19
+
+| Kontrol | Sonuç / kapsam |
+| --- | --- |
+| Backend | 57 test geçti; isteğe bağlı PostgreSQL migration testi varsayılan koşuda atlandı, ayrı boş PostgreSQL veritabanıyla ayrıca geçti |
+| Migration / eşzamanlılık | PostgreSQL 16 üzerinde `0001 → 0004`; eski rol/hash/lokasyon/audit korunması, tanınmayan rolün reddi ve eşzamanlı iki admin değişikliğinde son superadmin'in korunması doğrulandı |
+| Mevcut QA güncellemesi | `0003 → 0004` geçişinde 1 kullanıcı, 16 cihaz, 149 telemetri örneği ve 524 audit kaydı korundu; sonra mevcut hesaptaki kullanıcı değişikliklerine müdahale edilmedi |
+| Frontend | 18 birim testi, ESLint, TypeScript ve Docker web/API production build geçti |
+| Tarayıcı | Ayrı `stocc-users-qa-20261019` projesinde, `http://127.0.0.1:13001` üzerinden 17 HTTP/WS senaryosu geçti |
+| Yeni kullanıcı akışları | Üst/alt hesap bağlantısı; kullanıcı oluştur/düzenle/sil; audit filtresi ve önce/sonra detayı; avatar yükle/yenile/kaldır; parola değişiminde çıkış; viewer/engineer reddi; rol düşürülünce canlı SSH'nin kapanması |
+| Görsel / regresyon | Hesap ekranı 1536×1080 ve 390×844; mevcut ekranlar 320–2560 px genişliklerde denetlendi. Sayfa kimliği, dolu içerik, konsol, hata katmanı, taşma, ECharts ve mevcut terminal etkileşimleri geçti |
+
+Kullanıcı/avatar/audit ekranları mevcut ortak panel dili ve SWR oturum/cache akışıyla bütünleştirildi; ECharts değiştirilmedi. Browser eklentisi yoktu; repository Playwright akışı ve `/usr/bin/google-chrome` kullanıldı. Yeni akışların görüntüleri geçici `stocc-netstudio-accounts/` dizinindedir. Testler kendi oluşturdukları geçici kullanıcıları siler; onların audit geçmişini korur. Mevcut QA hesabının adı değiştiğinde ilk toplu regresyon giriş adımında durdu; hesabı değiştirmek yerine ayrı proje/volume'lerde yeniden çalıştırıldı ve 17 senaryo geçti.
+
+PostgreSQL testi için `backend/` altında `STOCC_TEST_MIGRATION_DATABASE_URL` değişkenini yalnız bu test için oluşturulmuş, boş, loopback üzerinde ve adı `stocc_users_test_` ile başlayan bir veritabanına ayarlayıp `../.venv/bin/python -m pytest -q tests/test_user_migration.py` çalıştırın. Test boş olmayan veritabanını reddeder; mevcut QA veya üretim veritabanını kullanmayın. SQLite testi yalnız `0003 → 0004` kapsamındadır; eski `0002` PostgreSQL'e özgü ALTER COLUMN kullanır.
+
+Yeni kullanıcı akışları için HTTPS/WSS, Safari/Firefox, yük testi, yedekten geri dönüş ve üretim kabulü bu koşuda yapılmadı. Önceki TLS sonucu yeni akışların TLS doğrulaması sayılmaz. Starlette/httpx, Alembic yapılandırması ve Vite geçiş uyarıları sürmektedir; başarısız test değildir. Audit değişmezliği ve otomatik retention bu kapsamda uygulanmadı.
 
 Önceki kapsam ve kararların tarihsel kaydı: [ilk uygulama raporu](stocc-netstudio-uygulama-raporu.md). Güncel çalışma sınırları bu README ve kaynak koddaki sözleşmelerdir.

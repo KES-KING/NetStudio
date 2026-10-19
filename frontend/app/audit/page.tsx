@@ -1,4 +1,4 @@
-import ActivityTable from "../../components/ActivityTable";
+import AuditLog from "../../components/AuditLog";
 export default function Page() {
-  return <ActivityTable kind="audit" />;
+  return <AuditLog />;
 }

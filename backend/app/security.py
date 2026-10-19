@@ -15,8 +15,8 @@ from pydantic import BaseModel, Field
 
 class Role(StrEnum):
     VIEWER = "viewer"
-    OPERATOR = "operator"
-    ADMIN = "admin"
+    ENGINEER = "engineer"
+    SUPERADMIN = "superadmin"
 
 
 class Permission(StrEnum):
@@ -26,6 +26,7 @@ class Permission(StrEnum):
     TERMINAL_OPEN = "terminal.open"
     TELEMETRY_WRITE = "telemetry.write"
     AUDIT_READ = "audit.read"
+    USER_MANAGE = "user.manage"
     JOB_CREATE = "job.create"
     CONFIG_PLAN = "config.plan"
     CONFIG_APPLY = "config.apply"
@@ -34,7 +35,9 @@ class Permission(StrEnum):
 
 class SessionUser(BaseModel):
     user_id: str
+    username: str = ""
     display_name: str
+    avatar_version: str | None = None
     roles: set[Role] = Field(default_factory=set)
     site_ids: set[str] = Field(default_factory=set)
 
@@ -70,12 +73,15 @@ class UnavailableSecretStore:
 
 ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     Role.VIEWER: {Permission.INVENTORY_READ},
-    Role.OPERATOR: {Permission.INVENTORY_READ, Permission.JOB_CREATE, Permission.CONFIG_PLAN, Permission.TERMINAL_OPEN},
-    Role.ADMIN: set(Permission),
+    Role.ENGINEER: {Permission.INVENTORY_READ, Permission.INVENTORY_MANAGE, Permission.CREDENTIAL_MANAGE,
+        Permission.TELEMETRY_WRITE, Permission.JOB_CREATE, Permission.CONFIG_PLAN, Permission.TERMINAL_OPEN},
+    Role.SUPERADMIN: set(Permission),
 }
 
 
 def has_permission(user: SessionUser, permission: Permission, site_id: str) -> bool:
+    if permission in {Permission.USER_MANAGE, Permission.AUDIT_READ}:
+        return Role.SUPERADMIN in user.roles
     if site_id not in user.site_ids and "*" not in user.site_ids:
         return False
     return any(permission in ROLE_PERMISSIONS[role] for role in user.roles)

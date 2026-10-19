@@ -66,7 +66,7 @@ class SqlAlchemyJobRepository:
     """
 
     def __init__(self, database_url: str) -> None:
-        engine_options = {"pool_pre_ping": True}
+        engine_options = {"pool_pre_ping": True, "hide_parameters": True}
         if database_url.startswith("sqlite"):
             engine_options.update({"connect_args": {"check_same_thread": False}, "poolclass": StaticPool})
         self.engine = sa.create_engine(database_url, **engine_options)

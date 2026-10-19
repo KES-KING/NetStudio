@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type FormEvent,
   type ReactNode,
@@ -16,6 +17,9 @@ import { api, errorMessage, fetchSession, setSessionToken } from "../lib/api";
 import type { Session } from "../lib/contracts";
 import { Brand } from "./Brand";
 import { RepositoryLink } from "./RepositoryLink";
+import { UserAvatar } from "./UserAvatar";
+import { roleLabels } from "../lib/accounts";
+import { recordActivity } from "../lib/activity";
 
 const SessionContext = createContext<Session | null>(null);
 export function useSession() {
@@ -36,7 +40,9 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
-  const clear = useCallback(() => {
+  const [loginNotice, setLoginNotice] = useState("");
+  const clear = useCallback((event?: Event) => {
+    setLoginNotice(event instanceof CustomEvent ? String(event.detail?.message ?? "") : "");
     setSessionToken("");
     void mutateAll(
       (key) => typeof key === "string" && key.startsWith("/api/"),
@@ -79,7 +85,9 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
   if (!user)
     return (
       <Login
+        notice={loginNotice}
         onLogin={(value) => {
+          setLoginNotice("");
           setSessionToken(value.csrf_token);
           void mutate(value, { revalidate: false });
         }}
@@ -87,6 +95,7 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
     );
   return (
     <SessionContext.Provider value={user}>
+      <NavigationAudit />
       <a href="#main-content" className="skip-link">
         İçeriğe geç
       </a>
@@ -107,8 +116,12 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
           Menü
         </button>
         <div className="session-nav">
-          <span>{user.display_name}</span>
           <button onClick={logout}>Çıkış</button>
+          <Link href="/account" className="account-link" aria-label="Hesabım — profil ve kullanıcı yönetimi"
+            aria-current={path === "/account" ? "page" : undefined} onClick={() => setMenuOpen(false)}>
+            <UserAvatar id={user.user_id} name={user.display_name} version={user.avatar_version} />
+            <span className="account-link-text"><strong>{user.display_name}</strong><small>{user.roles.map((role) => roleLabels[role]).join(" · ")}</small></span>
+          </Link>
         </div>
       </header>
       <div className="console-layout">
@@ -142,22 +155,24 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
           </nav>
           <div className="sidebar-footer">
             <div className="sidebar-session">
-              Ağ yönetimi
+              {user.display_name}
               <br />
               <span>
                 {user.roles
                   .map(
                     (r) =>
-                      ({
-                        admin: "Yönetici",
-                        operator: "Operatör",
-                        viewer: "Gözlemci",
-                      })[r] ?? r,
+                      roleLabels[r] ?? r,
                   )
                   .join(" · ")}
               </span>
             </div>
-            <RepositoryLink />
+            <div className="sidebar-footer-actions">
+              <RepositoryLink />
+              <Link href="/account" className="sidebar-account-link" aria-label="Hesabım — hesap sayfasını aç"
+                aria-current={path === "/account" ? "page" : undefined} onClick={() => setMenuOpen(false)}>
+                <span>Hesabım</span>
+              </Link>
+            </div>
           </div>
         </aside>
         <main id="main-content" className="main-content">
@@ -173,7 +188,23 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
   );
 }
 
-function Login({ onLogin }: { onLogin: (user: Session) => void }) {
+function NavigationAudit() {
+  const path = usePathname();
+  const user = useSession();
+  const previous = useRef("");
+  useEffect(() => {
+    const key = `${user.user_id}:${path}`;
+    if (previous.current === key) return;
+    previous.current = key;
+    if (path === "/") recordActivity({ action: "page.view", page: "dashboard" });
+    else if (path.startsWith("/devices/")) recordActivity({ action: "page.view", page: "device", device_id: path.split("/")[2] });
+    else if (path === "/jobs" || path === "/account") recordActivity({ action: "page.view", page: path.slice(1) as "jobs" | "account" });
+    else if (path === "/audit" && user.permissions.includes("audit.read")) recordActivity({ action: "page.view", page: "audit" });
+  }, [path, user.user_id, user.permissions]);
+  return null;
+}
+
+function Login({ onLogin, notice }: { onLogin: (user: Session) => void; notice?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -206,6 +237,7 @@ function Login({ onLogin }: { onLogin: (user: Session) => void }) {
         </div>
         <h1>Yönetim oturumu</h1>
         <p>Ağ cihazlarınızı ve gözlemlerinizi yönetin.</p>
+        {notice && <p className="notice" role="status">{notice}</p>}
         <form onSubmit={submit}>
           <label>
             Kullanıcı adı

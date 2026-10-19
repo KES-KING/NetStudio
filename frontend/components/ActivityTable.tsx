@@ -1,15 +1,12 @@
 "use client";
 import useSWR from "swr";
 import { api, errorMessage } from "../lib/api";
-import type { AuditEvent, Job } from "../lib/contracts";
+import type { Job } from "../lib/contracts";
 import { formatTime } from "../lib/metrics";
 import { Empty } from "./OperationSummary";
-import { useSession } from "./ConsoleShell";
-export default function ActivityTable({ kind }: { kind: "jobs" | "audit" }) {
-  const session = useSession(),
-    allowed = kind === "jobs" || session.permissions.includes("audit.read");
-  const { data, error, mutate, isLoading } = useSWR<(Job | AuditEvent)[]>(
-    allowed ? `/api/v1/${kind}` : null,
+export default function ActivityTable() {
+  const { data, error, mutate, isLoading } = useSWR<Job[]>(
+    "/api/v1/jobs",
     api,
     { refreshInterval: 15000 },
   );
@@ -18,18 +15,12 @@ export default function ActivityTable({ kind }: { kind: "jobs" | "audit" }) {
       <div className="page-heading">
         <div>
           <p className="eyebrow">YÖNETİM</p>
-          <h1>{kind === "jobs" ? "İş geçmişi" : "Denetim kayıtları"}</h1>
-          <p>
-            {kind === "jobs"
-              ? "Son 100 bağlantı ve veri toplama işi."
-              : "Son 200 olay. Parola, erişim tokenı ve terminal içeriği kaydedilmez."}
-          </p>
+          <h1>İş geçmişi</h1>
+          <p>Son 100 bağlantı ve veri toplama işi.</p>
         </div>
         <button onClick={() => mutate()}>Yenile</button>
       </div>
-      {!allowed ? (
-        <Empty text="Bu kayıtları görüntüleme yetkiniz yok." />
-      ) : error ? (
+      {error ? (
         <p role="alert" className="notice error">
           {errorMessage(error)}
         </p>
@@ -43,23 +34,14 @@ export default function ActivityTable({ kind }: { kind: "jobs" | "audit" }) {
             <thead>
               <tr>
                 <th>Zaman</th>
-                <th>İş / olay</th>
+                <th>İş</th>
                 <th>Cihaz kimliği</th>
                 <th>Durum / sonuç</th>
-                <th>Kullanıcı / kayıt</th>
+                <th>Kayıt</th>
               </tr>
             </thead>
             <tbody>
-              {data.map((value) =>
-                "event" in value ? (
-                  <tr key={value.id}>
-                    <td>{formatTime(value.occurred_at)}</td>
-                    <td>{value.event}</td>
-                    <td className="mono">{value.device_id ?? "—"}</td>
-                    <td>{value.outcome}</td>
-                    <td>{value.user_id}</td>
-                  </tr>
-                ) : (
+              {data.map((value) => (
                   <tr key={value.id}>
                     <td>{formatTime(value.created_at)}</td>
                     <td>{value.kind}</td>
@@ -69,8 +51,7 @@ export default function ActivityTable({ kind }: { kind: "jobs" | "audit" }) {
                     </td>
                     <td className="mono">{value.id}</td>
                   </tr>
-                ),
-              )}
+                ))}
             </tbody>
           </table>
         </div>

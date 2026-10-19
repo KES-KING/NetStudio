@@ -1,5 +1,6 @@
 "use client";
 import { theme } from "../lib/theme";
+import { recordActivity } from "../lib/activity";
 import { useMemo, useState } from "react";
 import type { EChartsCoreOption } from "echarts/core";
 import type { PhysicalPort, Projection } from "../lib/contracts";
@@ -22,6 +23,10 @@ export function IPTopology({
     [zoom, setZoom] = useState(1),
     [revision, setRevision] = useState(0);
   const [scope, setScope] = useState("all");
+  function selectNode(id: string) {
+    setSelectedId(id);
+    if (id) recordActivity({ action: "topology.select", page: "device", device_id: row.device.id, node_id: id });
+  }
   const related = useMemo(
     () =>
       new Set(
@@ -143,7 +148,7 @@ export function IPTopology({
             Düğüm seç
             <select
               value={selected?.id ?? ""}
-              onChange={(e) => setSelectedId(e.target.value)}
+              onChange={(e) => selectNode(e.target.value)}
             >
               <option value="">Bir düğüm seçin</option>
               {nodes.map((n) => (
@@ -175,7 +180,7 @@ export function IPTopology({
             className="topology-chart"
             option={option}
             label="Doğrulanmış IP alt ağları ve türü belirtilmiş komşu ilişkileri. Düğüm seçimi için açılır listeyi de kullanabilirsiniz."
-            onSelect={setSelectedId}
+            onSelect={selectNode}
           />
         </div>
       ) : (

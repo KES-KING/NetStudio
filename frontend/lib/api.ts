@@ -18,9 +18,14 @@ export function hasSessionToken() {
   return csrf.length > 0;
 }
 
+export function requireLogin(message: string) {
+  window.dispatchEvent(new CustomEvent("stocc-session-expired", { detail: { message } }));
+}
+
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  if (init.body) headers.set("Content-Type", "application/json");
+  if (typeof init.body === "string" && !headers.has("Content-Type"))
+    headers.set("Content-Type", "application/json");
   if (init.method && !["GET", "HEAD"].includes(init.method))
     headers.set("X-CSRF-Token", csrf);
   const response = await fetch(path, {
@@ -53,6 +58,20 @@ export async function fetchSession(): Promise<Session | null> {
 }
 
 const messages: Record<string, string> = {
+  username_taken: "Bu kullanıcı adı zaten kullanımda.",
+  user_not_found: "Kullanıcı bulunamadı; listeyi yenileyin.",
+  last_superadmin: "Son aktif superadmin kaldırılamaz veya yetkisi düşürülemez.",
+  self_lockout: "Kendi hesabınızı silemez, devre dışı bırakamaz veya rolünüzü düşüremezsiniz.",
+  self_password_use_profile: "Kendi parolanızı Hesabım sayfasındaki mevcut parola doğrulamalı formdan değiştirin.",
+  confirmation_mismatch: "Silme onayı için kullanıcı adını eksiksiz girin.",
+  current_password_invalid: "Mevcut parolanız doğrulanamadı.",
+  password_changed_retry: "Parola başka bir işlemde değişti; yeniden giriş yapın.",
+  avatar_invalid: "Geçerli bir PNG, JPEG veya WebP görseli seçin. SVG kabul edilmez.",
+  avatar_too_large: "Avatar dosyası en fazla 2 MB olabilir.",
+  avatar_dimensions_invalid: "Avatar en fazla 2048 × 2048 piksel olmalı; animasyon desteklenmez.",
+  request_too_large: "Gönderilen veri boyut sınırını aşıyor.",
+  invalid_date_range: "Başlangıç zamanı bitiş zamanından sonra olamaz.",
+  invalid_cursor: "Sayfalama bilgisi geçersiz. İlk sayfaya dönüp yeniden deneyin.",
   invalid_credentials: "Kullanıcı adı veya parola hatalı.",
   login_rate_limited:
     "Çok fazla deneme yapıldı. Birkaç dakika sonra tekrar deneyin.",

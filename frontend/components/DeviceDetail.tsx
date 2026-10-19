@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { api, ApiError, errorMessage } from "../lib/api";
+import { recordActivity } from "../lib/activity";
 import type { Job, Overview, Projection, SSHTicket } from "../lib/contracts";
 import {
   displayProjection,
@@ -240,7 +241,10 @@ export default function DeviceDetail({ id }: { id: string }) {
           <DevicePanel
             row={row}
             selectedId={selected?.id}
-            onSelect={(port) => setSelectedId(port.id)}
+            onSelect={(port) => {
+              setSelectedId(port.id);
+              recordActivity({ action: "port.select", page: "device", device_id: id, port_id: port.id });
+            }}
           />
           <p className="source-note">
             Envanter: {formatTime(device.inventory_observed_at)} ·{" "}

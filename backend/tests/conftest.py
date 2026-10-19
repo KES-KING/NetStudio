@@ -24,7 +24,7 @@ def system(tmp_path, monkeypatch):
     key_file = tmp_path / "keyring.json"
     key_file.write_text(json.dumps({"active": "test-v1", "keys": {"test-v1": base64.b64encode(os.urandom(32)).decode()}}))
     with store.engine.begin() as conn:
-        for name, role, site in [("admin", "admin", "*"), ("viewer", "viewer", "lab"), ("operator", "operator", "lab"), ("outsider", "operator", "other")]:
+        for name, role, site in [("admin", "superadmin", "*"), ("viewer", "viewer", "lab"), ("operator", "engineer", "lab"), ("outsider", "engineer", "other")]:
             conn.execute(store.users.insert().values(id=name, username=name, password_hash=hasher.hash(PASSWORD), roles=[role], sites=[site], enabled=True))
     app = create_app(store, str(key_file))
     with TestClient(app, base_url=ORIGIN) as client:

@@ -10,6 +10,7 @@ const forwardedRequestHeaders = [
   "cookie",
   "origin",
   "x-csrf-token",
+  "user-agent",
 ];
 const forwardedResponseHeaders = [
   "content-type",
@@ -17,6 +18,9 @@ const forwardedResponseHeaders = [
   "retry-after",
   "cache-control",
   "set-cookie",
+  "x-request-id",
+  "x-content-type-options",
+  "content-disposition",
 ];
 
 async function proxy(
