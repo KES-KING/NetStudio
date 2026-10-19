@@ -99,6 +99,22 @@ docker compose exec api python -m app.admin create-user --username admin --role 
 
 Son komut ilk yönetici hesabını oluşturur ve parolayı etkileşimli olarak iki kez ister; en az 12 karakter gerekir. Sonraki başlatmalarda hesabı tekrar oluşturmayın. Varsayılan yönetici parolası yoktur. Web: <http://127.0.0.1:3000>. Desktop motoru seçiliyken servisler Docker Desktop'ın Containers ekranında `stocc-netstudio` grubu altında görünür (`COMPOSE_PROJECT_NAME` değiştirilmişse o ad kullanılır).
 
+### İlk yönetici hesabı ve giriş bilgileri
+
+**Hazır bir varsayılan admin hesabı veya ortak parola yoktur.** Boş veritabanında ilk yönetici, yukarıdaki `create-user` komutuyla sizin tarafınızdan oluşturulur. Bu komutun oluşturacağı hesabın bilgileri:
+
+| Alan | Değer |
+| --- | --- |
+| Giriş adresi | Varsayılan yerel kurulumda <http://127.0.0.1:3000> |
+| Kullanıcı adı | `admin` (`--username admin` ile oluşturduğunuzda) |
+| Rol | `superadmin` |
+| Site kapsamı | `*` — tüm lokasyonlar |
+| Parola | Komutun gizli giriş isteminde sizin belirlediğiniz, en az 12 karakterlik parola; hazır bir değer yoktur |
+
+`Kullanıcı oluşturuldu.` mesajından sonra arayüze `admin` ve belirlediğiniz parolayla giriş yapın. Parolayı README'ye, `.env` dosyasına veya komut satırı argümanına yazmayın. Veritabanı bağlantı parolası (`POSTGRES_PASSWORD`) uygulama giriş parolası değildir; QA test kullanıcıları da normal kurulumda oluşturulmaz.
+
+Aynı kullanıcı mevcutsa komut `Kullanıcı zaten var; üzerine yazılmadı.` diyerek durur; parola sıfırlamaz. Mevcut volume ile yeniden başlatmada önceki kullanıcı ve parolalar geçerlidir. Yeni Docker context/projesi ise ayrı veritabanı kullanabilir; hesabın doğru kurulumda oluşturulduğunu kontrol edin.
+
 `POSTGRES_PASSWORD` ve `DATABASE_URL` birbiriyle tutarlı olmalıdır. `.env.example` yalnızca loopback geliştirme varsayılanları içerir. Var olan PostgreSQL volume'ünde ortam değişkenini değiştirmek mevcut veritabanı parolasını değiştirmez.
 
 ```text
@@ -143,6 +159,20 @@ docker compose down                     # Container/ağları kaldırır; kalıc�
 `secrets-init` ve `migrate` tek seferlik başlatma işleridir; başarılı çalışmadan sonra `Exited (0)` görünmeleri normaldir. `down` sonrasında grubun Desktop'ın container listesinden kalkması beklenir; listede tutmak için `stop` kullanın. `COMPOSE_PROJECT_NAME` değerini değiştirmek başka bir proje ve volume kümesi seçer; mevcut kurulumda bu değeri sabit tutun. Makefile yalnız isteğe bağlı yerel geliştirme/test yardımcılarını içerir; Docker hedefleri yoktur.
 
 Mevcut verileri korumak için normal işletimde volume silme komutları kullanmayın. Migration `0003_enterprise_console`, mevcut tabloları/işleri silmeden yeni yönetim tablolarını ekler. Eski fixture kayıtları korunur fakat gerçek envanter olarak sunulmaz.
+
+### Durdurma ve boş veritabanıyla yeniden kurulum ayrımı
+
+`docker compose stop` servisleri durdurur; kullanıcıları, cihazları, veritabanını ve şifreleme anahtarlarını **silmez**. Aynı proje adıyla `up --build` çalıştırmak imajları günceller fakat eski kayıtları sıfırlamaz. Docker motorunu veya başka projelerin servislerini kapatmak gerekmez. Birden fazla context/QA kurulumu varsa her birinin container etiketlerindeki proje ve repository yolunu doğrulayıp yalnız ilgili servisleri durdurun.
+
+Eski verileri silmeden gerçekten boş bir kurulum istiyorsanız, repository'nin varsayılan PostgreSQL/volume düzeninde **daha önce kullanılmamış** ayrı bir Compose proje adı seçin. Örneğin aşağıdaki adı yalnız henüz kullanılmadıysa kullanın; önce eski kurulumun aynı host portlarını serbest bıraktığını doğrulayın:
+
+```bash
+docker compose -p stocc-netstudio-fresh config --quiet
+docker compose -p stocc-netstudio-fresh up --build -d --wait
+docker compose -p stocc-netstudio-fresh exec api python -m app.admin create-user --username admin --role superadmin --site '*'
+```
+
+Sonraki `ps`, `stop`, `up` ve `exec` işlemlerinde de aynı `-p stocc-netstudio-fresh` değerini ve Docker context'ini kullanın. Bu örnek yeni PostgreSQL ve anahtar volume'leri oluşturur; eski kurulumu silmez veya taşımaz. Harici `DATABASE_URL` ya da özel/shared volume override'ı kullanıyorsanız yalnız proje adını değiştirmek veriyi izole etmez; önce hedefleri doğrulayın. TLS kurulumunda mevcut `-f docker-compose.yml -f docker-compose.tls.yml` seçeneklerini de koruyun. `down -v` veya volume silme işlemi bu kurulum adımlarının parçası değildir.
 
 ## Gerçek cihazı bağlama
 
