@@ -1,0 +1,33 @@
+name: Özellik önerisi / Feature request
+description: Operasyonel bir ihtiyacı ve önerdiğiniz çözümü açıklayın.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: "Türkçe veya İngilizce yazabilirsiniz. Gerçek cihaz kimlik bilgilerini veya müşteri verilerini paylaşmayın."
+  - type: textarea
+    id: problem
+    attributes:
+      label: Çözülmek istenen problem
+      description: Kullanıcı kim, hangi operasyon zorlaşıyor?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Önerilen davranış ve veri kaynağı
+      description: Beklenen akışı; gerekiyorsa mevcut API, envanter veya telemetri kaynağını belirtin.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatifler
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Kabul kriterleri
+      description: Önerinin tamamlandığını nasıl doğrulayabiliriz?
+    validations:
+      required: true

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Kullanım soruları / Discussions
+    url: https://github.com/KES-KING/stocc-netstudio/discussions
+    about: Kurulum, kullanım ve tasarım sorularını toplulukla tartışın.
+  - name: Özel güvenlik bildirimi / Private vulnerability report
+    url: https://github.com/KES-KING/stocc-netstudio/security/advisories/new
+    about: Güvenlik açıklarını public issue yerine özel olarak iletin.
