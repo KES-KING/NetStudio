@@ -1,0 +1,15 @@
+# docker compose -f docker-compose.yml -f docker-compose.tls.yml up --build -d --wait
+services:
+  api:
+    environment:
+      STOCC_ENV: production
+      STOCC_ALLOWED_ORIGINS: ${STOCC_ALLOWED_ORIGINS:?Set an exact https origin}
+    ports: !reset []
+  postgres:
+    ports: !reset []
+  gateway:
+    volumes:
+      - ./deploy/nginx.tls.conf:/etc/nginx/nginx.conf:ro
+      - ${STOCC_TLS_DIRECTORY:?Provide certificate directory}:/run/tls:ro
+    ports: !override
+      - "${TLS_BIND_ADDRESS:-127.0.0.1}:${TLS_PORT:-8443}:8443"

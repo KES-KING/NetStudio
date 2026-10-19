@@ -1,0 +1,4 @@
+# Test-only: match the owner of the temporary host certificate directory.
+services:
+  gateway:
+    user: "${STOCC_QA_UID:-1000}:${STOCC_QA_GID:-1000}"

@@ -60,10 +60,12 @@ class PhysicalPort(BaseModel):
     id: str
     component_id: str
     label: str
-    connector: Literal["rj45", "sfp", "management", "console", "unknown"]
+    connector: Literal["rj45", "sfp", "qsfp", "management", "console", "unknown"]
     group: str
     ordinal: int
     verified_layout: bool = False
+    parent_port_id: str | None = None
+    description: str | None = None
 
 
 class Interface(BaseModel):

@@ -6,9 +6,7 @@ RUN npm ci
 
 FROM node:22-bookworm-slim AS builder
 
-ARG NEXT_PUBLIC_API_URL=""
-ENV NEXT_TELEMETRY_DISABLED=1 \
-    NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY frontend/ ./

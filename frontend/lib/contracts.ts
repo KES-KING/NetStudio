@@ -1,0 +1,177 @@
+export type Reachability = "reachable" | "unreachable" | "unknown";
+export type PortState = "up" | "down" | "disabled" | "unknown";
+export type HealthState =
+  | "ok"
+  | "warning"
+  | "critical"
+  | "unknown"
+  | "unsupported";
+export type PhysicalPort = {
+  id: string;
+  component_id: string;
+  label: string;
+  connector: "rj45" | "sfp" | "qsfp" | "management" | "console" | "unknown";
+  group: string;
+  ordinal: number;
+  verified_layout: boolean;
+  parent_port_id: string | null;
+  description: string | null;
+};
+export type Interface = {
+  id: string;
+  name: string;
+  kind: string;
+  if_index: number | null;
+};
+export type Device = {
+  id: string;
+  name: string;
+  management_address: string;
+  site: string;
+  device_type: "switch" | "router" | "firewall" | "server" | "other";
+  vendor: string;
+  model: string;
+  platform: string;
+  serial: string;
+  os_version: string;
+  read_only: boolean;
+  support_status: string;
+  ssh_port: number;
+  collector: "external" | "linux_ssh";
+  credential_configured: boolean;
+  host_key_fingerprint: string | null;
+  inventory_observed_at: string | null;
+  inventory_source: string | null;
+  components: { id: string; label: string; kind: string; slot?: string }[];
+  physical_ports: PhysicalPort[];
+  interfaces: Interface[];
+  bindings: {
+    id: string;
+    physical_port_id: string;
+    interface_id: string;
+    binding_quality: string;
+  }[];
+};
+export type Sample = {
+  interface_id: string;
+  admin_up: boolean | null;
+  oper_up: boolean | null;
+  capacity_bps: number | null;
+  rx_bps: number | null;
+  tx_bps: number | null;
+  quality: string;
+  rate_reason: string | null;
+  duplex: string;
+  errors: number | null;
+  discards: number | null;
+  access_vlan: number | null;
+  vlan_mode: string;
+  poe_watts: number | null;
+  transceiver_present: boolean | null;
+  transceiver_model: string | null;
+  addresses: string[];
+  vrf: string | null;
+};
+export type Telemetry = {
+  observed_at: string;
+  received_at: string;
+  source: string;
+  stale_after_seconds: number;
+  reachability: Reachability;
+  error: string | null;
+  interfaces: Sample[];
+  health: {
+    status: HealthState;
+    evaluation: string | null;
+    cpu_percent: number | null;
+    memory_percent: number | null;
+    temperature_c: number | null;
+    uptime_seconds: number | null;
+    fan: string | null;
+    power_supply: string | null;
+    poe_watts: number | null;
+    alerts: string[];
+  };
+};
+export type TopologyNode = {
+  id: string;
+  name: string;
+  kind: string;
+  interface_id?: string;
+  detail: string;
+  vrf?: string;
+  vlan?: number;
+};
+export type Projection = {
+  device: Device;
+  telemetry: Telemetry | null;
+  data_state: "no_data" | "current" | "stale" | "error" | "unreachable";
+  reachability: Reachability;
+  health_status: HealthState;
+  ports: {
+    counts: Record<PortState, number>;
+    total: number;
+    port_states: Record<string, PortState>;
+    active_ratio: number | null;
+    rx_bps: number | null;
+    tx_bps: number | null;
+    traffic_interface_ids: string[];
+    measured_interfaces: number;
+    traffic_scope: string;
+  };
+  topology: {
+    nodes: TopologyNode[];
+    links: {
+      source: string;
+      target: string;
+      relation: "l3" | "l2" | "physical";
+      evidence: string;
+    }[];
+    observed_at: string | null;
+    source: string | null;
+  };
+  traffic: {
+    at: string;
+    rx_bps: number | null;
+    tx_bps: number | null;
+    measured_interfaces: number;
+  }[];
+  last_success_at: string | null;
+  history_truncated?: boolean;
+};
+export type Overview = {
+  devices: Projection[];
+  generated_at: string;
+  range_minutes: number;
+};
+export type Session = {
+  user_id: string;
+  display_name: string;
+  roles: string[];
+  site_ids: string[];
+  permissions: string[];
+  csrf_token: string;
+};
+export type SSHTicket = {
+  id: string;
+  websocket_path: string;
+  expires_in: number;
+};
+export type Job = {
+  id: string;
+  kind: string;
+  device_id: string;
+  status: string;
+  created_at: string;
+  error_code: string | null;
+  result_code: string | null;
+};
+export type AuditEvent = {
+  id: string;
+  user_id: string;
+  device_id: string | null;
+  event: string;
+  outcome: string;
+  session_id: string | null;
+  occurred_at: string;
+};

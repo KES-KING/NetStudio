@@ -21,6 +21,11 @@ class Role(StrEnum):
 
 class Permission(StrEnum):
     INVENTORY_READ = "inventory.read"
+    INVENTORY_MANAGE = "inventory.manage"
+    CREDENTIAL_MANAGE = "credential.manage"
+    TERMINAL_OPEN = "terminal.open"
+    TELEMETRY_WRITE = "telemetry.write"
+    AUDIT_READ = "audit.read"
     JOB_CREATE = "job.create"
     CONFIG_PLAN = "config.plan"
     CONFIG_APPLY = "config.apply"
@@ -65,7 +70,7 @@ class UnavailableSecretStore:
 
 ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     Role.VIEWER: {Permission.INVENTORY_READ},
-    Role.OPERATOR: {Permission.INVENTORY_READ, Permission.JOB_CREATE, Permission.CONFIG_PLAN},
+    Role.OPERATOR: {Permission.INVENTORY_READ, Permission.JOB_CREATE, Permission.CONFIG_PLAN, Permission.TERMINAL_OPEN},
     Role.ADMIN: set(Permission),
 }
 
@@ -74,4 +79,3 @@ def has_permission(user: SessionUser, permission: Permission, site_id: str) -> b
     if site_id not in user.site_ids and "*" not in user.site_ids:
         return False
     return any(permission in ROLE_PERMISSIONS[role] for role in user.roles)
-

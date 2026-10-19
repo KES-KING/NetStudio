@@ -1,6 +1,9 @@
-import { NetStudioWorkspace } from "../components/NetStudioWorkspace";
-
-export default function HomePage() {
-  return <NetStudioWorkspace />;
+import { Suspense } from "react";
+import Dashboard from "../components/Dashboard";
+export default function Page() {
+  return (
+    <Suspense fallback={<p>Görünüm yükleniyor…</p>}>
+      <Dashboard />
+    </Suspense>
+  );
 }
-

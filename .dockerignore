@@ -13,4 +13,5 @@ frontend/*.tsbuildinfo
 .env
 .env.*
 !.env.example
-
+.secrets
+artifacts

@@ -2,6 +2,9 @@
 	backend-install backend-migrate backend-run backend-test frontend-test postgres-up \
 	docker-build docker-config docker-up docker-down docker-logs docker-ps docker-migrate
 
+.PHONY: user-create frontend-check
+USERNAME ?= admin
+
 VENV ?= .venv
 DOCKER_CONTEXT ?= default
 COMPOSE := docker --context $(DOCKER_CONTEXT) compose
@@ -45,3 +48,9 @@ docker-ps:
 
 docker-migrate:
 	$(COMPOSE) run --rm migrate
+
+user-create:
+	$(COMPOSE) exec api python -m app.admin create-user --username $(USERNAME) --role admin --site '*'
+
+frontend-check:
+	cd frontend && npm run lint && npm run typecheck && npm test -- --run && npm run build

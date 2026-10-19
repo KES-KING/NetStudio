@@ -1,0 +1,10 @@
+# ONLY an isolated test project: never overlay on an existing deployment.
+services:
+  ssh-lab:
+    image: stocc-netstudio-api:${IMAGE_TAG:-redesign-qa}
+    command: ["python", "/lab.py"]
+    volumes:
+      - ./backend/tests/ssh_lab.py:/lab.py:ro
+    ports:
+      - "127.0.0.1:12223:2223"
+    networks: [application]

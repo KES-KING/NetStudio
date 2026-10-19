@@ -1,0 +1,486 @@
+"use client";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import { api, errorMessage } from "../lib/api";
+import type { Device } from "../lib/contracts";
+import { useSession } from "./ConsoleShell";
+
+export function Dialog({
+  title,
+  children,
+  onClose,
+}: {
+  title: string;
+  children: ReactNode;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    dialog?.showModal();
+    return () => dialog?.close();
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className="dialog"
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      aria-label={title}
+    >
+      <div className="panel-heading">
+        <h2>{title}</h2>
+        <button onClick={onClose}>Kapat</button>
+      </div>
+      {children}
+    </dialog>
+  );
+}
+
+function CredentialFields({ optional = false }: { optional?: boolean }) {
+  const [method, setMethod] = useState("password");
+  return (
+    <fieldset>
+      <legend>SSH kimlik bilgileri{optional ? " · isteğe bağlı" : ""}</legend>
+      <div className="form-grid">
+        <label>
+          SSH kullanıcı adı
+          <input
+            name="ssh_username"
+            autoComplete="off"
+            maxLength={128}
+            required={!optional}
+          />
+        </label>
+        <label>
+          Kimlik doğrulama
+          <select
+            name="method"
+            value={method}
+            onChange={(e) => setMethod(e.target.value)}
+          >
+            <option value="password">Parola</option>
+            <option value="private_key">Özel anahtar</option>
+          </select>
+        </label>
+      </div>
+      {method === "password" ? (
+        <label>
+          Cihaz parolası
+          <input
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            maxLength={32768}
+          />
+        </label>
+      ) : (
+        <>
+          <label>
+            Özel anahtar
+            <textarea
+              name="private_key"
+              rows={5}
+              autoComplete="off"
+              spellCheck={false}
+              maxLength={32768}
+            />
+          </label>
+          <label>
+            Anahtar parolası (varsa)
+            <input
+              name="passphrase"
+              type="password"
+              autoComplete="new-password"
+            />
+          </label>
+        </>
+      )}
+      <p className="field-help">
+        Kaydedilen sırlar tekrar gösterilmez. Bu bilgiler yalnızca yetkili cihaz
+        bağlantılarında kullanılır.
+      </p>
+    </fieldset>
+  );
+}
+function credentials(data: FormData) {
+  return {
+    username: String(data.get("ssh_username") ?? ""),
+    method: String(data.get("method") ?? "password"),
+    password: String(data.get("password") ?? ""),
+    private_key: String(data.get("private_key") ?? ""),
+    passphrase: String(data.get("passphrase") ?? ""),
+  };
+}
+
+export function AddDevice({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void;
+  onSaved: (device: Device) => void;
+}) {
+  const session = useSession();
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState<string | null>(null);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setBusy(true);
+    setError(null);
+    const creds = credentials(data);
+    const payload = {
+      name: data.get("name"),
+      management_address: data.get("management_address"),
+      site: data.get("site"),
+      device_type: data.get("device_type"),
+      vendor: data.get("vendor"),
+      model: data.get("model"),
+      ssh_port: Number(data.get("ssh_port")),
+      collector: data.get("collector"),
+      credentials: creds.username ? creds : null,
+    };
+    try {
+      const device = await api<Device>("/api/v1/devices", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      form.reset();
+      onSaved(device);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Dialog title="Cihaz Ekle" onClose={onClose}>
+      <form onSubmit={submit} className="dialog-body">
+        <div className="form-grid">
+          <label>
+            Cihaz adı
+            <input name="name" required maxLength={160} autoFocus />
+          </label>
+          <label>
+            Yönetim IP adresi
+            <input
+              name="management_address"
+              required
+              placeholder="IPv4 veya IPv6"
+              autoComplete="off"
+            />
+          </label>
+          <label>
+            Site
+            <input
+              name="site"
+              required
+              defaultValue={
+                session.site_ids.includes("*") ? "" : session.site_ids[0]
+              }
+              maxLength={160}
+            />
+          </label>
+          <label>
+            Cihaz türü
+            <select name="device_type">
+              <option value="switch">Switch</option>
+              <option value="router">Yönlendirici</option>
+              <option value="firewall">Güvenlik duvarı</option>
+              <option value="server">Sunucu</option>
+              <option value="other">Diğer</option>
+            </select>
+          </label>
+          <label>
+            Üretici (biliniyorsa)
+            <input name="vendor" maxLength={120} />
+          </label>
+          <label>
+            Model (biliniyorsa)
+            <input name="model" maxLength={160} />
+          </label>
+          <label>
+            SSH portu
+            <input
+              name="ssh_port"
+              type="number"
+              min={1}
+              max={65535}
+              defaultValue={22}
+              required
+            />
+          </label>
+          <label>
+            Veri kaynağı
+            <select name="collector">
+              <option value="external">
+                Harici toplayıcı / envanter aktarımı
+              </option>
+              <option value="linux_ssh">Linux · salt okunur SSH</option>
+            </select>
+          </label>
+        </div>
+        <CredentialFields optional />
+        {error && (
+          <p role="alert" className="notice error">
+            {error}
+          </p>
+        )}
+        <div className="form-actions">
+          <button type="button" onClick={onClose}>
+            Vazgeç
+          </button>
+          <button className="primary" disabled={busy}>
+            {busy ? "Kaydediliyor…" : "Cihazı kaydet"}
+          </button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+export function ConnectionSettings({
+  device,
+  onClose,
+  onSaved,
+}: {
+  device: Device;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState<string | null>(null),
+    [message, setMessage] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  async function saveCredentials(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await api<{ unchanged: boolean }>(
+        `/api/v1/devices/${device.id}/credentials`,
+        { method: "PUT", body: JSON.stringify(credentials(data)) },
+      );
+      form.reset();
+      setMessage(
+        result.unchanged
+          ? "Kayıtlı kimlik bilgileri korundu."
+          : "Kimlik bilgileri şifrelenerek kaydedildi.",
+      );
+      onSaved();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function saveKey(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/api/v1/devices/${device.id}/host-key`, {
+        method: "PUT",
+        body: JSON.stringify({
+          public_key: data.get("public_key"),
+          fingerprint: data.get("fingerprint"),
+          replace_existing: data.get("replace_existing") === "on",
+        }),
+      });
+      form.reset();
+      setMessage("Doğruladığınız host anahtarı kaydedildi.");
+      onSaved();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function removeCredentials() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/api/v1/devices/${device.id}/credentials`, {
+        method: "DELETE",
+      });
+      setMessage(
+        "Cihaz kimlik bilgileri silindi; açık oturumlar sonlandırıldı.",
+      );
+      setConfirmDelete(false);
+      onSaved();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Dialog title={`${device.name} · Bağlantı bilgileri`} onClose={onClose}>
+      <div className="dialog-body">
+        <p className="notice">
+          {device.credential_configured
+            ? "Kimlik bilgisi tanımlı. Sır alanını boş bırakmak kayıtlı bilgileri korur."
+            : "Kimlik bilgisi tanımlı değil."}
+        </p>
+        <form onSubmit={saveCredentials}>
+          <CredentialFields />
+          <div className="form-actions">
+            <button className="primary" disabled={busy}>
+              Kimlik bilgilerini kaydet
+            </button>
+          </div>
+        </form>
+        {device.credential_configured && (
+          <div className="credential-delete">
+            {confirmDelete ? (
+              <>
+                <p>
+                  Kimlik bilgileri silinecek ve açık SSH oturumları kapanacak.
+                </p>
+                <button
+                  className="danger"
+                  disabled={busy}
+                  onClick={removeCredentials}
+                >
+                  Silme işlemini onayla
+                </button>
+                <button onClick={() => setConfirmDelete(false)}>Vazgeç</button>
+              </>
+            ) : (
+              <button onClick={() => setConfirmDelete(true)}>
+                Kayıtlı kimlik bilgilerini sil
+              </button>
+            )}
+          </div>
+        )}
+        <form onSubmit={saveKey}>
+          <fieldset>
+            <legend>SSH host anahtarı</legend>
+            <p className="field-help">
+              Cihazın public host anahtarını ve bağımsız güvenilir kanaldan
+              doğruladığınız SHA256 fingerprint değerini girin. Anahtar
+              değişirse bağlantı durdurulur.
+            </p>
+            {device.host_key_fingerprint && (
+              <p className="mono break-text">
+                Kayıtlı: {device.host_key_fingerprint}
+              </p>
+            )}
+            <label>
+              OpenSSH public host anahtarı
+              <textarea
+                name="public_key"
+                required
+                rows={3}
+                spellCheck={false}
+                maxLength={16384}
+                placeholder="ssh-ed25519 …"
+              />
+            </label>
+            <label>
+              Doğrulanmış SHA256 fingerprint
+              <input
+                name="fingerprint"
+                required
+                placeholder="SHA256:…"
+                maxLength={160}
+              />
+            </label>
+            {device.host_key_fingerprint && (
+              <label className="checkbox">
+                <input name="replace_existing" type="checkbox" required />
+                Kayıtlı anahtarın değiştirilmesini onaylıyorum.
+              </label>
+            )}
+            <div className="form-actions">
+              <button disabled={busy}>Host anahtarını kaydet</button>
+            </div>
+          </fieldset>
+        </form>
+        {message && (
+          <p role="status" className="notice success">
+            {message}
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="notice error">
+            {error}
+          </p>
+        )}
+      </div>
+    </Dialog>
+  );
+}
+
+export function InventoryImport({
+  device,
+  onClose,
+  onSaved,
+}: {
+  device: Device;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [error, setError] = useState<string | null>(null),
+    [busy, setBusy] = useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const file = new FormData(event.currentTarget).get("file") as File;
+      if (!file || file.size > 4_000_000) throw new Error();
+      const payload = JSON.parse(await file.text());
+      await api(`/api/v1/devices/${device.id}/inventory`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+      onSaved();
+      onClose();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Dialog title="Doğrulanmış envanteri aktar" onClose={onClose}>
+      <form className="dialog-body" onSubmit={submit}>
+        <p>
+          Port, arayüz ve fiziksel eşleme kayıtlarını içeren envanter JSON
+          dosyasını seçin. Gözlem kaynağı ve zamanı zorunludur; aktarım mevcut
+          envanteri değiştirir.
+        </p>
+        <label>
+          Envanter dosyası
+          <input
+            type="file"
+            name="file"
+            accept="application/json,.json"
+            required
+          />
+        </label>
+        {error && (
+          <p className="notice error" role="alert">
+            {error}
+          </p>
+        )}
+        <button className="primary" disabled={busy}>
+          Envanteri aktar
+        </button>
+      </form>
+    </Dialog>
+  );
+}

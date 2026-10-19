@@ -16,6 +16,15 @@ x-api-service: &api-service
     - ALL
 
 services:
+  secrets-init:
+    <<: *api-service
+    user: "0:0"
+    command: ["python", "-m", "app.keyring", "initialize"]
+    cap_add: [CHOWN, FOWNER, DAC_OVERRIDE]
+    volumes:
+      - stocc-keyring:/run/secrets
+    restart: "no"
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -52,10 +61,16 @@ services:
     environment:
       STOCC_ENV: ${STOCC_ENV:-development}
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://stocc:stocc@postgres:5432/stocc}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      STOCC_ALLOWED_ORIGINS: ${STOCC_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      STOCC_SSH_ALLOWED_CIDRS: ${STOCC_SSH_ALLOWED_CIDRS:-}
+      STOCC_KEYRING_FILE: /run/secrets/stocc-keyring.json
+    volumes:
+      - stocc-keyring:/run/secrets:ro
     ports:
       - "${API_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-8000}:8000"
     depends_on:
+      secrets-init:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
     healthcheck:
@@ -74,14 +89,10 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
     restart: unless-stopped
     init: true
     environment:
       API_INTERNAL_URL: http://api:8000
-    ports:
-      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-3000}:3000"
     depends_on:
       api:
         condition: service_healthy
@@ -99,8 +110,38 @@ services:
       - ALL
     stop_grace_period: 20s
 
+  gateway:
+    image: nginx:stable-alpine
+    user: "101:101"
+    restart: unless-stopped
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/routes.conf:/etc/nginx/routes.conf:ro
+    ports:
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-3000}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/gateway-health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks:
+      - application
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+
 volumes:
   stocc-postgres:
+  stocc-keyring:
 
 networks:
   database:

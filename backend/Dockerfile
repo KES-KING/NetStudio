@@ -6,8 +6,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:${PATH}"
 
 RUN python -m venv /opt/venv \
-    && addgroup --system stocc \
-    && adduser --system --ingroup stocc --home /app stocc
+    && addgroup --system --gid 101 stocc \
+    && adduser --system --uid 100 --ingroup stocc --home /app stocc
 
 WORKDIR /app
 
@@ -22,5 +22,4 @@ USER stocc
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--app-dir", "/app/backend", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
-
+CMD ["uvicorn", "app.main:app", "--app-dir", "/app/backend", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*", "--ws-max-size", "16384", "--no-access-log"]
