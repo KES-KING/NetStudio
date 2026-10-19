@@ -11,6 +11,7 @@ RUN python -m venv /opt/venv \
 
 WORKDIR /app
 
+COPY LICENSE /app/LICENSE
 COPY backend/pyproject.toml /app/backend/pyproject.toml
 COPY backend/app /app/backend/app
 RUN pip install --no-cache-dir /app/backend

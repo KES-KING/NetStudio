@@ -1,0 +1,65 @@
+name: Hata bildirimi / Bug report
+description: Tekrar üretilebilen bir uygulama veya kurulum hatasını bildirin.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Güvenlik açıklarını bu public formda paylaşmayın; [özel bildirim](https://github.com/KES-KING/stocc-netstudio/security/advisories/new) kullanın.
+        Parola, token/cookie, SSH anahtarı, gerçek cihaz envanteri ve ham terminal içeriği eklemeyin. Türkçe veya İngilizce yazabilirsiniz.
+  - type: input
+    id: version
+    attributes:
+      label: Sürüm / commit
+      description: git rev-parse --short HEAD çıktısı veya kullandığınız release etiketi.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Etkilenen alan
+      options:
+        - Docker / kurulum
+        - Frontend / erişilebilirlik
+        - API / kimlik doğrulama
+        - Envanter / telemetri / topoloji
+        - SSH bağlantısı
+        - Dokümantasyon
+        - Diğer
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Ortam
+      description: İşletim sistemi, tarayıcı, Docker/Compose sürümü ve context; özel adresleri maskeleyin.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Tekrar üretim adımları
+      description: İzole test ortamında hatayı tetikleyen en küçük adımları yazın.
+    validations:
+      required: true
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Beklenen ve gerçekleşen davranış
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Temizlenmiş hata çıktısı / ekran görüntüsü
+      description: Sırları, kişisel verileri ve gerçek ağ bilgilerini kaldırın; tam .env veya docker inspect çıktısı göndermeyin.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Kontrol
+      options:
+        - label: Benzer açık issue'ları kontrol ettim.
+          required: true
+        - label: Bu bildirimin sır veya özel müşteri verisi içermediğini kontrol ettim.
+          required: true

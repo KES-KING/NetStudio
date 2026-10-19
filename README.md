@@ -1,10 +1,42 @@
+<p align="center">
+  <img src="frontend/public/branding/netstudio-logo.png" alt="Stocc NetStudio logosu" width="300" />
+</p>
+
 # Stocc NetStudio
+
+[![CI](https://github.com/KES-KING/stocc-netstudio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/KES-KING/stocc-netstudio/actions/workflows/ci.yml)
+[![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-365A73)](LICENSE)
+
+[Kurulum](#docker-ile-kurulum) · [Cihaz bağlantısı](#gerçek-cihazı-bağlama) · [Geliştirme](#geliştirme-ve-doğrulama) · [Katkı rehberi](CONTRIBUTING.md) · [Tartışmalar](https://github.com/KES-KING/stocc-netstudio/discussions) · [Lisans](#lisans)
 
 Ağ cihazlarının envanterini, erişilebilirliğini, fiziksel portlarını, trafik gözlemlerini ve IP ilişkilerini aynı konsolda yönetin. Cihaz detayında açılan SSH terminali, backend üzerinden doğrulanmış cihaz kaydına bağlanır.
 
 Arayüz: Next.js 16 / React 19 / TypeScript, Apache ECharts, xterm.js ve SWR. Backend: FastAPI, SQLAlchemy, PostgreSQL, AsyncSSH, Argon2id ve AES-256-GCM. Varsayılan kurulumda cihaz, kullanıcı veya örnek telemetri **oluşturulmaz**.
 
-Marka varlıkları `frontend/public/branding/` içindedir: `netstudio-logo.png` giriş ekranı ve masaüstü üst barda, `netstudio-emblem.png` mobil üst bar ve sekme simgesinde kullanılır. Orijinal PNG içerikleri korunur; ortak `Brand` bileşeni yalnız şeffaf kenar boşluklarını görünümde çerçeveler. Logoların arkasında ayrı bir zemin yoktur; üst barın tamamı okunabilirlik için `nav-header` tokenıyla açık gri tutulur. Sekme simgesi `app/icon.tsx` ile amblemden şeffaf zemin üzerinde üretilir. Docker web imajı `public/` dizinini de içerir.
+## Neler sunar?
+
+- Cihaz adı/IP, tür ve erişilebilirlik kapsamıyla filtrelenen envanter ve operasyon özeti.
+- Gerçek envantere bağlı, marka bağımsız fiziksel port panelleri ve IP topolojisi.
+- Apache ECharts ile RX/TX, port durumu ve kapasite gösterimleri; bilinmeyen/eski verinin açık ayrımı.
+- Cihaz detayına entegre SSH terminali; backend tarafında site/rol denetimi ve kayıtlı host key doğrulaması.
+- Harici envanter/telemetri aktarımı ve Linux için kullanıcı tarafından başlatılan salt okunur SSH toplama işleri.
+- Docker Compose ile PostgreSQL, migration, sır deposu, API, frontend ve gateway kurulumu.
+
+Bu proje geliştirme aşamasındadır. Fiziksel cihaz/üretim kabulü, çok worker desteği ve üreticiye özgü konfigürasyon uygulama/yedekleme yetenekleri varmış gibi sunulmaz. CI rozeti GitHub'daki gerçek durumu gösterir; aşağıdaki tarihli yerel doğrulama sonuçları onun yerine geçmez.
+
+Marka varlıkları `frontend/public/branding/` içindedir: `netstudio-logo.png` README, giriş ekranı ve masaüstü üst barda, `netstudio-emblem.png` mobil üst bar ve sekme simgesinde kullanılır. Orijinal PNG içerikleri ve şeffaflık korunur; ortak `Brand` bileşeni uygulama içinde yalnız şeffaf kenar boşluklarını görünümde çerçeveler. Logoların arkasında ayrı bir zemin yoktur; üst barın tamamı okunabilirlik için `nav-header` tokenıyla açık gri tutulur. Sekme simgesi `app/icon.tsx` ile amblemden şeffaf zemin üzerinde üretilir. Docker web imajı `public/` dizinini de içerir.
+
+## Katkı ve iletişim
+
+Türkçe veya İngilizce katkı kabul edilir. Başlangıç için [katkı rehberini](CONTRIBUTING.md) okuyun; hata ve özellik talepleri için [issue şablonlarını](https://github.com/KES-KING/stocc-netstudio/issues/new/choose), kullanım soruları için [Discussions](https://github.com/KES-KING/stocc-netstudio/discussions) alanını kullanın. Güvenlik açıklarını public issue yerine [özel güvenlik bildirimi](https://github.com/KES-KING/stocc-netstudio/security/advisories/new) üzerinden iletin; kapsam ve ilkeler [güvenlik politikasında](SECURITY.md) açıklanır.
+
+## Lisans
+
+Copyright (C) 2026 KES-KING ve Stocc NetStudio katkıda bulunanları.
+
+Projenin lisansı **GNU Affero General Public License v3.0 only** (`AGPL-3.0-only`); bağlayıcı tam metin [LICENSE](LICENSE) dosyasındadır. Ticari kullanıma izin verir; değiştirilmiş sürümü ağ üzerinden kullananlara ilgili sürümün kaynak koduna erişim sunma yükümlülüğü dahil lisans koşulları geçerlidir. [AGPLv3 özeti](https://choosealicense.com/licenses/agpl-3.0/).
+
+Dağıtımlarda lisans ve telif bildirimlerini koruyun; bağımlılıklar kendi lisanslarına tabidir. Yazılım garanti verilmeden sunulur. Frontend'deki `private: true` yalnız yanlışlıkla npm yayını yapılmasını engeller; GitHub görünürlüğünü veya kaynak kodun lisansını değiştirmez.
 
 ## Docker ile kurulum
 
@@ -223,7 +255,7 @@ Tarayıcı testleri masaüstü/mobil yerleşim, filtre kapsamı, ECharts, klavye
 | Kontrol | Sonuç / kapsam |
 | --- | --- |
 | Backend | 35 test geçti; RBAC/site, CSRF, şifreleme/rotasyon, metrikler, gerçek yerel SSH el sıkışması ve Linux toplama işleri |
-| Frontend birim testleri | 11 test geçti; filtre kapsamı, bilinmeyen/eski veri, breakout sayımı ve RX/TX anlamları |
+| Frontend birim testleri | 13 test geçti; filtre kapsamı, bilinmeyen/eski veri, breakout sayımı, RX/TX anlamları ve marka varlıkları |
 | Lint / TypeScript | Geçti |
 | Production build | Yerel Next.js ve Docker web/API imajları oluşturuldu |
 | HTTP / WS tarayıcı testi | 4 senaryo geçti; gerçek Nginx → API → PostgreSQL / SSH test sunucusu |
