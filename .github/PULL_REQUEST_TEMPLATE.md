@@ -12,7 +12,9 @@ API, migration, ortam değişkeni, volume/anahtar deposu veya bağımlılık de�
 
 ## Kontrol listesi
 
+- [ ] `rule.md` kurallarını okudum; yapay zekâ ajanı kullanıldıysa `agent.md` yönergesi de uygulandı.
 - [ ] İlgili testleri ve dokümantasyonu güncelledim veya neden gerekmediğini açıkladım.
+- [ ] Görsel değişiklik varsa üç README görüntüsü güncel uygulamadan yeniden alındı, incelendi ve bu PR'a dahil edildi; yoksa aşağıda gerekçesini belirttim.
 - [ ] Commit, log ve ekran görüntülerinde parola, anahtar, token/cookie veya özel müşteri verisi yok.
 - [ ] Metrik kapsamı/birimleri ve eksik/eski veri davranışları korunuyor (uygulanıyorsa).
 - [ ] Yetki ve SSH host key/CIDR denetimleri korunuyor (uygulanıyorsa).
@@ -20,4 +22,10 @@ API, migration, ortam değişkeni, volume/anahtar deposu veya bağımlılık de�
 
 ## Görsel değişiklikler
 
-Uygulanıyorsa hassas verileri temizlenmiş masaüstü/mobil ekran görüntülerini ekleyin.
+Görsel değişiklik var mı? Yoksa görüntü yenilemesinin neden gerekmediğini yazın. Varsa `rule.md` gereği üç dosyanın tamamını güncel koddan yeniden alın:
+
+- `docs/screenshots/dashboard.png` — ana sayfa.
+- `docs/screenshots/device-detail.png` — SSH kapalı cihaz detayı.
+- `docs/screenshots/device-detail-ssh.png` — aynı cihazda gerçek QA SSH bağlantısı açık.
+
+Yakalama tarihi, QA ortamı, test edilen sürüm/çalışma ağacı, tarayıcı/viewport ve mobil kontrol sonucunu belirtin. Yeniden yakalanıp birebir aynı kalan kare varsa bunu not edin. README bağlantıları, açıklamalar ve alt metinler güncel olmalı; gerçek müşteri verisi veya sır bulunmamalıdır. Yalnız PR'a eklenen veya geçici dizinde bırakılan görüntüler README yenilemesi sayılmaz. Yakalama yapılamadıysa engeli ve eksik kalan görünümü açıkça yazın.

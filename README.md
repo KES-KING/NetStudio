@@ -8,7 +8,7 @@
 [![CI](https://github.com/KES-KING/stocc-netstudio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/KES-KING/stocc-netstudio/actions/workflows/ci.yml)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-365A73)](LICENSE)
 
-[Ekran görüntüleri](#ekran-görüntüleri) · [Kurulum](#docker-ile-kurulum) · [Cihaz bağlantısı](#gerçek-cihazı-bağlama) · [Kullanıcı ve audit](#kullanıcı-yönetimi-ve-audit) · [Geliştirme](#geliştirme-ve-doğrulama) · [Katkı rehberi](CONTRIBUTING.md) · [Tartışmalar](https://github.com/KES-KING/stocc-netstudio/discussions) · [Lisans](#lisans)
+[Ekran görüntüleri](#ekran-görüntüleri) · [Kurulum](#docker-ile-kurulum) · [Cihaz bağlantısı](#gerçek-cihazı-bağlama) · [Kullanıcı ve audit](#kullanıcı-yönetimi-ve-audit) · [Geliştirme](#geliştirme-ve-doğrulama) · [Proje kuralları](rule.md) · [Katkı rehberi](CONTRIBUTING.md) · [Tartışmalar](https://github.com/KES-KING/stocc-netstudio/discussions) · [Lisans](#lisans)
 
 Ağ cihazlarının envanterini, erişilebilirliğini, fiziksel portlarını, trafik gözlemlerini ve IP ilişkilerini aynı konsolda yönetin. Cihaz detayında açılan SSH terminali, backend üzerinden doğrulanmış cihaz kaydına bağlanır.
 
@@ -33,6 +33,8 @@ Marka varlıkları `frontend/public/branding/` içindedir: `netstudio-logo.png` 
 
 Aşağıdaki üç görüntü çalışan uygulamanın izole QA ortamından alınmıştır. Cihazlar, adresler ve telemetri test verisidir; SSH görüntüsü izole test cihazıyla kurulan gerçek oturumu gösterir. Üretim cihazı bilgisi veya bağlantı sırrı içermez. Varsayılan kurulum bu örnek verileri oluşturmaz.
 
+**Güncellik kuralı:** Her görsel arayüz güncellemesinde aşağıdaki üç görüntünün tamamı güncel koddan yeniden alınır ve aynı değişiklik/PR içinde teslim edilir. İnsanlar ve yapay zekâ için ayrıntılar [rule.md](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile), ajanların uygulama adımları [agent.md](agent.md) içindedir.
+
 ### Ana sayfa
 
 Cihaz filtresi ve zaman aralığıyla aynı kapsamı paylaşan Apache ECharts grafikleri, port kullanımı ve dikey cihaz envanteri.
@@ -54,6 +56,8 @@ Aynı cihazın ön paneli ve bağlı SSH terminali yan yana; topoloji ve teknik 
 ## Katkı ve iletişim
 
 Türkçe veya İngilizce katkı kabul edilir. Başlangıç için [katkı rehberini](CONTRIBUTING.md) okuyun; hata ve özellik talepleri için [issue şablonlarını](https://github.com/KES-KING/stocc-netstudio/issues/new/choose), kullanım soruları için [Discussions](https://github.com/KES-KING/stocc-netstudio/discussions) alanını kullanın. Güvenlik açıklarını public issue yerine [özel güvenlik bildirimi](https://github.com/KES-KING/stocc-netstudio/security/advisories/new) üzerinden iletin; kapsam ve ilkeler [güvenlik politikasında](SECURITY.md) açıklanır.
+
+Tüm katkılarda [ortak proje kuralları](rule.md) geçerlidir. Yapay zekâ ajanları ayrıca [ajan yönergesini](agent.md) izler; [AGENTS.md](AGENTS.md) bu yönergelere giriş noktasıdır.
 
 ## Lisans
 
@@ -363,7 +367,7 @@ Playwright Chromium kurulu değilse `npx playwright install chromium` çalışt�
 
 Mevcut QA projesi kullanılıyorsa veya test hesabı değiştirilmişse hesabı sıfırlamayın. Yeni `COMPOSE_PROJECT_NAME` ve boşta olan PostgreSQL/API/web portlarıyla ayrı proje açın. QA SSH anahtar servisinin portu `STOCC_TEST_SSH_KEY_PORT` ile ayrılabilir. Seed sırasında `STOCC_TEST_ORIGIN`, `STOCC_TEST_SSH_KEY_URL`, `STOCC_TEST_SSH_CONTAINER` ve `STOCC_TEST_DATABASE_URL` değerlerini **aynı yeni projeyi** gösterecek şekilde verin; testlerde de `PLAYWRIGHT_BASE_URL` bu origin olmalıdır. Seed varsayılanları sırasıyla `http://127.0.0.1:13000`, `http://127.0.0.1:12223`, `stocc-redesign-qa-ssh-lab-1` adresleridir. Seed HTTP endpoint'leri yalnız loopback olabilir.
 
-Tarayıcı testleri masaüstü/mobil yerleşim, filtre kapsamı, ECharts, klavye ile port seçimi, form akışı, boş sır alanı, inline SSH giriş/kopyalama/yapıştırma/resize/kapanış ve logout senaryolarını gerçek API/gateway üzerinden denetler. Ayrıca sayfa kimliği, framework hata katmanı, konsol ve cookie güvenlik nitelikleri kontrol edilir. Girişten önceki `/session/me` 401 yanıtı beklenen davranıştır. Ekran görüntüleri işletim sisteminin geçici dizinindeki `stocc-netstudio-qa/` altına, başarısız test izleri `stocc-netstudio-playwright/` altına yazılır; repository'ye eklenmez. Bunlar **sentetik QA envanteridir; fiziksel cihaz kanıtı değildir**.
+Tarayıcı testleri masaüstü/mobil yerleşim, filtre kapsamı, ECharts, klavye ile port seçimi, form akışı, boş sır alanı, inline SSH giriş/kopyalama/yapıştırma/resize/kapanış ve logout senaryolarını gerçek API/gateway üzerinden denetler. Ayrıca sayfa kimliği, framework hata katmanı, konsol ve cookie güvenlik nitelikleri kontrol edilir. Girişten önceki `/session/me` 401 yanıtı beklenen davranıştır. Ekran görüntüleri işletim sisteminin geçici dizinindeki `stocc-netstudio-qa/` altına, başarısız test izleri `stocc-netstudio-playwright/` altına yazılır; otomatik olarak repository'ye eklenmez. Görsel değişikliklerde [görüntü yenileme kuralına](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile) göre incelenmiş üç README görüntüsü ayrıca `docs/screenshots/` altına alınır ve aynı değişiklikle teslim edilir; diğer geçici test kanıtları repository dışında kalır. Bunlar **sentetik QA envanteridir; fiziksel cihaz kanıtı değildir**.
 
 2026-10-19 — kullanıcı yönetimi eklenmeden önceki tasarım/SSH kapsamının tarihsel doğrulama sonuçları:
 

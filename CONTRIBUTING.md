@@ -2,6 +2,8 @@
 
 Stocc NetStudio'ya kod, dokümantasyon, test ve erişilebilirlik katkıları yapabilirsiniz. Türkçe ve İngilizce issue/PR kabul edilir. Tartışmalarda kişileri değil teknik önerileri değerlendirin; saygılı, somut ve tekrar üretilebilir geri bildirim verin.
 
+Başlamadan önce insanlar ve yapay zekâ için ortak [proje kurallarını](rule.md) okuyun. Kodlama ajanları ayrıca [agent.md](agent.md) yönergesini izlemelidir; ajan giriş dosyası [AGENTS.md](AGENTS.md) bu belgelere yönlendirir.
+
 ## Doğru kanalı seçin
 
 - Hatalar ve özellik önerileri: [issue şablonları](https://github.com/KES-KING/stocc-netstudio/issues/new/choose).
@@ -45,6 +47,6 @@ Compose yapılandırma kontrolü repository kökünde `docker compose config --q
 
 ## Pull request
 
-PR açıklamasında amaç, kapsam, test komutları/sonuçları, çalıştırılmayan kontroller ve dağıtım/migration etkisini belirtin. Arayüz değişikliklerinde sır içermeyen ekran görüntüleri ekleyin. Yeni özellikler için önce kısa bir issue ile kapsamı konuşmak incelemeyi kolaylaştırır.
+PR açıklamasında amaç, kapsam, test komutları/sonuçları, çalıştırılmayan kontroller ve dağıtım/migration etkisini belirtin. **Her görsel değişiklikte README'deki üç görüntüyü birlikte yenileyin:** `docs/screenshots/dashboard.png`, `docs/screenshots/device-detail.png`, `docs/screenshots/device-detail-ssh.png`. Güncel uygulamadan, izole QA verisiyle alınan kareler aynı PR'a dahil olmalıdır; yalnız PR açıklamasına görüntü eklemek yeterli değildir. [Yakalama ve gizlilik kurallarını](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile) izleyin; tarih, viewport, test edilen sürüm ve sonucu belirtin. Görünür değişiklik yoksa bu adımın neden gerekmediğini açıklayın. Yeni özellikler için önce kısa bir issue ile kapsamı konuşmak incelemeyi kolaylaştırır.
 
 Katkılar projenin [AGPL-3.0-only lisansı](LICENSE) altında sunulur. Yalnız paylaşmaya yetkili olduğunuz kod ve varlıkları ekleyin; üçüncü taraf lisans/telif bildirimlerini koruyun. Bu rehber ayrıca bir telif devri istemez.
