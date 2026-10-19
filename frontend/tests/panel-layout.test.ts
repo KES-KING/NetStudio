@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PhysicalPort } from "../lib/contracts";
-import { groupPanelPorts } from "../lib/panel-layout";
+import { groupPanelPorts, panelPortBanks, RJ45_PORTS_PER_BANK } from "../lib/panel-layout";
 
 const components = [
   { id: "chassis", kind: "chassis", label: "Chassis" },
@@ -39,5 +39,17 @@ describe("schematic front panel grouping", () => {
     expect(groups[0].title).toContain("Tür bilinmiyor");
     expect(groups[0].optical).toBe(false);
     expect(groupPanelPorts([], components)).toEqual([]);
+  });
+
+  it("creates a visual separator after six RJ45 columns in the two-row grid", () => {
+    const ports = Array.from({ length: 26 }, (_, index) =>
+      port(`r${index + 1}`, "rj45", index + 1),
+    );
+    const [group] = groupPanelPorts(ports, components);
+    expect(RJ45_PORTS_PER_BANK).toBe(12);
+    expect(panelPortBanks(group).map((bank) => bank.length)).toEqual([12, 12, 2]);
+    expect(panelPortBanks(group).flat().map((item) => item.id)).toEqual(
+      ports.map((item) => item.id),
+    );
   });
 });

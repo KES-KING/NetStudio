@@ -8,6 +8,8 @@ export type PanelGroup = {
   ports: PhysicalPort[];
 };
 
+export const RJ45_PORTS_PER_BANK = 12;
+
 const connectorOrder = { rj45: 0, unknown: 1, management: 1, console: 1, sfp: 2, qsfp: 3 };
 
 // Presentation only: keep inventory identities/module labels, without claiming a
@@ -42,4 +44,17 @@ export function groupPanelPorts(
   return [...groups.values()].sort(
     (a, b) => connectorOrder[a.connector] - connectorOrder[b.connector],
   );
+}
+
+// RJ45 ports are drawn in two rows. Twelve inventory entries therefore form a
+// six-column bank before the small physical-style separator. This is explicitly
+// schematic and does not claim measured vendor chassis coordinates.
+export function panelPortBanks(group: PanelGroup): PhysicalPort[][] {
+  const bankSize = group.connector === "rj45"
+    ? RJ45_PORTS_PER_BANK
+    : Math.max(1, group.ports.length);
+  const banks: PhysicalPort[][] = [];
+  for (let index = 0; index < group.ports.length; index += bankSize)
+    banks.push(group.ports.slice(index, index + bankSize));
+  return banks;
 }

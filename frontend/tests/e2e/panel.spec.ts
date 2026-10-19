@@ -32,6 +32,15 @@ async function expectOpticsOnRight(panel: Locator) {
   }
 }
 
+async function expectCopperBanks(panel: Locator, count: number) {
+  const banks = panel.locator('[data-connector="rj45"] [data-port-bank]');
+  await expect(banks).toHaveCount(count);
+  if (count < 2) return;
+  const first = await banks.nth(0).boundingBox();
+  const second = await banks.nth(1).boundingBox();
+  expect(second!.x - (first!.x + first!.width)).toBeGreaterThanOrEqual(8);
+}
+
 for (const width of [1536, 390]) {
   test(`rack nameplate, horizontal optics and keyboard selection at ${width}px`, async ({ page }) => {
     const errors: string[] = [];
@@ -50,6 +59,7 @@ for (const width of [1536, 390]) {
     await expect(compact.locator(".chassis-name")).toHaveText("QA-Core-01");
     await expect(compact.locator(".chassis-model")).toHaveText("QA-24RJ45-4SFP");
     await expect(compact.locator(".rack-ear[aria-hidden=true]")).toHaveCount(2);
+    await expectCopperBanks(compact, 2);
     await expectOpticsOnRight(compact);
     await page.screenshot({ path: join(evidence, `dashboard-${width}.png`), fullPage: true });
 
@@ -59,6 +69,7 @@ for (const width of [1536, 390]) {
     await expect(panel.locator(".chassis-name")).toHaveText("QA-Core-01");
     await expect(panel.locator(".chassis-model")).toHaveText("QA-24RJ45-4SFP");
     await expect(panel.locator(".physical-port")).toHaveCount(28);
+    await expectCopperBanks(panel, 2);
     for (const [state, text] of Object.entries({ up: "UP", down: "DOWN", disabled: "ADM", unknown: "?" })) {
       const button = panel.locator(`.physical-port.${state}`).first();
       await expect(button.locator(".port-link-label")).toHaveText(text);
@@ -154,6 +165,7 @@ test("48 copper ports, mixed SFP/QSFP, unknown connectors and empty inventory", 
   await page.getByRole("button", { name: "Yenile", exact: true }).click();
   const panel = page.locator(".device-panel");
   await expect(panel.locator(".physical-port")).toHaveCount(53);
+  await expectCopperBanks(panel, 4);
   await expect(panel.locator('[data-port-id="child"]')).toHaveCount(0);
   await expect(panel.locator('[data-connector="unknown"]')).toContainText("Tür bilinmiyor");
   await expectOpticsOnRight(panel);

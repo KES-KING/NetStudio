@@ -35,7 +35,7 @@ Aşağıdaki üç görüntü çalışan uygulamanın izole QA ortamından alınm
 
 **Güncellik kuralı:** Her görsel arayüz güncellemesinde aşağıdaki üç görüntünün tamamı güncel koddan yeniden alınır ve aynı değişiklik/PR içinde teslim edilir. İnsanlar ve yapay zekâ için ayrıntılar [rule.md](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile), ajanların uygulama adımları [agent.md](agent.md) içindedir.
 
-Son set: **19 Ekim 2026**, `stocc-huawei-qa-20261019` izole Docker ortamı, Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `24716d5` üzerine Huawei/cihaz hedef onayı değişikliklerini içerir; mevcut kullanıcı kurulumu değiştirilmemiştir.
+Son set: **19 Ekim 2026**, `stocc-panel-qa-20261019` izole Docker ortamı, Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `6ca5044` üzerine RJ45 banka ayrımı değişikliklerini içerir; mevcut kullanıcı kurulumu değiştirilmemiştir.
 
 ### Ana sayfa
 
@@ -45,7 +45,7 @@ Cihaz filtresi ve zaman aralığıyla aynı kapsamı paylaşan Apache ECharts gr
 
 ### Cihaz detayı — SSH kapalı
 
-Tam genişlikte etkileşimli cihaz ön paneli; kasa üzerinde envanterdeki cihaz adı/modeli, iki yanda şematik rack montaj delikleri, solda RJ45 ve sağda tek sıra SFP/QSFP grupları. Mat grafit/metal yüzeyler marka bağımsızdır; montaj geometrisi ve port yerleşimi üretici kasasının birebir ölçülü çizimi değildir. Altında IP topolojisi, teknik bilgiler ve sağlık değerlendirmesi bulunur.
+Tam genişlikte etkileşimli cihaz ön paneli; kasa üzerinde envanterdeki cihaz adı/modeli, iki yanda şematik rack montaj delikleri, solda RJ45 ve sağda tek sıra SFP/QSFP grupları. İki sıralı RJ45 görünümünde her altı sütundan sonra ölçülü bir banka ayrımı bulunur. Mat grafit/metal yüzeyler marka bağımsızdır; montaj geometrisi ve port yerleşimi üretici kasasının birebir ölçülü çizimi değildir. Altında IP topolojisi, teknik bilgiler ve sağlık değerlendirmesi bulunur.
 
 Port yuvalarının yanındaki göstergeler aynı telemetri durumunu kullanır: **UP** yeşil, **DOWN** sönük gri, **ADM** idari kapalı, **?** bilinmiyor. İdari kapalı port arızalı sayılmaz; güncelliğini kaybeden veri aktif LED olarak gösterilmez. Port seçimi dış çerçeveyle ayrıca belirtilir. Dar alanda panel yatay kayar; portlar okunamayacak kadar küçültülmez.
 

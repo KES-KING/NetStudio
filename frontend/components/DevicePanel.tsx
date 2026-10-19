@@ -1,7 +1,7 @@
 "use client";
 import { useMemo } from "react";
 import type { PhysicalPort, PortState, Projection } from "../lib/contracts";
-import { groupPanelPorts } from "../lib/panel-layout";
+import { groupPanelPorts, panelPortBanks } from "../lib/panel-layout";
 import {
   formatRate,
   formatTime,
@@ -116,34 +116,44 @@ export function DevicePanel({
                     data-connector={group.connector}
                   >
                     <span className="group-label">{group.title}</span>
-                    <div className="port-grid">
-                      {group.ports.map((port) => {
-                        const status =
-                          row.ports.port_states[port.id] ?? "unknown";
-                        return (
-                          <button
-                            type="button"
-                            key={port.id}
-                            className={`physical-port connector-${port.connector} ${status} ${selectedId === port.id ? "selected" : ""}`}
-                            data-port-id={port.id}
-                            aria-pressed={selectedId === port.id}
-                            aria-label={`${port.label}, ${portLabels[status]}`}
-                            title={`${port.label} · ${port.connector.toUpperCase()} · ${portLabels[status]}`}
-                            onClick={() => onSelect(port)}
-                          >
-                            <span className="port-face">
-                              <PortGeometry kind={port.connector} />
-                              <span className="port-indicator" aria-hidden="true" />
-                            </span>
-                            <span className="port-marking">
-                              <span className="port-number">{port.label}</span>
-                              <span className="port-link-label" aria-hidden="true">
-                                {linkIndicatorLabels[status]}
-                              </span>
-                            </span>
-                          </button>
-                        );
-                      })}
+                    <div
+                      className={`port-banks ${group.connector === "rj45" ? "rj45-banks" : ""}`}
+                    >
+                      {panelPortBanks(group).map((bank, bankIndex) => (
+                        <div
+                          className="port-grid port-bank"
+                          data-port-bank={bankIndex + 1}
+                          key={bank[0]?.id ?? bankIndex}
+                        >
+                          {bank.map((port) => {
+                            const status =
+                              row.ports.port_states[port.id] ?? "unknown";
+                            return (
+                              <button
+                                type="button"
+                                key={port.id}
+                                className={`physical-port connector-${port.connector} ${status} ${selectedId === port.id ? "selected" : ""}`}
+                                data-port-id={port.id}
+                                aria-pressed={selectedId === port.id}
+                                aria-label={`${port.label}, ${portLabels[status]}`}
+                                title={`${port.label} · ${port.connector.toUpperCase()} · ${portLabels[status]}`}
+                                onClick={() => onSelect(port)}
+                              >
+                                <span className="port-face">
+                                  <PortGeometry kind={port.connector} />
+                                  <span className="port-indicator" aria-hidden="true" />
+                                </span>
+                                <span className="port-marking">
+                                  <span className="port-number">{port.label}</span>
+                                  <span className="port-link-label" aria-hidden="true">
+                                    {linkIndicatorLabels[status]}
+                                  </span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}

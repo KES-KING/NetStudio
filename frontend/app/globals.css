@@ -869,6 +869,25 @@ h3 {
   grid-auto-flow: column;
   gap: 5px;
 }
+.port-banks {
+  display: flex;
+  align-items: flex-start;
+}
+.rj45-banks {
+  gap: 14px;
+}
+.rj45-banks .port-bank + .port-bank {
+  position: relative;
+}
+.rj45-banks .port-bank + .port-bank::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -8px;
+  width: 1px;
+  background: var(--chassis-seam);
+}
 .optical-group .port-grid {
   grid-template-rows: auto;
 }
@@ -1025,6 +1044,12 @@ button.physical-port.connector-qsfp {
 }
 .compact .port-grid {
   gap: 2px;
+}
+.compact .rj45-banks {
+  gap: 8px;
+}
+.compact .rj45-banks .port-bank + .port-bank::before {
+  left: -5px;
 }
 .compact .physical-port {
   width: 30px;
