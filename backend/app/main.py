@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from contextlib import asynccontextmanager
 from typing import Annotated
 from uuid import UUID
 
@@ -13,7 +14,19 @@ from .jobs import job_store
 from .models import ApiError, Device, Job, PollSnapshot
 from .security import Permission, Role, SessionUser, has_permission
 
-app = FastAPI(title="Stocc NetStudio API", version="0.1.0")
+DEMO_DEVICE = build_fixture()
+DEVICES: dict[str, Device] = {DEMO_DEVICE.id: DEMO_DEVICE}
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # PostgreSQL jobs reference a device row. Keep the built-in read-only
+    # fixture synchronized before accepting traffic; memory mode is a no-op.
+    job_store.ensure_device(DEMO_DEVICE)
+    yield
+
+
+app = FastAPI(title="Stocc NetStudio API", version="0.1.0", lifespan=lifespan)
 allowed_origins = os.getenv(
     "CORS_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3002,http://127.0.0.1:3002",
@@ -25,10 +38,6 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
-
-DEMO_DEVICE = build_fixture()
-DEVICES: dict[str, Device] = {DEMO_DEVICE.id: DEMO_DEVICE}
-
 
 def demo_session(x_stocc_user: str | None) -> SessionUser:
     """Development session boundary; production must inject an IdP provider."""
@@ -51,6 +60,17 @@ def require_permission(user: SessionUser, permission: Permission, device: Device
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     return {"status": "ok", "service": "stocc-netstudio-api"}
+
+
+@app.get("/readyz")
+def readyz() -> dict[str, str]:
+    try:
+        ready = job_store.is_ready()
+    except Exception as error:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="persistence_unavailable") from error
+    if not ready:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="persistence_unavailable")
+    return {"status": "ready", "service": "stocc-netstudio-api"}
 
 
 @app.get("/api/v1/session/me", response_model=SessionUser)

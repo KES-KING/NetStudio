@@ -18,6 +18,48 @@ Stocc NetStudio, rapordaki ilk dikey dilimin çalışan iskeletidir. Bu teslimat
 
 Demo profili gerçek ağ bağlantısı açmaz; gerçek cihaz desteği veya yazma capability'si iddia etmez.
 
+## Docker ile tüm sistemi çalıştırma
+
+PostgreSQL, Alembic migration, FastAPI ve Next.js servislerinin tamamı Compose içinde çalışır. İlk kurulum ve sonraki güncellemeler için:
+
+```bash
+cp .env.example .env
+# Paylaşılan/üretim benzeri ortamda .env içindeki parolayı ve bind adreslerini değiştirin.
+make docker-up
+```
+
+`docker-up`; imajları üretir, PostgreSQL sağlık kontrolünü bekler, migration'ı tek seferlik çalıştırır, ardından API ve web servislerini sağlık sırasıyla açar. Hazır olduğunda:
+
+- Web: `http://127.0.0.1:3000`
+- API sağlık: `http://127.0.0.1:8000/readyz`
+- OpenAPI: `http://127.0.0.1:8000/docs`
+
+Durum ve loglar:
+
+```bash
+make docker-ps
+make docker-logs
+make docker-down
+```
+
+`make docker-down` container ve ağları kaldırır, `stocc-postgres` volume'ünü korur. Veri kaybını önlemek için normal durdurma/güncelleme akışında `down -v` kullanılmamalıdır.
+
+### Container mimarisi
+
+```text
+Tarayıcı :3000
+    │
+    ▼
+Next.js web ── /api/* ──► FastAPI api :8000 ──► PostgreSQL :5432
+                              ▲                    ▲
+                              │                    │
+                         readyz kontrolü      Alembic migrate
+```
+
+Tarayıcı API'ye aynı origin üzerinden erişir; Next.js sunucu geçidi isteği Docker iç ağındaki `api` servisine iletir. PostgreSQL ayrı bir iç ağa alınmıştır. Host portları varsayılan olarak yalnızca `127.0.0.1` üzerinde dinler. Uzak erişim gerekiyorsa `.env` içinde örneğin `WEB_BIND_ADDRESS=0.0.0.0` seçilebilir ve ağ güvenlik politikası ayrıca uygulanmalıdır.
+
+`.env.example` geliştirme varsayılanları içerir. `POSTGRES_*` değerleri değiştirildiğinde `DATABASE_URL` de aynı kullanıcı, parola ve veritabanıyla güncellenmelidir. Gerçek ortamda örnek parola kullanılmamalıdır.
+
 ## Geliştirme
 
 ```bash
@@ -42,7 +84,7 @@ make backend-install
 make backend-run
 ```
 
-Frontend `http://localhost:3000`, API `http://localhost:8000` adresindedir. `NEXT_PUBLIC_API_URL` ile API adresi değiştirilebilir.
+Frontend `http://localhost:3000`, API `http://localhost:8000` adresindedir. Varsayılan tarayıcı çağrıları aynı-origin `/api` geçidini kullanır; ayrı bir API origin'i gerekiyorsa build sırasında `NEXT_PUBLIC_API_URL` verilebilir.
 
 ## Testler
 

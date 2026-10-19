@@ -100,6 +100,7 @@ export function NetStudioWorkspace() {
   const [jobMessage, setJobMessage] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
   const filteredDevice = useMemo(() => demoDevice.name.toLowerCase().includes(search.toLowerCase()), [search]);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setSelectedPort(undefined); };
@@ -110,7 +111,7 @@ export function NetStudioWorkspace() {
   async function queueConnectionTest() {
     setJobMessage("Bağlantı testi kuyruğa alınıyor…");
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/v1/devices/${demoDevice.id}/connection-tests`, { method: "POST", headers: { "X-Stocc-User": "demo-operator" } });
+      const response = await fetch(`${apiUrl}/api/v1/devices/${demoDevice.id}/connection-tests`, { method: "POST", headers: { "X-Stocc-User": "demo-operator" } });
       if (!response.ok) throw new Error("API unavailable");
       const job = await response.json() as { status: string; result?: { message?: string } };
       setJobMessage(`${job.status === "succeeded" ? "İş tamamlandı" : "İş alındı"}: ${job.result?.message ?? "fixture sonucu hazır"}`);
@@ -123,7 +124,7 @@ export function NetStudioWorkspace() {
     setPolling(true);
     setJobMessage("Salt okunur gözlem işi kuyruğa alınıyor…");
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/v1/devices/${demoDevice.id}/polls`, { method: "POST", headers: { "X-Stocc-User": "demo-operator" } });
+      const response = await fetch(`${apiUrl}/api/v1/devices/${demoDevice.id}/polls`, { method: "POST", headers: { "X-Stocc-User": "demo-operator" } });
       if (!response.ok) throw new Error("API unavailable");
       const job = await response.json() as { status: string; result?: { snapshot?: { observations?: unknown[] } } };
       const count = job.result?.snapshot?.observations?.length ?? 0;

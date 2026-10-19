@@ -1,14 +1,17 @@
-.PHONY: backend-install backend-migrate backend-run backend-test frontend-test postgres-up
+.PHONY: \
+	backend-install backend-migrate backend-run backend-test frontend-test postgres-up \
+	docker-build docker-config docker-up docker-down docker-logs docker-ps docker-migrate
 
 VENV ?= .venv
 DOCKER_CONTEXT ?= default
+COMPOSE := docker --context $(DOCKER_CONTEXT) compose
 
 backend-install:
 	python3 -m venv $(VENV)
 	$(VENV)/bin/python -m pip install -e 'backend[test]'
 
 postgres-up:
-	docker --context $(DOCKER_CONTEXT) compose up -d --wait postgres
+	$(COMPOSE) up -d --wait postgres
 
 backend-migrate:
 	$(VENV)/bin/alembic -c backend/alembic.ini upgrade head
@@ -21,3 +24,24 @@ backend-test:
 
 frontend-test:
 	cd frontend && npm test
+
+docker-config:
+	$(COMPOSE) config --quiet
+
+docker-build: docker-config
+	$(COMPOSE) build
+
+docker-up: docker-config
+	$(COMPOSE) up --build -d --wait
+
+docker-down:
+	$(COMPOSE) down
+
+docker-logs:
+	$(COMPOSE) logs -f --tail=200
+
+docker-ps:
+	$(COMPOSE) ps
+
+docker-migrate:
+	$(COMPOSE) run --rm migrate

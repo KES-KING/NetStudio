@@ -8,6 +8,7 @@ client = TestClient(app)
 
 def test_health_and_device_contract():
     assert client.get("/healthz").json()["status"] == "ok"
+    assert client.get("/readyz").json()["status"] == "ready"
     response = client.get("/api/v1/devices")
     assert response.status_code == 200
     device = response.json()[0]

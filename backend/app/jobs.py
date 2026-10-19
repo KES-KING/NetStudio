@@ -26,6 +26,12 @@ class JobStore:
     def get(self, job_id: UUID) -> Job | None:
         return self.repository.get(job_id)
 
+    def ensure_device(self, device: Device) -> None:
+        self.repository.ensure_device(device)
+
+    def is_ready(self) -> bool:
+        return self.repository.ping()
+
     def run_fixture_job(self, job_id: UUID, device: Device) -> Job | None:
         job = self.repository.get(job_id)
         if job is None:
