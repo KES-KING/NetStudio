@@ -107,6 +107,52 @@ for (const [name, viewport] of [
     ).toBeHidden();
     if (name === "mobile")
       await page.getByRole("button", { name: "Menü", exact: true }).click();
+
+    const repositoryUrl = "https://github.com/KES-KING/stocc-netstudio";
+    const repository = page.getByRole("link", {
+      name: "NetStudio GitHub reposu (yeni sekmede açılır)",
+      exact: true,
+    });
+    await expect(repository).toBeInViewport();
+    await expect(repository).toHaveAttribute("href", repositoryUrl);
+    await expect(repository).toHaveAttribute("target", "_blank");
+    await expect(repository).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(repository).toHaveCSS("border-radius", "0px");
+    const position = await repository.boundingBox();
+    expect(position!.width).toBeGreaterThanOrEqual(44);
+    expect(position!.height).toBeGreaterThanOrEqual(44);
+    if (name === "desktop") {
+      await page.evaluate(() => window.scrollTo(0, 600));
+      expect((await repository.boundingBox())!.y).toBe(position!.y);
+      expect(position!.y + position!.height).toBe(viewport.height - 20);
+    }
+    await repository.focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(repository).toBeFocused();
+    await expect(repository).toHaveCSS("outline-style", "solid");
+    await page.locator(".sidebar").screenshot({
+      path: join(evidence, `github-sidebar-${name}.png`),
+    });
+    await page.locator(".sidebar-footer").screenshot({
+      path: join(evidence, `github-footer-${name}.png`),
+    });
+
+    // Verify real link activation/new-tab isolation without depending on GitHub uptime.
+    // Only the external destination is stubbed; the app still uses its real QA API.
+    await page.context().route(repositoryUrl, (route) => route.fulfill({
+      contentType: "text/plain",
+      body: "Repository destination",
+    }));
+    const [popup] = await Promise.all([
+      page.waitForEvent("popup"),
+      page.keyboard.press("Enter"),
+    ]);
+    await popup.waitForURL(repositoryUrl);
+    expect(await popup.evaluate(() => window.opener === null)).toBe(true);
+    await popup.close();
+    await page.context().unroute(repositoryUrl);
+
     await page.getByRole("link", { name: "İş geçmişi", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: "İş geçmişi", exact: true }),

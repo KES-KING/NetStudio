@@ -15,6 +15,7 @@ import useSWR, { useSWRConfig } from "swr";
 import { api, errorMessage, fetchSession, setSessionToken } from "../lib/api";
 import type { Session } from "../lib/contracts";
 import { Brand } from "./Brand";
+import { RepositoryLink } from "./RepositoryLink";
 
 const SessionContext = createContext<Session | null>(null);
 export function useSession() {
@@ -140,20 +141,23 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
             )}
           </nav>
           <div className="sidebar-footer">
-            Ağ yönetimi
-            <br />
-            <span>
-              {user.roles
-                .map(
-                  (r) =>
-                    ({
-                      admin: "Yönetici",
-                      operator: "Operatör",
-                      viewer: "Gözlemci",
-                    })[r] ?? r,
-                )
-                .join(" · ")}
-            </span>
+            <div className="sidebar-session">
+              Ağ yönetimi
+              <br />
+              <span>
+                {user.roles
+                  .map(
+                    (r) =>
+                      ({
+                        admin: "Yönetici",
+                        operator: "Operatör",
+                        viewer: "Gözlemci",
+                      })[r] ?? r,
+                  )
+                  .join(" · ")}
+              </span>
+            </div>
+            <RepositoryLink />
           </div>
         </aside>
         <main id="main-content" className="main-content">

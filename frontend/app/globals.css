@@ -294,6 +294,31 @@ h3 {
   font-size: var(--ui-type-caption);
   margin-top: 4px;
 }
+.repository-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: 16px auto 0;
+  border: 1px solid var(--nav-secondary);
+  border-radius: var(--ui-radius);
+  color: var(--ui-nav-text);
+  text-decoration: none;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+.repository-link svg {
+  fill: currentColor;
+  flex-shrink: 0;
+}
+.repository-link:hover {
+  background: var(--nav-secondary);
+  color: var(--surface);
+}
+.repository-link:focus-visible {
+  outline-color: var(--selected);
+  color: var(--surface);
+}
 .main-content {
   min-width: 0;
   width: 100%;
@@ -1238,7 +1263,14 @@ tbody tr:last-child td {
     border-bottom: 1px solid var(--nav-secondary);
   }
   .sidebar-footer {
+    margin-top: 12px;
+    padding: 12px 8px 0;
+  }
+  .sidebar-session {
     display: none;
+  }
+  .repository-link {
+    margin-top: 0;
   }
   .main-content {
     padding: 20px 16px 32px;
