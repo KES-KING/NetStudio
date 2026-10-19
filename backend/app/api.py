@@ -24,6 +24,7 @@ from .models import Job
 from .security import Permission, SecretStoreError, has_permission
 from .ssh import ConnectionPolicyError, SSHBroker, connect, error_code
 from .telemetry import ingest, overview
+from .topology import install_topology_routes
 from .vault import CredentialVault, credential_values
 
 
@@ -163,6 +164,7 @@ def create_app(store=None, key_file=None):
         return app.state.auth.request(request, mutation)
 
     install_account_routes(app, context)
+    install_topology_routes(app, context)
 
     def device_for(request, device_id, permission=Permission.INVENTORY_READ, mutation=False):
         auth = context(request, mutation)
@@ -182,6 +184,7 @@ def create_app(store=None, key_file=None):
                 conn.execute(sa.select(app.state.store.users.c.display_name).limit(1))
                 conn.execute(sa.select(app.state.store.audit.c.request_id).limit(1))
                 conn.execute(sa.select(app.state.store.devices.c.payload).limit(1))
+                conn.execute(sa.select(app.state.store.topology_boards.c.version).limit(1))
         except Exception:
             fail("persistence_unavailable", 503)
         return {"status": "ready", "service": "stocc-netstudio-api"}

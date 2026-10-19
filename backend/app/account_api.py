@@ -16,7 +16,7 @@ from .users import PasswordChange, ProfileUpdate, UserCreate, UserDelete, UserRo
 
 class Activity(StrictModel):
     action: Literal["page.view", "inventory.filter", "port.select", "topology.select"]
-    page: Literal["dashboard", "device", "jobs", "audit", "account"]
+    page: Literal["dashboard", "device", "jobs", "audit", "account", "topology"]
     device_id: str | None = Field(default=None, max_length=64)
     port_id: str | None = Field(default=None, max_length=100)
     node_id: str | None = Field(default=None, max_length=200)

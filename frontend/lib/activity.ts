@@ -2,7 +2,7 @@ import { api, hasSessionToken } from "./api";
 
 type Activity = {
   action: "page.view" | "inventory.filter" | "port.select" | "topology.select";
-  page: "dashboard" | "device" | "jobs" | "audit" | "account";
+  page: "dashboard" | "device" | "jobs" | "audit" | "account" | "topology";
   device_id?: string;
   port_id?: string;
   node_id?: string;

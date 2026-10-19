@@ -136,6 +136,9 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
             >
               Ağ cihazları
             </Link>
+            <Link onClick={() => setMenuOpen(false)} aria-current={path === "/topology" ? "page" : undefined} href="/topology">
+              Topoloji
+            </Link>
             <Link
               onClick={() => setMenuOpen(false)}
               aria-current={path === "/jobs" ? "page" : undefined}
@@ -197,6 +200,7 @@ function NavigationAudit() {
     if (previous.current === key) return;
     previous.current = key;
     if (path === "/") recordActivity({ action: "page.view", page: "dashboard" });
+    else if (path === "/topology") recordActivity({ action: "page.view", page: "topology" });
     else if (path.startsWith("/devices/")) recordActivity({ action: "page.view", page: "device", device_id: path.split("/")[2] });
     else if (path === "/jobs" || path === "/account") recordActivity({ action: "page.view", page: path.slice(1) as "jobs" | "account" });
     else if (path === "/audit" && user.permissions.includes("audit.read")) recordActivity({ action: "page.view", page: "audit" });

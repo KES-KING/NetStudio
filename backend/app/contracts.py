@@ -153,6 +153,48 @@ class Neighbor(StrictModel):
     label: str = Field(max_length=160)
     relation: Literal["physical", "l2"]
     evidence: str = Field(min_length=1, max_length=300)
+    # Explicit collector references only; labels and ARP addresses are not cables.
+    remote_device_id: str | None = Field(default=None, min_length=1, max_length=64)
+    remote_interface_id: str | None = Field(default=None, min_length=1, max_length=160)
+
+
+class EndpointObservation(StrictModel):
+    id: str = Field(min_length=1, max_length=160)
+    interface_id: str = Field(min_length=1, max_length=160)
+    mac: str = Field(pattern=r"^(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$")
+    addresses: list[str] = Field(default_factory=list, max_length=32)
+    vlan: int | None = Field(default=None, ge=1, le=4094)
+    discovery: Literal["fdb", "arp", "ndp"]
+    state: Literal["reachable", "stale", "static", "unknown"] = "unknown"
+    evidence: str = Field(min_length=1, max_length=300)
+
+    @field_validator("mac")
+    @classmethod
+    def unicast_mac(cls, value):
+        if int(value[:2], 16) & 1 or value.lower() == "00:00:00:00:00:00":
+            raise ValueError("invalid_endpoint_mac")
+        return value.lower()
+
+    @field_validator("addresses")
+    @classmethod
+    def endpoint_addresses(cls, values):
+        addresses = [ip_address(value) for value in values]
+        if any(a.is_multicast or a.is_unspecified or a.is_loopback for a in addresses):
+            raise ValueError("invalid_endpoint_address")
+        return sorted({str(a) for a in addresses})
+
+
+class EndpointCollection(StrictModel):
+    status: Literal["ok", "partial", "unknown", "unsupported", "error"] = "unknown"
+    entries: list[EndpointObservation] = Field(default_factory=list, max_length=2048)
+
+    @model_validator(mode="after")
+    def valid_entries(self):
+        if self.entries and self.status not in {"ok", "partial"}:
+            raise ValueError("endpoint_status_conflict")
+        if len({e.id for e in self.entries}) != len(self.entries):
+            raise ValueError("duplicate_endpoint_id")
+        return self
 
 
 class Telemetry(StrictModel):
@@ -164,6 +206,7 @@ class Telemetry(StrictModel):
     interfaces: list[InterfaceSample] = Field(default_factory=list, max_length=8192)
     health: Health = Field(default_factory=Health)
     neighbors: list[Neighbor] = Field(default_factory=list, max_length=1024)
+    endpoints: EndpointCollection = Field(default_factory=EndpointCollection)
 
     @model_validator(mode="after")
     def valid(self):
@@ -171,4 +214,6 @@ class Telemetry(StrictModel):
         ids = [i.interface_id for i in self.interfaces]
         if len(ids) != len(set(ids)):
             raise ValueError("duplicate_interface_sample")
+        if len({n.id for n in self.neighbors}) != len(self.neighbors):
+            raise ValueError("duplicate_neighbor_id")
         return self

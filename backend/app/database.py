@@ -48,6 +48,11 @@ class Store:
         self.avatars = sa.Table("user_avatars", self.meta,
             sa.Column("user_id", sa.String(64), sa.ForeignKey("app_users.id", ondelete="CASCADE"), primary_key=True),
             sa.Column("png", sa.LargeBinary(), nullable=False))
+        self.topology_boards = sa.Table("topology_boards", self.meta,
+            sa.Column("user_id", sa.String(64), sa.ForeignKey("app_users.id", ondelete="CASCADE"), primary_key=True),
+            sa.Column("version", sa.Integer(), nullable=False),
+            sa.Column("payload", sa.JSON(), nullable=False),
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False))
         self.secrets = sa.Table("device_secrets", self.meta,
             sa.Column("device_id", sa.String(64), sa.ForeignKey("devices.id"), primary_key=True),
             sa.Column("key_id", sa.String(80), nullable=False),

@@ -58,6 +58,8 @@ export async function fetchSession(): Promise<Session | null> {
 }
 
 const messages: Record<string, string> = {
+  topology_version_conflict: "Yerleşim başka bir sekmede değişti. Taslağınız korunuyor; güncel yerleşimi yükleyip değişikliklerinizi yeniden uygulayın.",
+  topology_reference_unavailable: "Bir cihaz veya port artık erişilebilir değil. Gözlemleri yenileyip bu bağlantıyı kaldırın.",
   username_taken: "Bu kullanıcı adı zaten kullanımda.",
   user_not_found: "Kullanıcı bulunamadı; listeyi yenileyin.",
   last_superadmin: "Son aktif superadmin kaldırılamaz veya yetkisi düşürülemez.",

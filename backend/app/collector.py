@@ -5,9 +5,12 @@ prove a front-panel socket count, so only supplied physical inventory is drawn.
 """
 import asyncio
 import json
+from hashlib import sha256
+from ipaddress import ip_address
 import sqlalchemy as sa
+from pydantic import ValidationError
 
-from .contracts import Health, InterfaceSample, ManagedDevice, Telemetry
+from .contracts import EndpointCollection, EndpointObservation, Health, InterfaceSample, ManagedDevice, Telemetry
 from .database import now
 from .models import Interface, Observation, ReadQuality
 from .ssh import connect
@@ -39,14 +42,18 @@ async def collect_linux(store, vault, device):
         addresses_raw = await read_limited(conn, "ip -j address show")
         uptime_raw = await read_limited(conn, "cat /proc/uptime")
         boot_id = (await read_limited(conn, "cat /proc/sys/kernel/random/boot_id")).strip()
+        try:
+            neighbors_raw = await read_limited(conn, "ip -j neigh show")
+        except (ValueError, TimeoutError):
+            neighbors_raw = None  # Optional read failure must not erase core telemetry.
     with store.engine.begin() as connection:
         current = connection.execute(sa.select(store.devices.c.payload).where(store.devices.c.id == device.id).with_for_update()).scalar_one()
-        device, batch = linux_snapshot(ManagedDevice.model_validate(current), links_raw, addresses_raw, uptime_raw, boot_id)
+        device, batch = linux_snapshot(ManagedDevice.model_validate(current), links_raw, addresses_raw, uptime_raw, boot_id, neighbors_raw)
         store.save_device(device, connection)
     return device, batch
 
 
-def linux_snapshot(device, links_raw, addresses_raw, uptime_raw, boot_id):
+def linux_snapshot(device, links_raw, addresses_raw, uptime_raw, boot_id, neighbors_raw=None):
     links, addresses = json.loads(links_raw), json.loads(addresses_raw)
     if not isinstance(links, list) or len(links) > 8192:
         raise ValueError("invalid_collector_inventory")
@@ -78,5 +85,46 @@ def linux_snapshot(device, links_raw, addresses_raw, uptime_raw, boot_id):
     # The SSH interface read does not re-verify separately supplied chassis data.
     device = device.model_copy(update=updates)
     batch = Telemetry(observed_at=at, source="ssh", reachability="reachable", interfaces=samples,
-        health=Health(uptime_seconds=int(float(uptime_raw.split()[0]))))
+        health=Health(uptime_seconds=int(float(uptime_raw.split()[0]))), endpoints=linux_endpoints(interfaces, neighbors_raw))
     return device, batch
+
+
+def linux_endpoints(interfaces, raw):
+    """ARP/NDP records are interface-scoped observations, not physical neighbors.
+
+    Do not join a bridge/SVI's ARP table to member ports without FDB/VLAN evidence.
+    NUD STALE is retained independently from the age of the telemetry batch.
+    """
+    if raw is None:
+        return EndpointCollection(status="error")
+    try:
+        rows = json.loads(raw)
+        if not isinstance(rows, list) or len(rows) > 16384:
+            raise ValueError
+    except (ValueError, TypeError):
+        return EndpointCollection(status="error")
+    names = {i.name: i.id for i in interfaces}
+    entries, partial = {}, False
+    for row in rows:
+        if not isinstance(row, dict):
+            partial = True
+            continue
+        states = row.get("state", [])
+        states = {states.upper()} if isinstance(states, str) else {str(s).upper() for s in states} if isinstance(states, list) else set()
+        if states & {"FAILED", "INCOMPLETE", "NONE"} or not row.get("lladdr") or row.get("proxy"):
+            continue
+        try:
+            interface_id = names[row["dev"]]
+            address = ip_address(row["dst"])
+            mac = row["lladdr"].lower()
+            identifier = sha256(f"{interface_id}|{mac}|{address}".encode()).hexdigest()[:32]
+            entry = EndpointObservation(id=identifier, interface_id=interface_id, mac=mac, addresses=[str(address)],
+                discovery="arp" if address.version == 4 else "ndp", evidence="ip -j neigh show",
+                state="reachable" if "REACHABLE" in states else "static" if "PERMANENT" in states else "stale" if "STALE" in states else "unknown")
+            entries[identifier] = entry
+        except (KeyError, ValueError, TypeError, AttributeError, ValidationError):
+            partial = True
+        if len(entries) >= 2048:
+            partial = True
+            break
+    return EndpointCollection(status="partial" if partial else "ok", entries=list(entries.values()))

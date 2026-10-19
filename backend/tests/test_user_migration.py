@@ -54,6 +54,7 @@ def test_user_migration_preserves_accounts_sites_and_audit_history(tmp_path, mon
         conn.execute(audit.insert().values(id="historical-event", user_id="admin", event="login", outcome="succeeded", occurred_at=now()))
     command.upgrade(config, "head")
     metadata = sa.MetaData()
+    assert "topology_boards" in sa.inspect(engine).get_table_names()
     users = sa.Table("app_users", metadata, autoload_with=engine)
     audit = sa.Table("audit_events", metadata, autoload_with=engine)
     with engine.connect() as conn:

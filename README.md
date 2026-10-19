@@ -18,6 +18,7 @@ Arayüz: Next.js 16 / React 19 / TypeScript, Apache ECharts, xterm.js ve SWR. Ba
 
 - Cihaz adı/IP, tür ve erişilebilirlik kapsamıyla filtrelenen envanter ve operasyon özeti.
 - Gerçek envantere bağlı, marka bağımsız fiziksel port panelleri ve IP topolojisi.
+- Taralı Topoloji çalışma alanı: kişisel zone’lar, taşınabilir cihazlar, port bağlantısı çizimi ve kaynak/zaman bilgili MAC/IP uç düğümleri.
 - Apache ECharts ile RX/TX, port durumu ve kapasite gösterimleri; bilinmeyen/eski verinin açık ayrımı.
 - Cihaz detayına entegre SSH terminali; backend tarafında site/rol denetimi ve kayıtlı host key doğrulaması.
 - Harici envanter/telemetri aktarımı ve Linux için kullanıcı tarafından başlatılan salt okunur SSH toplama işleri.
@@ -146,7 +147,7 @@ Mevcut verileri korumak için normal işletimde volume silme komutları kullanma
 3. Cihazın OpenSSH **public host anahtarını** ve bağımsız, güvenilir bir kanaldan doğruladığınız SHA256 fingerprint'i **Bağlantı bilgileri** ekranına girin. Bu alan cihazın host anahtarıdır; kullanıcının oturum açma public anahtarı değildir. Anahtarın yalnız ağdan alınması kimliğini doğrulamaz. Otomatik TOFU/`known_hosts=None` kullanılmaz.
 4. **Bağlantıyı test et** ile gerçek SSH el sıkışmasını kontrol edin. **SSH** üst paneli böler; cihaz solda, terminal sağda kalır. Dar ekranda iki alan alt alta geçer. Terminal açıkken yeniden tıklamak ikinci oturum oluşturmaz.
 5. Veri toplama yöntemini seçin:
-   - `Linux · salt okunur SSH`: **Veri topla**, sabit `ip -j -s link show`, `ip -j address show`, `/proc/uptime` ve boot ID okumalarını gerçekleştirir. İki geçerli sayaç gözlemi trafik hızı için gerekir. Donanım port geometrisi bu çıktılardan tahmin edilmez.
+   - `Linux · salt okunur SSH`: **Veri topla**, sabit `ip -j -s link show`, `ip -j address show`, `/proc/uptime`, boot ID ve isteğe bağlı `ip -j neigh show` okumalarını gerçekleştirir. İki geçerli sayaç gözlemi trafik hızı için gerekir. Donanım port geometrisi bu çıktılardan tahmin edilmez.
    - `Harici toplayıcı`: Mevcut SNMP/NETCONF/üretici toplayıcınızı aşağıdaki envanter/gözlem API'sine bağlayın. Üretici komutları veya desteklenmeyen telemetri varsayılmaz. **Envanter aktar** doğrulanmış JSON dosyasını kabul eder.
 
 **Yenile**, alınmış verileri yeniden okur; cihazı sorguladığı anlamına gelmez. Linux toplama işleri açık kullanıcı eylemiyle başlar; zamanlanmış SNMP/SSH polling servisi bu sürümde yoktur. Harici toplayıcı kendi zamanlamasını yönetir. Tarayıcı her 15 saniyede ortak görünümü sorgular; bileşenler ayrı telemetri istekleri oluşturmaz.
@@ -263,6 +264,8 @@ Kaynağın gerçek sözleşmesi [contracts.py](backend/app/contracts.py), [model
 | `PUT /devices/{id}/inventory` | Fiziksel bileşen, port, arayüz ve explicit eşlemeler |
 | `POST /devices/{id}/observations` | Kaynak ve zaman içeren doğrulanmış gözlem |
 | `GET /overview?minutes=60` | Ortak cihaz/port/sağlık/topoloji/zaman serisi görünümü |
+| `GET /topology` | Yetkili sitelerin cihazları, son MAC/IP gözlemleri ve açık uzak cihaz kimlikli bağlantıları |
+| `GET, PUT /topology/board` | Oturum kullanıcısına ait zone, konum ve elle çizilen port bağlantıları; PUT önceki `version` değerini ister |
 | `GET /devices/{id}/observations/latest` | Son ham, normalize edilmiş gözlem |
 | `PUT, DELETE /devices/{id}/credentials`, `PUT /devices/{id}/host-key` | Sır / güven kaydı yönetimi |
 | `POST /devices/{id}/polls`, `POST /devices/{id}/connection-tests`, `GET /jobs` | Kalıcı iş sonucu |
@@ -282,6 +285,46 @@ Telemetride envanterdeki aynı `interface_id` kullanılır; `rx_bps`, `tx_bps`, 
 - `stale_after_seconds` kaynak tarafından belirtilir (varsayılan 120 sn). Eski veri/başarısız güncelleme normal sağlık olarak gösterilmez; son bilinen değerlerin zamanı korunur. Envanter ve telemetri tarihleri ayrı gösterilir.
 - IP topolojisi atanmış IP'nin alt ağıyla L3 ilişkisidir. L2/fiziksel komşuluk yalnız açık ilişki türü ve `evidence` kaydıyla eklenir. Yönetim IP'si/MAC listesi fiziksel bağlantıya çevrilmez. Mevcut VRF/VLAN açıklaması korunur.
 - Grafik ve liste aynı filtre kapsamını kullanır; 20 satırlık sayfalama üst özetleri daraltmaz. Trafik penceresi 5–1440 dakika; cihaz başına son 2880 örnek sınırı aşıldığında ekranda açık uyarı çıkar. Çizimde LTTB görsel örneklemesi, aralık kesintilerinde null boşluklar kullanılır. Ham veriler değiştirilmez. Büyük filo kapasitesi ölçülmüş değildir; benchmark gerekir.
+
+## Topoloji çalışma alanı
+
+Yan menüdeki **Topoloji**, `/topology` sayfasını açar. Taralı SVG çalışma alanında zone oluşturun; bir cihaz seçip **Zone ataması** yapın veya cihazı zone’un içine sürükleyin. Zone başlığını taşıdığınızda içindeki cihazlar birlikte taşınır. Ad, ton, konum ve boyut seçim panelinden düzenlenir; zone kaldırma cihazları silmez. Cihaz/zone odağında ok tuşları, yakınlaştırma düğmeleri, **Ortala**, arama ve cihaz seçimi sürüklemeye alternatif sunar. Mobilde normal dokunuş sayfayı kaydırır; **Taşıma modu** alan içi sürüklemeyi etkinleştirir. Tarayıcı yakınlaştırması engellenmez.
+
+**Bağlantı ekle**, envanterde gerçekten bulunan iki cihazın portlarını seçtirir. Kesikli kullanıcı çizimi, toplayıcının L2/fiziksel kanıtlı ilişkilerinden ayrıdır; cihaz konfigürasyonuna komut göndermez. Mevcut istatistiksel ECharts grafikleri ve detay sayfasındaki IP topolojisi değişmez. Yeni düzenleme yüzeyi React/SVG’dir; gözlem, geometri ve etkileşim kodları ayrı katmanlardadır.
+
+Yerleşim kullanıcıya özeldir; viewer dahil her rol yalnız **kendi çizimini** düzenleyebilir. Bu yetki cihaz/telemetri yazma yetkisi vermez. Envanterin mevcut sahiplik sınırı **site yetkisi**dir; oluşturana göre sahiplik alanı yoktur. Başkasının board kimliği kabul edilmez. Sunucu her okumada/yazmada site kapsamını denetler; erişimi kaldırılmış cihaz/port başvuruları okurken gizlenir. **Kaydet** PostgreSQL’e yazar, `version` uyuşmazlığında `409` döner ve arayüz taslağı korur. **Yerleşimi yeniden yükle** açık onayla taslağı bırakır. `0005_topology_workspace` migration’ı yalnız yeni tablo ekler; kullanıcı silinince kişisel yerleşimi FK cascade ile silinir, audit korunur. Standart `docker compose up -d --build` migration’ı API’den önce çalıştırır; veri volume’lerini silmeyin.
+
+### MAC/IP uç verisi
+
+Mevcut `POST /api/v1/devices/{id}/observations` gövdesi isteğe bağlı şu alanı kabul eder (adresler yalnız dokümantasyon örneğidir):
+
+```json
+{
+  "endpoints": {
+    "status": "ok",
+    "entries": [{
+      "id": "vlan10-mac-020000000001-if1",
+      "interface_id": "if1",
+      "mac": "02:00:00:00:00:01",
+      "addresses": ["192.0.2.101"],
+      "vlan": 10,
+      "discovery": "fdb",
+      "state": "unknown",
+      "evidence": "FDB ve aynı VLAN kapsamındaki doğrulanmış ARP eşlemesi"
+    }]
+  }
+}
+```
+
+Bu parça tek başına tam telemetri isteği değildir; mevcut `observed_at`, `source` ve diğer alanlarla gönderilir. ID toplayıcıda kararlı tutulmalı; arayüz envanterde bulunmalıdır. `status`: `ok`, `partial`, `unknown`, `unsupported`, `error`; alan gönderilmemiş eski gözlemler **henüz toplanmadı**, başarılı boş tablo **kayıt yok** şeklinde ayrılır. Bir snapshot en fazla 2048 uç içerir; kısmi tabloda `partial` gönderin. MAC tekil yayın adresi olarak doğrulanır, IP’ler IPv4/IPv6 olarak ayrıştırılır. `discovery` FDB, ARP veya NDP’dir; `state` komşuluk durumudur, bilgisayarın çevrimiçi olduğunu varsaymaz. Zaman/kaynak ve güncellik telemetri snapshot’ından gelir.
+
+Linux toplayıcısı [iproute2 komşuluk tablosunu](https://github.com/iproute2/iproute2/blob/main/man/man8/ip-neighbour.8) salt okunur biçimde alır; FAILED/INCOMPLETE kayıtları uç olarak çizmez ve NUD STALE durumunu saklar. Bridge/SVI ARP kaydını tahminen fiziksel porta dağıtmaz. FDB/VLAN eşlemesi ve üretici switch tabloları harici toplayıcıdan gelmelidir; otomatik SNMP/LLDP tarayıcısı eklenmemiştir. Yönetim IP’si veya eşleşen cihaz adı üzerinden kablo üretilmez.
+
+Uç düğümlerin bilgisayar sembolü **uç kaydı** anlamındadır, donanım türü kanıtı değildir. IP bilinmiyorsa boşluğu açıkça gösterir. Seçimde MAC, tüm IP’ler, VLAN, arayüz, yalnız explicit eşlenmiş fiziksel port, kaynak, kanıt ve gözlem zamanı görünür. Aynı MAC farklı cihaz/port/VLAN’da gözlenirse kayıtlar birleştirilmez; arada switch/telefon/köprü bulunabilir.
+
+Cihazlar arası gözlenen bağlantı için mevcut `neighbors` kaydına opsiyonel `remote_device_id` ve `remote_interface_id` eklenir. Uzak kimlik erişim kapsamında olmalı; bilinmeyen uzak arayüz port olarak sunulmaz. Sadece `label` olan komşular ayrıntı listesinde eşlenmemiş kalır. L2 gözlemi, fiziksel ilişki ve kullanıcı çizimi ayrı anlam taşır.
+
+Çizimde en fazla 24 cihaz ve cihaz başına 6 uç görünür. Diğer cihazlar arama/odak seçimiyle; **tüm uç kayıtları** seçili cihazın aranabilir, sayfalı listesiyle erişilir. Bu çizim bütçesi veriyi veya toplamları azaltmaz; backend son snapshot’ları tek sorguda getirir, geçmiş trafik yüklenmez. Büyük filo performansı ölçülmüş değildir. Yerleşim sınırları 40 zone, 500 kayıtlı cihaz konumu ve 500 kullanıcı bağlantısıdır. Kaydetme, sürüm/sayımlar ve izinli yerleşim girdileriyle `topology.saved` olarak audit edilir; mevcut audit boyut sınırları geçerlidir. Kaydedilmemiş sürükleme adımları veya tuş vuruşları loglanmaz.
 
 ## Geliştirme ve doğrulama
 
@@ -354,8 +397,17 @@ Geliştirme audit'indeki 5 kayıt, ESLint'in `braces` bağımlılık zincirine a
 
 Kullanıcı/avatar/audit ekranları mevcut ortak panel dili ve SWR oturum/cache akışıyla bütünleştirildi; ECharts değiştirilmedi. Browser eklentisi yoktu; repository Playwright akışı ve `/usr/bin/google-chrome` kullanıldı. Yeni akışların görüntüleri geçici `stocc-netstudio-accounts/` dizinindedir. Testler kendi oluşturdukları geçici kullanıcıları siler; onların audit geçmişini korur. Mevcut QA hesabının adı değiştiğinde ilk toplu regresyon giriş adımında durdu; hesabı değiştirmek yerine ayrı proje/volume'lerde yeniden çalıştırıldı ve 17 senaryo geçti.
 
-PostgreSQL testi için `backend/` altında `STOCC_TEST_MIGRATION_DATABASE_URL` değişkenini yalnız bu test için oluşturulmuş, boş, loopback üzerinde ve adı `stocc_users_test_` ile başlayan bir veritabanına ayarlayıp `../.venv/bin/python -m pytest -q tests/test_user_migration.py` çalıştırın. Test boş olmayan veritabanını reddeder; mevcut QA veya üretim veritabanını kullanmayın. SQLite testi yalnız `0003 → 0004` kapsamındadır; eski `0002` PostgreSQL'e özgü ALTER COLUMN kullanır.
+PostgreSQL testi için `backend/` altında `STOCC_TEST_MIGRATION_DATABASE_URL` değişkenini yalnız bu test için oluşturulmuş, boş, loopback üzerinde ve adı `stocc_users_test_` ile başlayan bir veritabanına ayarlayıp `../.venv/bin/python -m pytest -q tests/test_user_migration.py` çalıştırın. Test boş olmayan veritabanını reddeder; mevcut QA veya üretim veritabanını kullanmayın. SQLite testi `0003` sonrasından güncel migration'a ilerler; eski `0002` PostgreSQL'e özgü ALTER COLUMN kullanır.
 
 Yeni kullanıcı akışları için HTTPS/WSS, Safari/Firefox, yük testi, yedekten geri dönüş ve üretim kabulü bu koşuda yapılmadı. Önceki TLS sonucu yeni akışların TLS doğrulaması sayılmaz. Starlette/httpx, Alembic yapılandırması ve Vite geçiş uyarıları sürmektedir; başarısız test değildir. Audit değişmezliği ve otomatik retention bu kapsamda uygulanmadı.
+
+### Topoloji çalışma alanı doğrulaması — 2026-10-19
+
+- Backend: 66 test geçti; varsayılan koşuda isteğe bağlı PostgreSQL testi atlandı. Ayrı boş PostgreSQL 16 veritabanında migration/koruma testleri ayrıca geçti (`0001 → 0005`).
+- Frontend: 23 birim testi, ESLint, TypeScript ve Docker web/API production build geçti.
+- Gerçek Nginx/API/PostgreSQL/SSH fixture zincirinde 21 Playwright senaryosu geçti. Yeni dört senaryo kişisel zone/atama, klavye ve fare taşıması, port bağlantısı, MAC/IP seçimi, kaydetme/yeniden açma, sürüm çakışması, zoom/arama, mobile yerleşim ve zone/çizim silerken cihazların korunmasını kapsar. Mevcut hesap, SSH ve ECharts regresyonları da geçti.
+- Test ortamı ayrı `stocc-topology-qa-20261019` Compose projesidir; mevcut kullanıcı kurulumu veya verileri değiştirilmedi. Önceki test koşuları giriş limitine ulaştığında yalnız izole API yeniden başlatıldı; uygulamanın güvenlik limitleri gevşetilmedi. Geçici test kullanıcıları ve onlara ait board’lar test temizliğinde kaldırıldı; audit korundu.
+- Browser eklentisi bulunmadığı için mevcut Playwright ve sistem Chromium’u kullanıldı. Yeni sayfa 1536×1000, 1920×1080, 390×844 ve 844×390 boyutlarında incelendi; ekran kanıtları `/tmp/stocc-netstudio-topology/` altındadır, üretim varlığı değildir.
+- Testler sentetik envanterle yapıldı. Fiziksel switch FDB/LLDP entegrasyonu, yeni sayfanın HTTPS üzerinde tarayıcı akışı, gerçek dokunmatik cihaz, Firefox/Safari ve büyük filo yük testi bu koşuda doğrulanmadı.
 
 Önceki kapsam ve kararların tarihsel kaydı: [ilk uygulama raporu](stocc-netstudio-uygulama-raporu.md). Güncel çalışma sınırları bu README ve kaynak koddaki sözleşmelerdir.

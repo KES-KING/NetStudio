@@ -41,6 +41,8 @@ SAFE_KEYS = frozenset({
     "page", "filters", "q", "type", "status", "minutes", "device_id", "port_id", "node_id",
     "bytes", "width", "height", "duration_seconds", "error_code", "job_id", "result_code",
     "scope", "session_count", "avatar_changed", "confirmation_username", "from", "to", "actor", "event", "outcome", "target_id",
+    "version", "zone_count", "device_count", "link_count", "zones", "placements", "links", "id", "x", "y", "tone", "zone_id",
+    "source_device_id", "source_port_id", "target_device_id", "target_port_id",
 })
 SECRET_TEXT = re.compile(
     r"-----BEGIN .*PRIVATE KEY-----|\bBearer\s+\S+|(?:password|passwd|passphrase|secret|token|authorization|cookie|private_key)\s*[:=]",

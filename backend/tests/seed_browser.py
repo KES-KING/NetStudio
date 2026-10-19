@@ -36,9 +36,11 @@ def main():
     response = client.post("/api/v1/session/login", json={"username": "qa-admin", "password": PASSWORD}); response.raise_for_status()
     client.headers["x-csrf-token"] = response.json()["csrf_token"]
     key = httpx.get(key_url).json()
+    device_ids = []
     for n, name in enumerate(["QA-Core-01", "QA-Edge-02", "QA-Distribution-03"]):
         response = client.post("/api/v1/devices", json={"name": name, "site": "TEST FIXTURE / isolated", "management_address": address if n == 0 else f"192.0.2.{20+n}", "ssh_port": 2222 if n == 0 else 22, "device_type": "switch" if n < 2 else "router", "credentials": {"username": "lab", "password": "lab-secret"} if n == 0 else None}); response.raise_for_status()
         identifier = response.json()["id"]
+        device_ids.append(identifier)
         value = inventory(now() - timedelta(hours=2))
         unknown = value["interfaces"][0]["admin_up"]
         count = 28 if n == 0 else 10 if n == 1 else 16
@@ -50,6 +52,13 @@ def main():
             at = now() - timedelta(minutes=45-step + (120 if n == 1 else 0))
             samples = [{"interface_id": f"if{i}", "admin_up": i < count-1, "oper_up": i < count-5, "rx_bps": (4 + step%9 + i%3) * 1_000_000 if i < 5 else 0, "tx_bps": (2 + step%6) * 1_000_000 if i < 5 else 0, "capacity_bps": 1e9, "duplex": "full", "addresses": [f"10.{n+10}.{i}.1/24"] if i in [1,2,25] else []} for i in range(1,count)]
             data = observation(at, interfaces=samples if n != 2 else [], reachability="unreachable" if n == 2 else "reachable", stale_after_seconds=900, health={"status":"warning" if n == 0 else "unknown", "evaluation":"QA fixture: fan warning" if n == 0 else None,"cpu_percent":23 if n == 0 else None,"memory_percent":41 if n == 0 else None,"temperature_c":53 if n == 0 else None,"uptime_seconds":804000 if n == 0 else None,"alerts":["QA fixture: fan warning"] if n == 0 else []}, neighbors=[{"id":"lab-peer", "interface_id":"if25","label":"QA upstream", "relation":"l2","evidence":"Isolated test fixture LLDP relation"}] if n == 0 else [])
+            if n < 2:
+                data["endpoints"] = {"status": "ok", "entries": [{"id": f"qa-endpoint-{i}", "interface_id": f"if{i}",
+                    "mac": f"02:00:00:{n:02x}:00:{i:02x}", "addresses": [f"192.0.{n+2}.{100+i}"], "vlan": 10+n,
+                    "discovery": "fdb", "state": "unknown", "evidence": "Isolated QA fixture: same VLAN FDB / ARP correlation"} for i in range(1, 4)]}
+            if n == 1:
+                data["neighbors"] = [{"id": "qa-core-neighbor", "interface_id": "if8", "label": "QA-Core-01", "relation": "l2",
+                    "evidence": "Isolated QA fixture: explicit LLDP inventory identity", "remote_device_id": device_ids[0], "remote_interface_id": "if28"}]
             response = client.post(f"/api/v1/devices/{identifier}/observations", json=data); response.raise_for_status()
         if n == 0:
             response = client.put(f"/api/v1/devices/{identifier}/host-key", json=key); response.raise_for_status()

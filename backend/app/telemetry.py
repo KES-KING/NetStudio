@@ -50,7 +50,9 @@ def ingest(store, device, batch: Telemetry):
         from .contracts import ManagedDevice
         device = ManagedDevice.model_validate(current)
         ids = {i.id for i in device.interfaces}
-        if any(i.interface_id not in ids for i in batch.interfaces) or any(n.interface_id not in ids for n in batch.neighbors):
+        if (any(i.interface_id not in ids for i in batch.interfaces)
+                or any(n.interface_id not in ids for n in batch.neighbors)
+                or any(e.interface_id not in ids for e in batch.endpoints.entries)):
             fail("unknown_interface_id", 422)
         previous = conn.execute(sa.select(store.telemetry.c.payload).where(store.telemetry.c.device_id == device.id)
             .order_by(store.telemetry.c.observed_at.desc()).limit(1)).scalar_one_or_none()
