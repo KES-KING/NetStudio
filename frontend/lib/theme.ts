@@ -22,6 +22,28 @@ export const theme = {
   terminal: "#202429",
   "terminal-text": "#E2E6EB",
 } as const;
+
+// Presentation-only tokens. Keep the shared chart/terminal palette above stable:
+// refreshing a control or navigation surface must not recolor telemetry.
+export const interfaceTokens = {
+  "ui-font":
+    'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  "ui-radius": "0px",
+  "ui-soft": "#F7F8FA",
+  "ui-hover": "#EDF0F3",
+  "ui-nav-text": "#C5CCD5",
+  "ui-nav-hover": "#343940",
+  "ui-line": "#E3E7EC",
+  "ui-control-line": "#C5CCD4",
+  "ui-control-hover": "#8B99A8",
+  "ui-accent-hover": "#29475D",
+  "ui-type-small": "12px",
+  "ui-type-caption": "11px",
+} as const;
+
 export const cssTokens = Object.fromEntries(
-  Object.entries(theme).map(([key, value]) => [`--${key}`, value]),
+  Object.entries({ ...theme, ...interfaceTokens }).map(([key, value]) => [
+    `--${key}`,
+    value,
+  ]),
 );

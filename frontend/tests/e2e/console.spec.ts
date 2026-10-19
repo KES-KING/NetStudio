@@ -175,6 +175,13 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
     "NetStudio",
   );
   await page.evaluate(() => navigator.clipboard.writeText("clipboard-browser"));
+  await page.getByRole("button", { name: "Yapıştır", exact: true }).hover();
+  await expect(
+    page.getByRole("button", { name: "Yapıştır", exact: true }),
+  ).toHaveCSS("background-color", "rgb(66, 71, 77)");
+  await expect(
+    page.getByRole("button", { name: "Yapıştır", exact: true }),
+  ).toHaveCSS("color", "rgb(255, 255, 255)");
   await page.getByRole("button", { name: "Yapıştır", exact: true }).click();
   await page.locator(".xterm-helper-textarea").press("Enter");
   await expect(page.locator(".xterm-rows")).toContainText(
