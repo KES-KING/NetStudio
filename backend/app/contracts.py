@@ -29,7 +29,17 @@ class Credentials(StrictModel):
         return self
 
 
-class DeviceCreate(StrictModel):
+Collector = Literal["external", "linux_ssh", "huawei_vrp"]
+SSHProfile = Literal["standard", "huawei_legacy"]
+
+
+class ConnectionSettings(StrictModel):
+    collector: Collector = "external"
+    ssh_profile: SSHProfile = "standard"
+    legacy_ssh_confirmed: bool = False
+
+
+class DeviceCreate(ConnectionSettings):
     name: str = Field(min_length=1, max_length=160)
     management_address: str = Field(max_length=255)
     site: str = Field(min_length=1, max_length=160)
@@ -37,7 +47,6 @@ class DeviceCreate(StrictModel):
     vendor: str = Field(default="", max_length=120)
     model: str = Field(default="", max_length=160)
     ssh_port: int = Field(default=22, ge=1, le=65535)
-    collector: Literal["external", "linux_ssh"] = "external"
     credentials: Credentials | None = None
 
     @field_validator("management_address")
@@ -45,7 +54,8 @@ class DeviceCreate(StrictModel):
     def valid_address(cls, value):
         # Inventory stores an IP, not a URL/hostname which can change after approval.
         address = ip_address(value)
-        if address.is_unspecified or address.is_multicast or address.is_link_local:
+        address = getattr(address, "ipv4_mapped", None) or address
+        if address.is_unspecified or address.is_multicast or address.is_link_local or "%" in value:
             raise ValueError("invalid_management_address")
         return str(address)
 
@@ -53,7 +63,8 @@ class DeviceCreate(StrictModel):
 class ManagedDevice(Device):
     device_type: Literal["switch", "router", "firewall", "server", "other"] = "switch"
     ssh_port: int = 22
-    collector: Literal["external", "linux_ssh"] = "external"
+    collector: Collector = "external"
+    ssh_profile: SSHProfile = "standard"
     credential_configured: bool = False
     host_key_fingerprint: str | None = None
     inventory_observed_at: datetime | None = None
@@ -104,20 +115,26 @@ class InterfaceSample(StrictModel):
     capacity_bps: float | None = Field(default=None, gt=0)
     rx_bps: float | None = Field(default=None, ge=0)
     tx_bps: float | None = Field(default=None, ge=0)
+    rate_interval_seconds: int | None = Field(default=None, ge=1, le=86400)
     in_octets: int | None = Field(default=None, ge=0, le=2**64 - 1)
     out_octets: int | None = Field(default=None, ge=0, le=2**64 - 1)
     discontinuity: str | None = Field(default=None, max_length=160)
+    counter_epoch_known: bool = True
     quality: Literal["ok", "partial", "unknown", "unsupported", "error"] = "ok"
     duplex: Literal["full", "half", "unknown"] = "unknown"
     errors: int | None = Field(default=None, ge=0)
     discards: int | None = Field(default=None, ge=0)
+    tx_errors: int | None = Field(default=None, ge=0)
+    tx_discards: int | None = Field(default=None, ge=0)
     access_vlan: int | None = Field(default=None, ge=1, le=4094)
+    pvid: int | None = Field(default=None, ge=1, le=4094)
     vlan_mode: Literal["access", "trunk", "unknown"] = "unknown"
     poe_watts: float | None = Field(default=None, ge=0)
     transceiver_present: bool | None = None
     transceiver_model: str | None = Field(default=None, max_length=160)
     addresses: list[str] = Field(default_factory=list, max_length=128)
     vrf: str | None = Field(default=None, max_length=160)
+    vrf_known: bool = True
 
     @field_validator("addresses")
     @classmethod

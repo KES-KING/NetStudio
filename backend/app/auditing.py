@@ -36,7 +36,7 @@ audit_request: ContextVar[AuditRequest | None] = ContextVar("audit_request", def
 SAFE_KEYS = frozenset({
     "input", "before", "after", "changes", "reason", "username", "display_name", "role", "roles",
     "sites", "enabled", "name", "site", "device_type", "management_address", "ssh_port", "vendor",
-    "model", "collector", "credential_configured", "authentication_method", "password_changed",
+    "model", "collector", "ssh_profile", "legacy_ssh_confirmed", "credential_configured", "authentication_method", "password_changed",
     "physical_port_count", "interface_count", "binding_count", "observed_at", "source", "action",
     "page", "filters", "q", "type", "status", "minutes", "device_id", "port_id", "node_id",
     "bytes", "width", "height", "duration_seconds", "error_code", "job_id", "result_code",

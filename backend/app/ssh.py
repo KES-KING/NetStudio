@@ -20,11 +20,37 @@ class ConnectionPolicyError(Exception):
     pass
 
 
-def target_allowed(device):
-    networks = [ip_network(s.strip()) for s in os.getenv("STOCC_SSH_ALLOWED_CIDRS", "").split(",") if s.strip()]
-    address = ip_address(device.management_address)
-    if not any(address in network for network in networks):
+def target_allowed(store, device):
+    # Registration by a site-authorized operator approves exactly this IP/port.
+    # Never let an in-memory/ad-hoc target bypass the persisted inventory.
+    registered = store.get_device(device.id)
+    if not registered or any(getattr(registered, key) != getattr(device, key)
+                             for key in ("management_address", "ssh_port", "site", "ssh_profile", "collector", "host_key_fingerprint")):
+        raise ConnectionPolicyError("device_connection_changed")
+    try:
+        address = ip_address(device.management_address)
+        address = getattr(address, "ipv4_mapped", None) or address
+    except ValueError:
+        raise ConnectionPolicyError("invalid_management_address") from None
+    if address.is_unspecified or address.is_multicast or address.is_link_local or "%" in device.management_address:
+        raise ConnectionPolicyError("invalid_management_address")
+    try:
+        networks = [ip_network(s.strip()) for s in os.getenv("STOCC_SSH_ALLOWED_CIDRS", "").split(",") if s.strip()]
+    except ValueError:
+        raise ConnectionPolicyError("invalid_target_network_policy") from None
+    # Optional installation-wide ceiling; loopback always requires explicit opt-in.
+    if (networks or address.is_loopback) and not any(address in network for network in networks):
         raise ConnectionPolicyError("target_network_denied")
+
+
+def algorithm_options(device):
+    if device.ssh_profile == "standard":
+        return {}
+    if device.ssh_profile != "huawei_legacy":
+        raise ConnectionPolicyError("invalid_ssh_profile")
+    # Per connection only. No global defaults changed, no automatic downgrade.
+    return {"kex_algs": "+diffie-hellman-group-exchange-sha1,diffie-hellman-group1-sha1",
+            "server_host_key_algs": "+ssh-rsa", "encryption_algs": "+aes128-cbc"}
 
 
 def host_key(store, device_id):
@@ -37,7 +63,7 @@ def host_key(store, device_id):
 
 @asynccontextmanager
 async def connect(store, vault, device):
-    target_allowed(device)
+    target_allowed(store, device)
     trusted = host_key(store, device.id)
     credentials = vault.get(device.id)
     keys = []
@@ -49,12 +75,14 @@ async def connect(store, vault, device):
             raise ConnectionPolicyError("invalid_private_key") from error
     else:
         password = credentials["password"]
-    connection = await asyncio.wait_for(asyncssh.connect(
-        device.management_address, port=device.ssh_port, username=credentials["username"], password=password,
-        client_keys=keys, agent_path=None, config=[], known_hosts=([trusted], [], [], [], [], [], []),
-        connect_timeout=10, login_timeout=10, keepalive_interval=20, keepalive_count_max=3,
-        encoding="utf-8", errors="replace"), timeout=12)
-    credentials.clear()
+    try:
+        connection = await asyncio.wait_for(asyncssh.connect(
+            device.management_address, port=device.ssh_port, username=credentials["username"], password=password,
+            client_keys=keys, agent_path=None, config=[], known_hosts=([trusted], [], [], [], [], [], []),
+            connect_timeout=10, login_timeout=10, keepalive_interval=20, keepalive_count_max=3,
+            encoding="utf-8", errors="replace", **algorithm_options(device)), timeout=12)
+    finally:
+        credentials.clear()
     try:
         yield connection
     finally:
@@ -67,6 +95,8 @@ def error_code(error):
         return "host_key_changed"
     if isinstance(error, asyncssh.PermissionDenied):
         return "authentication_failed"
+    if isinstance(error, asyncssh.KeyExchangeFailed):
+        return "ssh_algorithms_incompatible"
     if isinstance(error, (asyncio.TimeoutError, TimeoutError)):
         return "connection_timeout"
     if isinstance(error, (ConnectionPolicyError, SecretStoreError)):
@@ -101,7 +131,7 @@ class SSHBroker:
             fail("terminal_already_open", 409)
         if len(self.sessions) >= 20 or sum(s.user_id == context.user.user_id for s in self.sessions.values()) >= 3:
             fail("terminal_limit", 429)
-        target_allowed(device)
+        target_allowed(self.store, device)
         host_key(self.store, device.id)
         if not device.credential_configured:
             fail("credentials_missing", 409)

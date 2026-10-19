@@ -13,7 +13,7 @@ from pydantic import ValidationError
 from .contracts import EndpointCollection, EndpointObservation, Health, InterfaceSample, ManagedDevice, Telemetry
 from .database import now
 from .models import Interface, Observation, ReadQuality
-from .ssh import connect
+from .ssh import ConnectionPolicyError, connect, target_allowed
 
 
 async def read_limited(conn, command):
@@ -35,7 +35,7 @@ async def read_limited(conn, command):
         process.close()
 
 
-async def collect_linux(store, vault, device):
+async def collect_linux(store, vault, device, authorize=lambda: None):
     async with connect(store, vault, device) as conn:
         # Fixed read-only commands; no browser-provided shell fragments.
         links_raw = await read_limited(conn, "ip -j -s link show")
@@ -46,9 +46,14 @@ async def collect_linux(store, vault, device):
             neighbors_raw = await read_limited(conn, "ip -j neigh show")
         except (ValueError, TimeoutError):
             neighbors_raw = None  # Optional read failure must not erase core telemetry.
+    authorize()
+    target_allowed(store, device)
     with store.engine.begin() as connection:
         current = connection.execute(sa.select(store.devices.c.payload).where(store.devices.c.id == device.id).with_for_update()).scalar_one()
-        device, batch = linux_snapshot(ManagedDevice.model_validate(current), links_raw, addresses_raw, uptime_raw, boot_id, neighbors_raw)
+        current = ManagedDevice.model_validate(current)
+        if (current.collector, current.ssh_profile) != (device.collector, device.ssh_profile):
+            raise ConnectionPolicyError("device_connection_changed")
+        device, batch = linux_snapshot(current, links_raw, addresses_raw, uptime_raw, boot_id, neighbors_raw)
         store.save_device(device, connection)
     return device, batch
 

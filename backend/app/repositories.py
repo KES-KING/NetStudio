@@ -68,7 +68,11 @@ class SqlAlchemyJobRepository:
     def __init__(self, database_url: str) -> None:
         engine_options = {"pool_pre_ping": True, "hide_parameters": True}
         if database_url.startswith("sqlite"):
-            engine_options.update({"connect_args": {"check_same_thread": False}, "poolclass": StaticPool})
+            engine_options.update({"connect_args": {"check_same_thread": False}})
+            # Only an in-memory DB needs a single shared connection. File-backed
+            # tests/jobs must not commit/rollback each other's transactions.
+            if sa.engine.make_url(database_url).database in {None, "", ":memory:"}:
+                engine_options["poolclass"] = StaticPool
         self.engine = sa.create_engine(database_url, **engine_options)
         self.metadata = sa.MetaData()
         self.devices = sa.Table(

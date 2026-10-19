@@ -245,6 +245,9 @@ export function PortDetails({
                 <dt>RX / TX</dt>
                 <dd>
                   {formatRate(sample.rx_bps)} / {formatRate(sample.tx_bps)}
+                  {sample.rate_interval_seconds != null && (
+                    <span className="field-help"> · cihazın son {sample.rate_interval_seconds} saniyelik ortalaması</span>
+                  )}
                 </dd>
               </div>
               <div>
@@ -281,6 +284,15 @@ export function PortDetails({
                   </dd>
                 </div>
               )}
+              {sample.tx_errors != null && (
+                <div><dt>TX hata sayacı</dt><dd>{sample.tx_errors}</dd></div>
+              )}
+              {sample.tx_discards != null && (
+                <div><dt>TX discard sayacı</dt><dd>{sample.tx_discards}</dd></div>
+              )}
+              {sample.pvid != null && (
+                <div><dt>PVID (access/trunk kanıtı değil)</dt><dd>{sample.pvid}</dd></div>
+              )}
               {sample.poe_watts != null && (
                 <div>
                   <dt>PoE tüketimi</dt>
@@ -313,6 +325,7 @@ export function PortDetails({
                     baseline_required: "İkinci sayaç örneği bekleniyor",
                     counter_reset_or_wrap: "Sayaç sıfırlanması veya taşması",
                     counter_discontinuity: "Sayaç sürekliliği değişti",
+                    counter_epoch_unknown: "Sayaç sürekliliği doğrulanamadı; cihazın hız ölçümü de bulunmuyor",
                     invalid_or_missing_interval:
                       "Geçersiz veya eksik zaman aralığı",
                   } as Record<string, string>

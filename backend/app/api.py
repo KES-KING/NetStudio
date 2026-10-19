@@ -18,11 +18,12 @@ from .auth import Auth, COOKIE, fail, session_response
 from .account_api import install_account_routes
 from .auditing import AuditRequest, audit_request, safe_text
 from .collector import collect_linux
-from .contracts import Credentials, DeviceCreate, Inventory, ManagedDevice, StrictModel, Telemetry
+from .huawei import collect_huawei
+from .contracts import ConnectionSettings, Credentials, DeviceCreate, Inventory, ManagedDevice, StrictModel, Telemetry
 from .database import Store, now
 from .models import Job
 from .security import Permission, SecretStoreError, has_permission
-from .ssh import ConnectionPolicyError, SSHBroker, connect, error_code
+from .ssh import ConnectionPolicyError, SSHBroker, connect, error_code, target_allowed
 from .telemetry import ingest, overview
 from .topology import install_topology_routes
 from .vault import CredentialVault, credential_values
@@ -228,11 +229,13 @@ def create_app(store=None, key_file=None):
         auth = context(request, True)
         if not has_permission(auth.user, Permission.INVENTORY_MANAGE, value.site):
             fail("forbidden", 403)
+        if value.ssh_profile == "huawei_legacy" and not value.legacy_ssh_confirmed:
+            fail("legacy_ssh_confirmation_required", 422)
         device_id = str(uuid4())
         device = ManagedDevice(id=device_id, name=value.name, management_address=value.management_address, site=value.site,
             vendor=value.vendor, platform=value.collector, model=value.model, serial="", os_version="", support_status="generic_readonly",
             components=[], physical_ports=[], interfaces=[], bindings=[], device_type=value.device_type, ssh_port=value.ssh_port,
-            collector=value.collector)
+            collector=value.collector, ssh_profile=value.ssh_profile)
         credentials = None
         if value.credentials:
             try:
@@ -245,6 +248,25 @@ def create_app(store=None, key_file=None):
                 app.state.vault.save(device.id, credentials, conn)
         app.state.store.record(auth.user.user_id, "device.created", "succeeded", device.id,
             details={"input": value.model_dump(mode="json", exclude={"credentials"}), "credential_configured": credentials is not None})
+        return app.state.store.get_device(device.id)
+
+    @app.put("/api/v1/devices/{device_id}/connection-settings")
+    def update_connection_settings(device_id: str, value: ConnectionSettings, request: Request):
+        auth, device = device_for(request, device_id, Permission.CREDENTIAL_MANAGE, True)
+        if not has_permission(auth.user, Permission.INVENTORY_MANAGE, device.site):
+            fail("forbidden", 403)
+        with app.state.store.engine.begin() as conn:
+            current = conn.execute(sa.select(app.state.store.devices.c.payload).where(app.state.store.devices.c.id == device.id).with_for_update()).scalar_one()
+            device = ManagedDevice.model_validate(current)
+            if value.ssh_profile == "huawei_legacy" and device.ssh_profile != "huawei_legacy" and not value.legacy_ssh_confirmed:
+                fail("legacy_ssh_confirmation_required", 422)
+            before = {"collector": device.collector, "ssh_profile": device.ssh_profile}
+            after = value.model_dump(exclude={"legacy_ssh_confirmed"})
+            app.state.store.save_device(device.model_copy(update=after), conn)
+        if before != after:
+            app.state.ssh.revoke(device_id=device.id)
+        app.state.store.record(auth.user.user_id, "device.connection.updated", "succeeded", device.id,
+            details={"before": before, "after": after, "legacy_ssh_confirmed": value.legacy_ssh_confirmed})
         return app.state.store.get_device(device.id)
 
     @app.put("/api/v1/devices/{device_id}/inventory")
@@ -330,15 +352,21 @@ def create_app(store=None, key_file=None):
         job = job.model_copy(update={"status": "running", "started_at": now(), "attempt": 1})
         repository.update(job)
         try:
-            auth = app.state.auth.validate(token)
-            if not has_permission(auth.user, Permission.JOB_CREATE, device.site):
-                fail("forbidden", 403)
+            def authorize():
+                auth = app.state.auth.validate(token)
+                if not has_permission(auth.user, Permission.JOB_CREATE, device.site):
+                    fail("forbidden", 403)
+                target_allowed(app.state.store, device)
+            authorize()
             if job.kind == "inventory_read":
-                device, batch = await collect_linux(app.state.store, app.state.vault, device)
+                collect = collect_huawei if device.collector == "huawei_vrp" else collect_linux
+                device, batch = await collect(app.state.store, app.state.vault, device, authorize=authorize)
                 ingest(app.state.store, device, batch)
-                result = {"interface_count": len(batch.interfaces), "source": "ssh"}
+                result = {"interface_count": len(batch.interfaces), "source": "ssh", "collector": device.collector,
+                          "endpoint_status": batch.endpoints.status, "warnings": batch.health.alerts}
             else:
                 async with connect(app.state.store, app.state.vault, device):
+                    authorize()
                     result = {"reachable": True, "source": "ssh"}
             job = job.model_copy(update={"status": "succeeded", "result": result, "result_code": "ssh_verified"})
         except asyncio.CancelledError:
@@ -354,7 +382,7 @@ def create_app(store=None, key_file=None):
 
     async def queue_job(request, device_id, kind):
         auth, device = device_for(request, device_id, Permission.JOB_CREATE, True)
-        if kind == "inventory_read" and device.collector != "linux_ssh":
+        if kind == "inventory_read" and device.collector == "external":
             fail("external_collector_required", 409)
         if len(app.state.jobs) >= 4:
             fail("collector_busy", 429)

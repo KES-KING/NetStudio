@@ -37,7 +37,8 @@ export type Device = {
   read_only: boolean;
   support_status: string;
   ssh_port: number;
-  collector: "external" | "linux_ssh";
+  collector: "external" | "linux_ssh" | "huawei_vrp";
+  ssh_profile?: "standard" | "huawei_legacy";
   credential_configured: boolean;
   host_key_fingerprint: string | null;
   inventory_observed_at: string | null;
@@ -61,9 +62,13 @@ export type Sample = {
   tx_bps: number | null;
   quality: string;
   rate_reason: string | null;
+  rate_interval_seconds?: number | null;
   duplex: string;
   errors: number | null;
   discards: number | null;
+  tx_errors?: number | null;
+  tx_discards?: number | null;
+  pvid?: number | null;
   access_vlan: number | null;
   vlan_mode: string;
   poe_watts: number | null;

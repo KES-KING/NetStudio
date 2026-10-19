@@ -21,7 +21,7 @@ Arayüz: Next.js 16 / React 19 / TypeScript, Apache ECharts, xterm.js ve SWR. Ba
 - Taralı Topoloji çalışma alanı: kişisel zone’lar, taşınabilir cihazlar, port bağlantısı çizimi ve kaynak/zaman bilgili MAC/IP uç düğümleri.
 - Apache ECharts ile RX/TX, port durumu ve kapasite gösterimleri; bilinmeyen/eski verinin açık ayrımı.
 - Cihaz detayına entegre SSH terminali; backend tarafında site/rol denetimi ve kayıtlı host key doğrulaması.
-- Harici envanter/telemetri aktarımı ve Linux için kullanıcı tarafından başlatılan salt okunur SSH toplama işleri.
+- Harici envanter/telemetri aktarımı; Linux ve Huawei VRP için kullanıcı tarafından başlatılan salt okunur SSH toplama işleri.
 - Kişisel profil/avatar/parola yönetimi; `viewer`, `engineer`, `superadmin` rolleri ve yalnız superadmin'e açık kullanıcı yönetimi/ayrıntılı audit.
 - Docker Compose ile PostgreSQL, migration, sır deposu, API, frontend ve gateway kurulumu.
 
@@ -34,6 +34,8 @@ Marka varlıkları `frontend/public/branding/` içindedir: `netstudio-logo.png` 
 Aşağıdaki üç görüntü çalışan uygulamanın izole QA ortamından alınmıştır. Cihazlar, adresler ve telemetri test verisidir; SSH görüntüsü izole test cihazıyla kurulan gerçek oturumu gösterir. Üretim cihazı bilgisi veya bağlantı sırrı içermez. Varsayılan kurulum bu örnek verileri oluşturmaz.
 
 **Güncellik kuralı:** Her görsel arayüz güncellemesinde aşağıdaki üç görüntünün tamamı güncel koddan yeniden alınır ve aynı değişiklik/PR içinde teslim edilir. İnsanlar ve yapay zekâ için ayrıntılar [rule.md](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile), ajanların uygulama adımları [agent.md](agent.md) içindedir.
+
+Son set: **19 Ekim 2026**, `stocc-huawei-qa-20261019` izole Docker ortamı, Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `24716d5` üzerine Huawei/cihaz hedef onayı değişikliklerini içerir; mevcut kullanıcı kurulumu değiştirilmemiştir.
 
 ### Ana sayfa
 
@@ -177,16 +179,19 @@ Sonraki `ps`, `stop`, `up` ve `exec` işlemlerinde de aynı `-p stocc-netstudio-
 ## Gerçek cihazı bağlama
 
 1. **Cihaz Ekle** ile yönetim IP'sini, siteyi, SSH portunu ve cihaz türünü kaydedin. İsteğe bağlı olarak SSH kullanıcı adı ve parola ya da özel anahtar/passphrase tanımlayın. Eksik kimlik bilgilerini daha sonra **Bağlantı bilgileri** üzerinden tamamlayabilirsiniz.
-2. `.env` içindeki `STOCC_SSH_ALLOWED_CIDRS` değerine yalnızca izin verilen yönetim ağlarını yazın; örneğin kendi ağınıza ait belirli bir CIDR. **Boş değer tüm dış SSH bağlantılarını reddeder.** Değişiklikten sonra `docker compose up -d --wait` çalıştırın (TLS kurulumunda aşağıdaki iki `-f` dosyasını da kullanın).
+2. **Yetkili kullanıcı tarafından cihaz eklenmesi, kayıtlı yönetim IP/SSH portu için bağlantı onayıdır.** Cihaz başına `.env` izni eklenmez. `STOCC_SSH_ALLOWED_CIDRS` yalnız isteğe bağlı kurulum geneli ek sınırdır: boşsa kayıtlı hedefler kabul edilir, doluysa bu CIDR sınırı da uygulanır; geçersiz CIDR bağlantıyı reddeder. Loopback adresler ayrıca açık CIDR izni ister; belirsiz, multicast ve link-local hedefler reddedilir. Mevcut kurulumda tanımlı ek sınırlar otomatik kaldırılmaz.
 3. Cihazın OpenSSH **public host anahtarını** ve bağımsız, güvenilir bir kanaldan doğruladığınız SHA256 fingerprint'i **Bağlantı bilgileri** ekranına girin. Bu alan cihazın host anahtarıdır; kullanıcının oturum açma public anahtarı değildir. Anahtarın yalnız ağdan alınması kimliğini doğrulamaz. Otomatik TOFU/`known_hosts=None` kullanılmaz.
 4. **Bağlantıyı test et** ile gerçek SSH el sıkışmasını kontrol edin. **SSH** üst paneli böler; cihaz solda, terminal sağda kalır. Dar ekranda iki alan alt alta geçer. Terminal açıkken yeniden tıklamak ikinci oturum oluşturmaz.
 5. Veri toplama yöntemini seçin:
    - `Linux · salt okunur SSH`: **Veri topla**, sabit `ip -j -s link show`, `ip -j address show`, `/proc/uptime`, boot ID ve isteğe bağlı `ip -j neigh show` okumalarını gerçekleştirir. İki geçerli sayaç gözlemi trafik hızı için gerekir. Donanım port geometrisi bu çıktılardan tahmin edilmez.
+   - `Huawei VRP · salt okunur SSH`: **Veri topla**, VRP sürümünü, arayüzleri/portları, RX/TX hız ve sayaçlarını, IP arayüzlerini, MAC/ARP gözlemlerini ve destekleniyorsa CPU/RAM ölçümlerini okur. VRP 5.120 / S5700 V200R002 biçimi için ayrıştırıcı testleri vardır; [Huawei kurulum ve veri sözleşmesine](docs/huawei-vrp.md) bakın. Model adına bakarak port eklenmez.
    - `Harici toplayıcı`: Mevcut SNMP/NETCONF/üretici toplayıcınızı aşağıdaki envanter/gözlem API'sine bağlayın. Üretici komutları veya desteklenmeyen telemetri varsayılmaz. **Envanter aktar** doğrulanmış JSON dosyasını kabul eder.
 
-**Yenile**, alınmış verileri yeniden okur; cihazı sorguladığı anlamına gelmez. Linux toplama işleri açık kullanıcı eylemiyle başlar; zamanlanmış SNMP/SSH polling servisi bu sürümde yoktur. Harici toplayıcı kendi zamanlamasını yönetir. Tarayıcı her 15 saniyede ortak görünümü sorgular; bileşenler ayrı telemetri istekleri oluşturmaz.
+Mevcut bir cihazı yeniden eklemek gerekmez: **Bağlantı bilgileri → Veri kaynağı** alanından toplayıcısını değiştirin. Eski VRP sürümleri için **SSH uyumluluk profili → Huawei legacy** seçeneği, risk onayıyla yalnız bu cihaza SHA-1 KEX / ssh-rsa / aes128-cbc uyumluluğu ekler. Standart profil varsayılandır; otomatik downgrade veya host anahtarı kabulü yoktur. Profil/veri kaynağı değişikliği audit edilir ve açık terminalleri sonlandırır.
 
-Switch/router üreticilerine özgü sürücüler ve fiziksel cihaz kabulü ayrıca gerekir. Önceki sürümde gerçek konfigürasyon uygulama veya yedekleme akışı bulunmuyordu; bu teslimat bu yetenekleri varmış gibi göstermez. SSH terminali salt okunur komut filtresi uygulamaz: uzak cihaz hesabının yetkileri geçerlidir. En az ayrıcalıklı cihaz hesabı kullanın.
+**Yenile**, alınmış verileri yeniden okur; cihazı sorguladığı anlamına gelmez. Linux/Huawei toplama işleri açık kullanıcı eylemiyle başlar; zamanlanmış SNMP/SSH polling servisi bu sürümde yoktur. Harici toplayıcı kendi zamanlamasını yönetir. Tarayıcı her 15 saniyede ortak görünümü sorgular; bileşenler ayrı telemetri istekleri oluşturmaz.
+
+Diğer üreticiler/sürümler ve fiziksel cihaz kabulü ayrıca gerekir; Huawei ayrıştırıcı testleri fiziksel switch kabulü değildir. Önceki sürümde gerçek konfigürasyon uygulama veya yedekleme akışı bulunmuyordu; bu teslimat bu yetenekleri varmış gibi göstermez. SSH terminali salt okunur komut filtresi uygulamaz: uzak cihaz hesabının yetkileri geçerlidir. En az ayrıcalıklı cihaz hesabı kullanın.
 
 ## HTTPS ve üretim sınırları
 
@@ -302,6 +307,7 @@ Kaynağın gerçek sözleşmesi [contracts.py](backend/app/contracts.py), [model
 | `GET, PUT /topology/board` | Oturum kullanıcısına ait zone, konum ve elle çizilen port bağlantıları; PUT önceki `version` değerini ister |
 | `GET /devices/{id}/observations/latest` | Son ham, normalize edilmiş gözlem |
 | `PUT, DELETE /devices/{id}/credentials`, `PUT /devices/{id}/host-key` | Sır / güven kaydı yönetimi |
+| `PUT /devices/{id}/connection-settings` | Site yetkili engineer/superadmin; `collector`, `ssh_profile`, legacy etkinleştirmede `legacy_ssh_confirmed:true`; serbest hedef/port kabul etmez |
 | `POST /devices/{id}/polls`, `POST /devices/{id}/connection-tests`, `GET /jobs` | Kalıcı iş sonucu |
 | `POST /devices/{id}/ssh-sessions`, `DELETE /ssh-sessions/{id}` | Terminal yaşam döngüsü |
 | `WS /ssh-sessions/{id}/ws` | Kimliği doğrulanmış giriş/çıktı/resize köprüsü |
@@ -443,5 +449,13 @@ Yeni kullanıcı akışları için HTTPS/WSS, Safari/Firefox, yük testi, yedekt
 - Test ortamı ayrı `stocc-topology-qa-20261019` Compose projesidir; mevcut kullanıcı kurulumu veya verileri değiştirilmedi. Önceki test koşuları giriş limitine ulaştığında yalnız izole API yeniden başlatıldı; uygulamanın güvenlik limitleri gevşetilmedi. Geçici test kullanıcıları ve onlara ait board’lar test temizliğinde kaldırıldı; audit korundu.
 - Browser eklentisi bulunmadığı için mevcut Playwright ve sistem Chromium’u kullanıldı. Yeni sayfa 1536×1000, 1920×1080, 390×844 ve 844×390 boyutlarında incelendi; ekran kanıtları `/tmp/stocc-netstudio-topology/` altındadır, üretim varlığı değildir.
 - Testler sentetik envanterle yapıldı. Fiziksel switch FDB/LLDP entegrasyonu, yeni sayfanın HTTPS üzerinde tarayıcı akışı, gerçek dokunmatik cihaz, Firefox/Safari ve büyük filo yük testi bu koşuda doğrulanmadı.
+
+### Huawei VRP ve kayıtlı hedef onayı doğrulaması — 2026-10-19
+
+- Backend: `.venv/bin/pytest -q backend/tests` ile **79 test geçti, 1 isteğe bağlı PostgreSQL migration testi atlandı**. Huawei testleri VRP 5.120 biçimi, iki eski SHA-1 KEX seçeneği, RSA host key, aes128-cbc, gerçek yerel SSH/PTY, sayfalama, rol/site, kayıtlı IP/port onayı, opsiyonel CIDR sınırı, host key reddi, profil değişince oturum kapanması ve başarısız okumada envanter korumasını kapsar. Test sırasında görülen SQLite eşzamanlı bağlantı paylaşımı da giderildi; PostgreSQL pool davranışı değişmedi.
+- Frontend: **23 birim testi**, ESLint, TypeScript ve Docker API/web production build geçti. ECharts renderer/seri hesapları korunur; port ölçüm penceresi, PVID ve yönlü sayaçlar gerçek API alanlarından gösterilir.
+- `http://127.0.0.1:13003` üzerindeki izole `stocc-huawei-qa-20261019` projesinde **23 Playwright senaryosu geçti**. Huawei/legacy form akışı 1536×1024 ve 390×844 boyutlarında; genel regresyonlar 320–2560 px genişliklerde doğrulandı. Browser eklentisi bulunmadığından mevcut Playwright ve sistem Chrome kullanıldı. Sayfa kimliği/içerik, framework hata katmanı, konsol, klavye/SSH etkileşimi ve görüntüler kontrol edildi; beklenen giriş öncesi 401 dışında ilgili konsol hatası yoktu.
+- README'nin üç görüntüsü aynı güncel çalışma ağacından yenilendi. QA'da ek CIDR sınırı boş bırakılarak kayıtlı hedef onayı gerçek SSH zincirinde denendi. Çalışan `stocc-netstudio-fresh` kurulumu, `.env`, kullanıcı kayıtları ve anahtarları değiştirilmedi; yeni özellikler için mevcut kurulumun imajları ayrıca yeniden build edilmelidir. Yeni DB migration gerekmez.
+- Fiziksel Huawei switch'e canlı bağlantı, yeni akışta HTTPS/WSS, Firefox/Safari ve yük testi bu koşuda yapılmadı. Gerçek cihazın bağımsız host anahtarı doğrulaması hâlâ gereklidir. Starlette/httpx, Alembic, Vite ve legacy FFDH deprecation uyarıları başarısız test değildir. Kullanım ve ölçüm sınırları [Huawei VRP rehberinde](docs/huawei-vrp.md) açıklanır.
 
 Önceki kapsam ve kararların tarihsel kaydı: [ilk uygulama raporu](stocc-netstudio-uygulama-raporu.md). Güncel çalışma sınırları bu README ve kaynak koddaki sözleşmelerdir.

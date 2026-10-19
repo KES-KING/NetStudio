@@ -150,6 +150,10 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
     page.getByRole("region", { name: "1 port detayları" }),
   ).toContainText("Ethernet1/1");
   await page.getByRole("button", { name: "Detayı kapat" }).click();
+  await page.screenshot({
+    path: join(evidenceDir, "detail-desktop.png"),
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "SSH", exact: true }).click();
   await expect(page.getByText("Bağlandı", { exact: true })).toBeVisible({
     timeout: 20000,
@@ -284,6 +288,6 @@ test("device create and credential completion preserve secrets", async ({
   await dialog.getByRole("button", { name: "Kapat", exact: true }).click();
   await page.getByRole("button", { name: "SSH", exact: true }).click();
   await expect(page.locator("p[role=alert]")).toContainText(
-    "izin verilen SSH ağları kapsamında değil",
+    "SSH host anahtarı henüz doğrulanmamış",
   );
 });

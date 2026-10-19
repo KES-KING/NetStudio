@@ -127,6 +127,58 @@ function credentials(data: FormData) {
   };
 }
 
+function connectionSettings(data: FormData) {
+  return {
+    collector: data.get("collector"),
+    ssh_profile: data.get("ssh_profile"),
+    legacy_ssh_confirmed: data.get("legacy_ssh_confirmed") === "on",
+  };
+}
+
+function ConnectionFields({ device }: { device?: Device }) {
+  const [profile, setProfile] = useState(device?.ssh_profile ?? "standard");
+  return (
+    <fieldset>
+      <legend>Veri toplama ve SSH uyumluluğu</legend>
+      <div className="form-grid">
+        <label>
+          Veri kaynağı
+          <select name="collector" aria-label="Veri kaynağı" defaultValue={device?.collector ?? "external"}>
+            <option value="external">Harici toplayıcı / envanter aktarımı</option>
+            <option value="linux_ssh">Linux · salt okunur SSH</option>
+            <option value="huawei_vrp">Huawei VRP · salt okunur SSH</option>
+          </select>
+        </label>
+        <label>
+          SSH uyumluluk profili
+          <select name="ssh_profile" aria-label="SSH uyumluluk profili" value={profile} onChange={(event) => setProfile(event.target.value as "standard" | "huawei_legacy")}>
+            <option value="standard">Standart (önerilen)</option>
+            <option value="huawei_legacy">Huawei legacy · eski VRP</option>
+          </select>
+        </label>
+      </div>
+      <p className="field-help">
+        Cihaz kaydı, bu yönetim IP adresi ve SSH portu için bağlantı onayıdır;
+        cihaz başına .env izni gerekmez. Kurulum geneli ek ağ kısıtı varsa uygulanır.
+        Host anahtarının ayrıca doğrulanması gerekir.
+      </p>
+      {profile === "huawei_legacy" && (
+        <div className="notice warning">
+          <p>Yalnız bu cihaz için SHA-1 anahtar değişimi, ssh-rsa ve aes128-cbc desteği eklenir.
+            Eski algoritmalar daha zayıftır; mümkünse cihaz yazılımını güncelleyip Standart profile dönün.
+            Host anahtarı doğrulaması korunur.</p>
+          {device?.ssh_profile !== "huawei_legacy" && (
+            <label className="checkbox">
+              <input type="checkbox" name="legacy_ssh_confirmed" required />
+              Bu cihaz için eski SSH algoritmalarının kullanımını onaylıyorum.
+            </label>
+          )}
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
 export function AddDevice({
   onClose,
   onSaved,
@@ -152,7 +204,7 @@ export function AddDevice({
       vendor: data.get("vendor"),
       model: data.get("model"),
       ssh_port: Number(data.get("ssh_port")),
-      collector: data.get("collector"),
+      ...connectionSettings(data),
       credentials: creds.username ? creds : null,
     };
     try {
@@ -225,16 +277,8 @@ export function AddDevice({
               required
             />
           </label>
-          <label>
-            Veri kaynağı
-            <select name="collector">
-              <option value="external">
-                Harici toplayıcı / envanter aktarımı
-              </option>
-              <option value="linux_ssh">Linux · salt okunur SSH</option>
-            </select>
-          </label>
         </div>
+        <ConnectionFields />
         <CredentialFields optional />
         {error && (
           <p role="alert" className="notice error">
@@ -267,6 +311,24 @@ export function ConnectionSettings({
     [error, setError] = useState<string | null>(null),
     [message, setMessage] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  async function saveSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await api(`/api/v1/devices/${device.id}/connection-settings`, {
+        method: "PUT", body: JSON.stringify(connectionSettings(data)),
+      });
+      setMessage("Veri kaynağı ve SSH profili kaydedildi. Değişiklik varsa açık SSH oturumları sonlandırıldı.");
+      onSaved();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
   async function saveCredentials(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -336,6 +398,12 @@ export function ConnectionSettings({
   return (
     <Dialog title={`${device.name} · Bağlantı bilgileri`} onClose={onClose}>
       <div className="dialog-body">
+        <form onSubmit={saveSettings}>
+          <ConnectionFields key={`${device.id}:${device.collector}:${device.ssh_profile}`} device={device} />
+          <div className="form-actions">
+            <button className="primary" disabled={busy}>Bağlantı ayarlarını kaydet</button>
+          </div>
+        </form>
         <p className="notice">
           {device.credential_configured
             ? "Kimlik bilgisi tanımlı. Sır alanını boş bırakmak kayıtlı bilgileri korur."

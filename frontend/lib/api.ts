@@ -98,7 +98,19 @@ const messages: Record<string, string> = {
   host_key_replacement_requires_confirmation:
     "Kayıtlı host anahtarını değiştirmek için açık onay gerekli.",
   target_network_denied:
-    "Bu yönetim adresi sunucunun izin verilen SSH ağları kapsamında değil.",
+    "Kayıtlı hedef, kurulumun ek ağ kısıtı tarafından reddedildi. Loopback hedefler ayrıca açık izin gerektirir.",
+  invalid_target_network_policy: "Kurulumun ek SSH ağ kısıtı geçersiz; bağlantı güvenli biçimde reddedildi.",
+  invalid_management_address: "Bu yönetim IP adresi bağlantı için uygun değil.",
+  device_connection_changed: "Cihazın bağlantı ayarları değişti. Görünümü yenileyip tekrar deneyin.",
+  legacy_ssh_confirmation_required: "Eski SSH algoritmalarını etkinleştirmek için cihaz bazında açık onay gerekli.",
+  ssh_algorithms_incompatible: "Cihaz ile SSH algoritmaları uyuşmuyor. Eski Huawei VRP cihazlarında Bağlantı bilgileri bölümündeki Huawei legacy profilini değerlendirin.",
+  collector_not_huawei_vrp: "Bağlanılan cihazın Huawei VRP sürüm çıktısı doğrulanamadı. Veri kaynağı seçimini kontrol edin.",
+  collector_parse_failed: "Cihazın arayüz çıktısı tanınamadı. Son envanter korundu; VRP sürümünü ve salt okunur komut yetkilerini kontrol edin.",
+  collector_command_unsupported: "Veri toplama için gereken salt okunur komut bu cihazda desteklenmiyor.",
+  collector_permission_denied: "Cihaz kullanıcısının gerekli salt okunur komutu çalıştırma yetkisi yok.",
+  collector_timeout: "Veri toplama zaman aşımına uğradı; son envanter korundu.",
+  collector_disconnected: "Veri toplama sırasında SSH oturumu kesildi; son envanter korundu.",
+  collector_output_limit: "Cihaz çıktısı güvenli veri toplama boyut sınırını aştı; son envanter korundu.",
   terminal_already_open:
     "Bu cihaz için zaten açık bir terminal oturumunuz var.",
   terminal_limit: "Eşzamanlı terminal sınırına ulaşıldı.",

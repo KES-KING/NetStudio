@@ -171,7 +171,7 @@ export default function DeviceDetail({ id }: { id: string }) {
               >
                 Bağlantıyı test et
               </button>
-              {device.collector === "linux_ssh" && (
+              {device.collector !== "external" && (
                 <button
                   disabled={
                     busy ||

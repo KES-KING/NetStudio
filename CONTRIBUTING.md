@@ -40,7 +40,7 @@ Compose yapılandırma kontrolü repository kökünde `docker compose config --q
 - Eksik, desteklenmeyen veya eski metrikleri sıfır/sağlıklı olarak göstermeyin. Fiziksel port ve mantıksal arayüz kimliklerini koruyun.
 - Port türünü, fiziksel bağlantıyı veya üretici özelliğini veriden doğrulanmadıkça tahmin etmeyin.
 - Trafik birimlerini ve kapsamını belirtin; RX/TX'i tek yön kapasitesine birlikte bölmeyin.
-- Erişim, sır yönetimi ve terminal yetkisini backend'de doğrulayın. Host key ve CIDR kontrollerini gevşetmeyin.
+- Erişim, sır yönetimi ve terminal yetkisini backend'de doğrulayın. Yetkili cihaz kaydı hedef onayıdır; host key doğrulaması ve varsa ek kurulum CIDR sınırı korunur. Legacy SSH yalnız cihaz bazında açık onayla etkinleştirilir; [güvenlik politikasını](SECURITY.md) izleyin.
 - `.env`, `.secrets/`, sertifika özel anahtarları veya veritabanı dump'larını commit etmeyin.
 - Migration'lar mevcut verileri korumalıdır. Yıkıcı değişiklikler, taşıma ve geri dönüş gereksinimleri açıkça tartışılmalıdır.
 - Test fixture'ları üretim veri kaynağı değildir. Yerel/QA sonuçlarını fiziksel cihaz veya üretim doğrulaması olarak raporlamayın.

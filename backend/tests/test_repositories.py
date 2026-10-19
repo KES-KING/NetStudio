@@ -29,3 +29,10 @@ def test_sqlalchemy_repository_round_trips_against_sqlite_contract():
     assert loaded is not None
     assert loaded.kind == "connection_test"
     assert loaded.next_run_at is not None
+
+
+def test_file_sqlite_does_not_share_a_connection_between_concurrent_jobs(tmp_path):
+    repository = SqlAlchemyJobRepository(f"sqlite+pysqlite:///{tmp_path / 'jobs.db'}")
+    with repository.engine.connect() as first, repository.engine.connect() as second:
+        assert first.connection.driver_connection is not second.connection.driver_connection
+    repository.engine.dispose()

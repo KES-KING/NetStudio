@@ -103,6 +103,8 @@ export function OperationSummary({
         <p className="chart-note">
           RX ve TX ayrı yönlerdir. Gözlenen arayüz toplamları; benzersiz ağ
           trafiği değildir. Eksik örnekler boşluk bırakır.
+          {rows.some((r) => r.telemetry?.interfaces.some((i) => i.rate_interval_seconds != null)) &&
+            " Cihazın raporladığı ortalama hızların ölçüm penceresi port detayında belirtilir."}
           {rows.some((r) => r.history_truncated) &&
             " Yoğun kayıt: cihaz başına son 2880 örnek gösteriliyor."}
         </p>

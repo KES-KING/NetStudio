@@ -26,7 +26,9 @@ def normalize(batch, previous):
         if sample["in_octets"] is not None and sample["out_octets"] is not None and sample["rx_bps"] is None and sample["tx_bps"] is None:
             prior = previous_by_id.get(sample["interface_id"])
             elapsed = (batch.observed_at - timestamp(previous["observed_at"])).total_seconds() if previous else 0
-            if not prior or prior.get("in_octets") is None or prior.get("out_octets") is None:
+            if not sample["counter_epoch_known"] or (prior and prior.get("counter_epoch_known") is False):
+                reason = "counter_epoch_unknown"
+            elif not prior or prior.get("in_octets") is None or prior.get("out_octets") is None:
                 reason = "baseline_required"
             elif prior.get("quality") not in {"ok", "partial"}:
                 reason = "previous_sample_invalid"
@@ -112,12 +114,15 @@ def topology(device, data):
         if not iface:
             continue
         interface_node = f"interface:{iface.id}"
+        vrf_known = sample.get("vrf_known", True)
+        vrf_scope = (sample.get("vrf") or "default") if vrf_known else f"unknown:{iface.id}"
+        vrf_label = (sample.get("vrf") or "Varsayılan VRF") if vrf_known else "VRF bilinmiyor; yalnız bu arayüzün IP ilişkisi"
         for address in sample["addresses"]:
             cidr = ip_interface(address)
-            subnet_id = f"subnet:{sample.get('vrf') or 'default'}:{cidr.network}"
+            subnet_id = f"subnet:{vrf_scope}:{cidr.network}"
             nodes[interface_node] = {"id": interface_node, "name": iface.name, "kind": "interface", "interface_id": iface.id,
                 "detail": ", ".join(sample["addresses"]), "vrf": sample.get("vrf"), "vlan": sample.get("access_vlan")}
-            nodes[subnet_id] = {"id": subnet_id, "name": str(cidr.network), "kind": "subnet", "detail": sample.get("vrf") or "Varsayılan VRF"}
+            nodes[subnet_id] = {"id": subnet_id, "name": str(cidr.network), "kind": "subnet", "detail": vrf_label}
             links.append({"source": interface_node, "target": subnet_id, "relation": "l3", "evidence": address})
     for neighbor in (data or {}).get("neighbors", []):
         iface = next((i for i in device.interfaces if i.id == neighbor["interface_id"]), None)

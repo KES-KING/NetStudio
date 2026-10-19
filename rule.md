@@ -25,7 +25,7 @@ Bu dosya Stocc NetStudio üzerinde çalışan insanlar ve yapay zekâ araçları
 - Trafik birimini, yönünü ve kapsamını belirtin; RX/TX toplamını tek yön kapasitesine bölmeyin.
 - MAC/IP gözlemi, L2 komşuluk, doğrulanmış fiziksel ilişki ve elle çizilen topoloji bağlantısını ayrı gösterin. MAC tablosundan kablo veya uç cihaz türü tahmin etmeyin.
 - Üretim ekranlarına sabit/rastgele örnek değer bağlamayın. Fixture'lar yalnız izole test ortamına aittir.
-- Rol/site, oturum, CSRF/origin, SSH hedefi, CIDR ve host key kontrollerini backend'de koruyun. Ayrıntılı güvenlik gereksinimleri için [SECURITY.md](SECURITY.md) geçerlidir.
+- Rol/site, oturum, CSRF/origin, kayıtlı SSH hedefi ve host key kontrollerini backend'de koruyun. Yetkili cihaz ekleme kayıtlı IP/port için onaydır; cihaz başına `.env` izni gerekmez. Varsa kurulum geneli ek CIDR kısıtı uygulanır. Eski SSH algoritmaları yalnız cihaz bazında açık onayla seçilir. Ayrıntılar için [SECURITY.md](SECURITY.md) geçerlidir.
 - Sırları, özel anahtarları, token/cookie'leri, gerçek müşteri verisini veya ham terminal içeriğini kaynak koda, loglara ya da public belgelere koymayın.
 
 ## 4. Docker ve mevcut veriler

@@ -18,6 +18,7 @@ const eventLabels: Record<string, string> = {
   "request.completed": "Tamamlanan istek", "page.view": "Sayfa görüntüleme", "inventory.filter": "Envanter filtreleme",
   "port.select": "Port seçimi", "topology.select": "Topoloji seçimi", "secrets.rotated": "Sır anahtarı rotasyonu",
   "topology.saved": "Topoloji yerleşimi kaydetme",
+  "device.connection.updated": "Cihaz veri kaynağı / SSH profili güncelleme",
 };
 const outcomeLabels: Record<string, string> = {
   succeeded: "Başarılı", denied: "Reddedildi", failed: "Başarısız", pending: "Bekliyor", connected: "Bağlandı",

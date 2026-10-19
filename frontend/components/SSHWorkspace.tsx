@@ -18,6 +18,8 @@ const messages: Record<string, string> = {
   session_revoked: "Oturum veya yetki geçersiz",
   host_key_changed: "Host anahtarı değişti; bağlantı durduruldu",
   connection_failed: "SSH bağlantısı kurulamadı",
+  ssh_algorithms_incompatible: "SSH algoritmaları uyuşmuyor; cihazın uyumluluk profilini kontrol edin",
+  device_connection_changed: "Cihazın bağlantı ayarları değişti; yeniden bağlanın",
   credentials_deleted: "Kimlik bilgileri silindi",
   server_shutdown: "Sunucu oturumu sonlandırdı",
   client_closed: "Oturum kapatıldı",

@@ -13,7 +13,7 @@ Bu dosya Stocc NetStudio üzerinde çalışan kodlama ajanları içindir. İnsan
 
 - Mevcut tasarım tokenlarını, ortak bileşenleri ve veri getirme yapısını kullanın. Apache ECharts'ı, beyaz içerik/koyu navigasyon dilini ve şeffaf marka varlıklarını koruyun.
 - Eksik veriyi üretmeyin; fiziksel port ve topoloji ilişkilerini yalnız doğrulanmış envanter/gözlemden türetin.
-- Yetki, sır ve SSH güvenlik sınırlarını koruyun. Testi geçirmek için kimlik doğrulama, origin/CSRF, host key veya CIDR denetimini devre dışı bırakmayın.
+- Yetki, sır ve SSH güvenlik sınırlarını koruyun. Kayıtlı cihaz ekleme hedef onayıdır; cihaz başına `.env` izni eklemeyin. Testi geçirmek için kimlik doğrulama, origin/CSRF, host key veya yapılandırılmış ek CIDR sınırını devre dışı bırakmayın. Legacy SSH profili cihaz bazlı açık onay gerektirir; otomatik algoritma düşürme yapmayın.
 - Docker işlemlerinden önce context/proje/port/volume hedeflerini doğrulayın. Doğrudan `docker compose` kullanın; çalışan kullanıcı ortamını test fixture'ıyla değiştirmeyin.
 - Dosya değişikliği talebini kendiliğinden commit, push, PR açma, üretim dağıtımı veya veri silme izni saymayın.
 
