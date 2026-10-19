@@ -1,5 +1,6 @@
 <p align="center">
-  <img src="frontend/public/branding/netstudio-logo.png" alt="Stocc NetStudio logosu" width="300" />
+  <img src="frontend/public/branding/netstudio-logo.png" alt="Stocc NetStudio ana logosu" width="300" /><br />
+  <img src="docs/Stocc/StoccLogo.png" alt="Stocc ana marka logosu" width="120" />
 </p>
 
 # Stocc NetStudio
