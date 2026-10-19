@@ -41,8 +41,26 @@ export const interfaceTokens = {
   "ui-type-caption": "11px",
 } as const;
 
+// Technical drawing materials; independent of telemetry/chart status colors.
+export const chassisTokens = {
+  "chassis-face": "#414A53",
+  "chassis-edge": "#252D35",
+  "chassis-seam": "#68737D",
+  "chassis-text": "#F3F5F7",
+  "chassis-muted": "#CDD4DB",
+  "chassis-metal": "#B8C0C8",
+  "chassis-metal-edge": "#7C8792",
+  "chassis-port": "#C8CFD5",
+  "chassis-port-hover": "#E0E6EB",
+  "chassis-socket": "#171E25",
+  "chassis-contact": "#BEA16B",
+  "chassis-focus": "#D9E9F5",
+  "chassis-led-up": "#39845E",
+  "chassis-led-off": "#7F8992",
+} as const;
+
 export const cssTokens = Object.fromEntries(
-  Object.entries({ ...theme, ...interfaceTokens }).map(([key, value]) => [
+  Object.entries({ ...theme, ...interfaceTokens, ...chassisTokens }).map(([key, value]) => [
     `--${key}`,
     value,
   ]),

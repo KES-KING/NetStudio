@@ -785,23 +785,81 @@ h3 {
   padding: 4px 2px 8px;
 }
 .chassis {
-  border: 2px solid #9299a1;
-  padding: 12px;
-  background: #e7e9ec;
+  border: 1px solid var(--chassis-edge);
+  border-top: 3px solid var(--chassis-seam);
+  border-bottom: 3px solid var(--chassis-edge);
+  background: var(--chassis-face);
   width: max-content;
   min-width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  color: var(--chassis-text);
+}
+.rack-chassis {
+  grid-template-columns: 24px minmax(0, 1fr) 24px;
+}
+.rack-ear {
+  display: flex;
+  background: var(--chassis-metal);
+  border-inline: 1px solid var(--chassis-metal-edge);
+}
+.rack-ear svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 100px;
+}
+.rack-hole-rim {
+  fill: var(--chassis-metal-edge);
+}
+.rack-hole {
+  fill: var(--chassis-socket);
+}
+.chassis-body {
+  padding: 12px 16px 16px;
+  min-width: 0;
+}
+.chassis-nameplate {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  border-bottom: 1px solid var(--chassis-seam);
+  padding-bottom: 9px;
+  margin-bottom: 12px;
+}
+.chassis-name {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.025em;
+  max-width: 320px;
+  overflow-wrap: anywhere;
+}
+.chassis-model {
+  color: var(--chassis-muted);
+  font: 11px ui-monospace, Consolas, monospace;
+  max-width: 320px;
+  overflow-wrap: anywhere;
 }
 .chassis-groups {
   display: flex;
-  gap: 20px;
-  align-items: flex-start;
+  gap: 24px;
+  align-items: center;
+}
+.port-group {
+  flex: 0 0 auto;
+}
+.optical-group {
+  border-left: 1px solid var(--chassis-seam);
+  padding-left: 20px;
 }
 .group-label {
   font-size: 9px;
   text-transform: uppercase;
-  color: #4b545f;
+  letter-spacing: 0.04em;
+  color: var(--chassis-muted);
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   max-width: 220px;
   overflow-wrap: anywhere;
 }
@@ -811,51 +869,107 @@ h3 {
   grid-auto-flow: column;
   gap: 5px;
 }
+.optical-group .port-grid {
+  grid-template-rows: auto;
+}
 button.physical-port {
-  width: 43px;
+  width: 50px;
   min-height: 51px;
   padding: 3px 2px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  background: #d8dce1;
-  border: 1px solid #969da7;
-  color: #424b55;
+  background: var(--chassis-port);
+  border: 1px solid var(--chassis-metal-edge);
+  color: var(--chassis-socket);
   position: relative;
 }
 .physical-port.up {
-  border-bottom: 3px solid #346e57;
+  border-bottom: 3px solid var(--green);
 }
 .physical-port.disabled {
-  border-bottom: 3px solid #596b84;
+  border-bottom: 3px double var(--disabled);
 }
 .physical-port.down {
-  border-bottom: 3px solid #959da8;
+  border-bottom: 3px solid var(--down);
 }
 .physical-port.unknown {
-  border-bottom: 3px dashed #959da8;
+  border-bottom: 3px dashed var(--down);
 }
 .physical-port.selected {
-  outline: 2px solid #365a73;
+  outline: 2px solid var(--chassis-focus);
   outline-offset: 2px;
-  background: #e9f0f5;
+  background: var(--selected);
 }
-.physical-port:hover {
-  background: #f0f2f5;
+button.physical-port:hover {
+  background: var(--chassis-port-hover);
+  border-top-color: var(--chassis-metal);
+  border-inline-color: var(--chassis-metal);
+}
+button.physical-port:focus-visible {
+  outline: 2px solid var(--chassis-focus);
+  outline-offset: 2px;
+}
+button.physical-port.connector-qsfp {
+  width: 60px;
+}
+.port-face {
+  display: flex;
+  align-items: flex-start;
+  gap: 3px;
+}
+.port-indicator {
+  flex: 0 0 5px;
+  width: 5px;
+  height: 7px;
+  margin-top: 5px;
+  background: var(--chassis-led-off);
+  border: 1px solid var(--chassis-edge);
+}
+.up .port-indicator {
+  background: var(--chassis-led-up);
+}
+.disabled .port-indicator {
+  background: var(--disabled);
+  border-top: 3px solid var(--chassis-contact);
+}
+.unknown .port-indicator {
+  background: transparent;
+  border-style: dashed;
+}
+.port-marking {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+  width: 100%;
+  padding-inline: 2px;
+}
+.port-link-label {
+  flex-shrink: 0;
+  font: 7px ui-monospace, Consolas, monospace;
 }
 .port-geometry {
   width: 34px;
   height: 25px;
-  fill: #424a53;
-  stroke: #262d35;
+  fill: var(--chassis-socket);
+  stroke: var(--chassis-edge);
   stroke-width: 1;
 }
 .port-geometry .port-contact {
   fill: none;
-  stroke: #b9c0c9;
+  stroke: var(--chassis-contact);
 }
-.physical-port.up .port-geometry {
-  fill: #354c44;
+.port-geometry .port-rim {
+  fill: var(--chassis-metal);
+  stroke: var(--chassis-metal-edge);
+}
+.port-geometry .port-metal {
+  fill: none;
+  stroke: var(--chassis-metal);
+}
+.connector-qsfp .port-geometry {
+  width: 44px;
 }
 .port-number {
   font:
@@ -881,17 +995,39 @@ button.physical-port {
   padding: 0;
 }
 .compact .chassis {
-  padding: 6px;
-  border-width: 1px;
+  border-top-width: 2px;
+  border-bottom-width: 2px;
+}
+.compact .rack-chassis {
+  grid-template-columns: 16px minmax(0, 1fr) 16px;
+}
+.compact .chassis-body {
+  padding: 7px 9px 9px;
+}
+.compact .chassis-nameplate {
+  gap: 3px 8px;
+  padding-bottom: 5px;
+  margin-bottom: 7px;
+}
+.compact .chassis-name {
+  font-size: 10px;
+  max-width: 190px;
+}
+.compact .chassis-model {
+  font-size: 9px;
+  max-width: 190px;
 }
 .compact .chassis-groups {
-  gap: 8px;
+  gap: 12px;
+}
+.compact .optical-group {
+  padding-left: 10px;
 }
 .compact .port-grid {
   gap: 2px;
 }
 .compact .physical-port {
-  width: 24px;
+  width: 30px;
   min-height: 33px;
   padding: 1px;
 }
@@ -899,7 +1035,29 @@ button.physical-port {
   width: 19px;
   height: 17px;
 }
+.compact .physical-port.connector-qsfp {
+  width: 38px;
+}
+.compact .connector-qsfp .port-geometry {
+  width: 26px;
+}
 .compact .port-number {
+  font-size: 6px;
+}
+.compact .port-indicator {
+  flex-basis: 4px;
+  width: 4px;
+  height: 6px;
+  margin-top: 3px;
+}
+.compact .port-face {
+  gap: 2px;
+}
+.compact .port-marking {
+  padding: 0;
+  gap: 1px;
+}
+.compact .port-link-label {
   font-size: 6px;
 }
 .compact .group-label {
@@ -1583,7 +1741,7 @@ tbody tr:last-child td {
     grid-column: 2;
   }
   .compact .physical-port {
-    width: 28px;
+    width: 34px;
     min-height: 38px;
   }
   .compact .port-geometry {

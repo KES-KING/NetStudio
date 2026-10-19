@@ -1,6 +1,7 @@
 "use client";
 import { useMemo } from "react";
-import type { PhysicalPort, Projection } from "../lib/contracts";
+import type { PhysicalPort, PortState, Projection } from "../lib/contracts";
+import { groupPanelPorts } from "../lib/panel-layout";
 import {
   formatRate,
   formatTime,
@@ -8,6 +9,13 @@ import {
   portLabels,
   sampleForPort,
 } from "../lib/metrics";
+
+const linkIndicatorLabels: Record<PortState, string> = {
+  up: "UP",
+  down: "DOWN",
+  disabled: "ADM",
+  unknown: "?",
+};
 
 function PortGeometry({ kind }: { kind: PhysicalPort["connector"] }) {
   return (
@@ -18,21 +26,24 @@ function PortGeometry({ kind }: { kind: PhysicalPort["connector"] }) {
     >
       {kind === "rj45" ? (
         <>
-          <path d="M3 7h9V3h20v4h9v22H3Z" />
+          <path className="port-rim" d="M2 3h40v27H2Z" />
+          <path d="M5 7h34v17h-9v4H14v-4H5Z" />
           <path
             className="port-contact"
-            d="M12 9v7m4-7v7m4-7v7m4-7v7m4-7v7m4-7v7"
+            d="M11 7v7m3-7v7m3-7v7m3-7v7m3-7v7m3-7v7m3-7v7m3-7v7"
           />
         </>
       ) : kind === "sfp" ? (
         <>
-          <path d="M3 7h38v18H3Z" />
-          <path className="port-contact" d="M9 21h26M15 25v4h14v-4" />
+          <path className="port-rim" d="M2 6h40v21H2Z" />
+          <path d="M5 9h34v15H5Z" />
+          <path className="port-metal" d="M8 21h28M15 27v3h14v-3M2 13h3m34 0h3" />
         </>
       ) : kind === "qsfp" ? (
         <>
-          <path d="M1 5h42v22H1Z" />
-          <path className="port-contact" d="M7 10h30M7 22h30M16 27v3h12v-3" />
+          <path className="port-rim" d="M1 4h42v24H1Z" />
+          <path d="M4 7h36v18H4Z" />
+          <path className="port-metal" d="M7 10h30M7 22h30M16 28v3h12v-3" />
         </>
       ) : (
         <>
@@ -41,6 +52,19 @@ function PortGeometry({ kind }: { kind: PhysicalPort["connector"] }) {
         </>
       )}
     </svg>
+  );
+}
+
+function RackEar() {
+  return (
+    <div className="rack-ear" aria-hidden="true">
+      <svg viewBox="0 0 24 100" preserveAspectRatio="none">
+        <rect className="rack-hole-rim" x="4" y="14" width="16" height="11" rx="5" />
+        <rect className="rack-hole" x="6" y="16" width="12" height="7" rx="3" />
+        <rect className="rack-hole-rim" x="4" y="75" width="16" height="11" rx="5" />
+        <rect className="rack-hole" x="6" y="77" width="12" height="7" rx="3" />
+      </svg>
+    </div>
   );
 }
 
@@ -55,28 +79,12 @@ export function DevicePanel({
   selectedId?: string;
   onSelect: (port: PhysicalPort) => void;
 }) {
-  const ports = useMemo(
-    () => physicalPorts(row).sort((a, b) => a.ordinal - b.ordinal),
-    [row],
+  const ports = useMemo(() => physicalPorts(row), [row]);
+  const groups = useMemo(
+    () => groupPanelPorts(ports, row.device.components),
+    [ports, row.device.components],
   );
-  const groupKey = (port: PhysicalPort) => `${port.component_id}:${port.group}`;
-  const groups = [
-    ...new Map(
-      ports.map((port) => {
-        const component = row.device.components.find(
-          (c) => c.id === port.component_id,
-        );
-        const title = [
-          component?.kind !== "chassis" ? component?.label : null,
-          component?.slot ? `Slot ${component.slot}` : null,
-          port.group || "Portlar",
-        ]
-          .filter(Boolean)
-          .join(" · ");
-        return [groupKey(port), title];
-      }),
-    ).entries(),
-  ];
+  const rack = row.device.device_type === "switch";
   return (
     <div className={`device-panel ${compact ? "compact" : ""}`}>
       {!compact && (
@@ -91,36 +99,57 @@ export function DevicePanel({
           tabIndex={0}
           aria-label={`${row.device.name} ön paneli, yatay kaydırılabilir`}
         >
-          <div className="chassis">
-            <div className="chassis-groups">
-              {groups.map(([group, title]) => (
-                <div className="port-group" key={group}>
-                  <span className="group-label">{title}</span>
-                  <div className="port-grid">
-                    {ports
-                      .filter((p) => groupKey(p) === group)
-                      .map((port) => {
+          <div className={`chassis ${rack ? "rack-chassis" : ""}`}>
+            {rack && <RackEar />}
+            <div className="chassis-body">
+              <div className="chassis-nameplate">
+                <strong className="chassis-name">{row.device.name}</strong>
+                <span className="chassis-model">
+                  {row.device.model || "Model belirtilmedi"}
+                </span>
+              </div>
+              <div className="chassis-groups">
+                {groups.map((group) => (
+                  <div
+                    className={`port-group ${group.optical ? "optical-group" : ""}`}
+                    key={group.id}
+                    data-connector={group.connector}
+                  >
+                    <span className="group-label">{group.title}</span>
+                    <div className="port-grid">
+                      {group.ports.map((port) => {
                         const status =
                           row.ports.port_states[port.id] ?? "unknown";
                         return (
                           <button
                             type="button"
                             key={port.id}
-                            className={`physical-port ${status} ${selectedId === port.id ? "selected" : ""}`}
+                            className={`physical-port connector-${port.connector} ${status} ${selectedId === port.id ? "selected" : ""}`}
+                            data-port-id={port.id}
                             aria-pressed={selectedId === port.id}
                             aria-label={`${port.label}, ${portLabels[status]}`}
                             title={`${port.label} · ${port.connector.toUpperCase()} · ${portLabels[status]}`}
                             onClick={() => onSelect(port)}
                           >
-                            <PortGeometry kind={port.connector} />
-                            <span className="port-number">{port.label}</span>
+                            <span className="port-face">
+                              <PortGeometry kind={port.connector} />
+                              <span className="port-indicator" aria-hidden="true" />
+                            </span>
+                            <span className="port-marking">
+                              <span className="port-number">{port.label}</span>
+                              <span className="port-link-label" aria-hidden="true">
+                                {linkIndicatorLabels[status]}
+                              </span>
+                            </span>
                           </button>
                         );
                       })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
+            {rack && <RackEar />}
           </div>
         </div>
       ) : (
@@ -138,6 +167,9 @@ export function DevicePanel({
               {label}
             </span>
           ))}
+          <span className="selected-key">
+            UP: aktif · DOWN: bağlantı yok · ADM: idari kapalı · ?: bilinmiyor
+          </span>
           <span className="selected-key">Seçili port: dış çerçeve</span>
         </div>
       )}

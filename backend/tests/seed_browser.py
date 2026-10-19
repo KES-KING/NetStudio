@@ -38,7 +38,7 @@ def main():
     key = httpx.get(key_url).json()
     device_ids = []
     for n, name in enumerate(["QA-Core-01", "QA-Edge-02", "QA-Distribution-03"]):
-        response = client.post("/api/v1/devices", json={"name": name, "site": "TEST FIXTURE / isolated", "management_address": address if n == 0 else f"192.0.2.{20+n}", "ssh_port": 2222 if n == 0 else 22, "device_type": "switch" if n < 2 else "router", "credentials": {"username": "lab", "password": "lab-secret"} if n == 0 else None}); response.raise_for_status()
+        response = client.post("/api/v1/devices", json={"name": name, "model": ["QA-24RJ45-4SFP", "QA-6RJ45-4SFP", "QA-12RJ45-4QSFP"][n], "site": "TEST FIXTURE / isolated", "management_address": address if n == 0 else f"192.0.2.{20+n}", "ssh_port": 2222 if n == 0 else 22, "device_type": "switch" if n < 2 else "router", "credentials": {"username": "lab", "password": "lab-secret"} if n == 0 else None}); response.raise_for_status()
         identifier = response.json()["id"]
         device_ids.append(identifier)
         value = inventory(now() - timedelta(hours=2))

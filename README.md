@@ -45,9 +45,11 @@ Cihaz filtresi ve zaman aralığıyla aynı kapsamı paylaşan Apache ECharts gr
 
 ### Cihaz detayı — SSH kapalı
 
-Tam genişlikte etkileşimli cihaz ön paneli; altında IP topolojisi, teknik bilgiler ve sağlık değerlendirmesi.
+Tam genişlikte etkileşimli cihaz ön paneli; kasa üzerinde envanterdeki cihaz adı/modeli, iki yanda şematik rack montaj delikleri, solda RJ45 ve sağda tek sıra SFP/QSFP grupları. Mat grafit/metal yüzeyler marka bağımsızdır; montaj geometrisi ve port yerleşimi üretici kasasının birebir ölçülü çizimi değildir. Altında IP topolojisi, teknik bilgiler ve sağlık değerlendirmesi bulunur.
 
-![NetStudio cihaz detayı: SSH paneli kapalıyken cihaz portları, IP topolojisi ve teknik bilgiler](docs/screenshots/device-detail.png)
+Port yuvalarının yanındaki göstergeler aynı telemetri durumunu kullanır: **UP** yeşil, **DOWN** sönük gri, **ADM** idari kapalı, **?** bilinmiyor. İdari kapalı port arızalı sayılmaz; güncelliğini kaybeden veri aktif LED olarak gösterilmez. Port seçimi dış çerçeveyle ayrıca belirtilir. Dar alanda panel yatay kayar; portlar okunamayacak kadar küçültülmez.
+
+![NetStudio cihaz detayı: isim ve model etiketli rack paneli, yatay SFP portları, UP/DOWN göstergeleri, IP topolojisi ve teknik bilgiler](docs/screenshots/device-detail.png)
 
 ### Cihaz detayı — SSH açık
 
