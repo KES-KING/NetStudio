@@ -8,8 +8,9 @@ import { roleLabels } from "../lib/accounts";
 import { Brand } from "./Brand";
 import { RepositoryLink } from "./RepositoryLink";
 import { UserAvatar } from "./UserAvatar";
+import { LiveNotifications, useNotificationFeed } from "./LiveNotifications";
 
-type IconName = "devices" | "topology" | "history" | "audit" | "account" | "panel" | "menu" | "close" | "logout";
+type IconName = "devices" | "topology" | "history" | "audit" | "account" | "panel" | "menu" | "close" | "logout" | "settings";
 
 function NavigationIcon({ name }: { name: IconName }) {
   const paths: Record<IconName, ReactNode> = {
@@ -22,6 +23,7 @@ function NavigationIcon({ name }: { name: IconName }) {
     menu: <path d="M3 6h18M3 12h18M3 18h18" />,
     close: <path d="m5 5 14 14M5 19 19 5" />,
     logout: <><path d="M9 4H4v16h5m5-13 5 5-5 5M8 12h12" /></>,
+    settings: <><path d="M4 6h16M4 12h16M4 18h16" /><rect x="7" y="4" width="3" height="4" /><rect x="14" y="10" width="3" height="4" /><rect x="8" y="16" width="3" height="4" /></>,
   };
   return <svg className="navigation-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -31,6 +33,7 @@ const navigation = [
   { href: "/topology", label: "Topoloji", description: "Bağlantı haritası", icon: "topology" },
   { href: "/jobs", label: "İş geçmişi", description: "Toplama işlemleri", icon: "history" },
   { href: "/audit", label: "Denetim kayıtları", description: "Kullanıcı etkinlikleri", icon: "audit" },
+  { href: "/settings", label: "Ayarlar", description: "Hesap ve güncellemeler", icon: "settings" },
 ] as const;
 
 function readCollapsed(key: string) {
@@ -44,6 +47,7 @@ export function ConsoleNavigation({ user, onLogout, children }: {
   children: ReactNode;
 }) {
   const path = usePathname();
+  const notification = useNotificationFeed();
   const preferenceKey = `netstudio:sidebar:v1:${user.user_id}`;
   const [collapsed, setCollapsed] = useState(() => readCollapsed(preferenceKey));
   const [mobile, setMobile] = useState(false);
@@ -59,6 +63,7 @@ export function ConsoleNavigation({ user, onLogout, children }: {
   const drawerOpen = mobile && menuOpen;
   const roles = user.roles.map((role) => roleLabels[role] ?? role).join(" · ");
   const currentPage = path.startsWith("/devices/") ? "Cihaz detayı"
+    : path.startsWith("/settings") ? path === "/settings/updates" ? "Güncellemeler" : "Ayarlar"
     : path === "/account" ? "Hesabım"
     : navigation.find((item) => item.href === path)?.label ?? "NetStudio";
 
@@ -124,6 +129,9 @@ export function ConsoleNavigation({ user, onLogout, children }: {
           </Link>
         </div>
         <div className="topbar-context">
+          {(notification.feed.update_available || notification.feed.maintenance) && <Link href="/settings/updates" className="topbar-update" aria-label={notification.feed.maintenance ? "Güncelleme sürüyor — güncelleme sayfasını aç" : "Yeni güncelleme var — güncelleme sayfasını aç"} title={notification.feed.maintenance ? "Güncelleme sürüyor" : "Yeni güncelleme var"}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 15v6h16v-6" /></svg><span>Güncelleme</span>
+          </Link>}
           <button ref={desktopToggle} className="sidebar-toggle" onClick={toggleCollapsed}
             aria-label={collapsed ? "Yan menüyü genişlet" : "Yan menüyü daralt"}
             title={collapsed ? "Yan menüyü genişlet" : "Yan menüyü daralt"}
@@ -137,8 +145,9 @@ export function ConsoleNavigation({ user, onLogout, children }: {
           <div className="topbar-page"><small>Çalışma alanı</small><strong>{currentPage}</strong></div>
         </div>
         <div className="session-nav">
-          <Link href="/account" className="account-link" aria-label="Hesabım — profil ve kullanıcı yönetimi"
-            aria-current={path === "/account" ? "page" : undefined}>
+          <LiveNotifications {...notification} />
+          <Link href="/settings" className="account-link" aria-label="Hesabım — profil ve kullanıcı yönetimi"
+            aria-current={path === "/account" || path === "/settings" ? "page" : undefined}>
             <UserAvatar id={user.user_id} name={user.display_name} version={user.avatar_version} />
             <span className="account-link-text"><strong>{user.display_name}</strong><small>{roles}</small></span>
           </Link>
@@ -156,9 +165,9 @@ export function ConsoleNavigation({ user, onLogout, children }: {
             </div>
             <nav aria-label="Ana navigasyon">
               {navigation.filter((item) => item.href !== "/audit" || user.permissions.includes("audit.read")).map((item) => (
-                <Link key={item.href} href={item.href} aria-label={item.label} title={item.label}
+                <Link key={item.href} href={item.href} prefetch={item.href === "/topology" ? false : undefined} aria-label={item.label} title={item.label}
                   onClick={() => setMenuOpen(false)}
-                  aria-current={path === item.href || (item.href === "/" && path.startsWith("/devices")) ? "page" : undefined}>
+                  aria-current={path === item.href || (item.href === "/settings" && path.startsWith("/settings/")) || (item.href === "/" && path.startsWith("/devices")) ? "page" : undefined}>
                   <NavigationIcon name={item.icon} />
                   <span className="sidebar-label" aria-hidden="true"><strong>{item.label}</strong><small>{item.description}</small></span>
                 </Link>
@@ -172,8 +181,8 @@ export function ConsoleNavigation({ user, onLogout, children }: {
             </div>
             <div className="sidebar-footer-actions">
               <RepositoryLink />
-              <Link href="/account" className="sidebar-account-link" aria-label="Hesabım — hesap sayfasını aç" title="Hesabım"
-                aria-current={path === "/account" ? "page" : undefined} onClick={() => setMenuOpen(false)}>
+              <Link href="/settings" className="sidebar-account-link" aria-label="Hesabım — hesap sayfasını aç" title="Hesabım"
+                aria-current={path === "/account" || path === "/settings" ? "page" : undefined} onClick={() => setMenuOpen(false)}>
                 <NavigationIcon name="account" /><span className="sidebar-label">Hesabım</span>
               </Link>
             </div>

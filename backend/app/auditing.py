@@ -46,6 +46,7 @@ SAFE_KEYS = frozenset({
     "allow_legacy_ssh", "ssh_algorithms", "kex_algs", "server_host_key_algs", "signature_algs", "encryption_algs", "mac_algs",
     "settings", "fast_seconds", "health_seconds", "network_seconds", "inventory_seconds", "preferred_source",
     "auth_protocol", "privacy_protocol",
+    "recovery_acknowledged",
 })
 SECRET_TEXT = re.compile(
     r"-----BEGIN .*PRIVATE KEY-----|\bBearer\s+\S+|(?:password|passwd|passphrase|secret|token|authorization|cookie|private_key)\s*[:=]",

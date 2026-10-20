@@ -13,6 +13,9 @@ COPY frontend/ ./
 RUN npm run build
 
 FROM node:22-bookworm-slim AS runtime
+ARG STOCC_BUILD_REVISION=unknown
+ENV STOCC_BUILD_REVISION=${STOCC_BUILD_REVISION}
+LABEL org.opencontainers.image.revision=${STOCC_BUILD_REVISION}
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \

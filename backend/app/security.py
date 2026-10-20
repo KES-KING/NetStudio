@@ -27,6 +27,7 @@ class Permission(StrEnum):
     TELEMETRY_WRITE = "telemetry.write"
     AUDIT_READ = "audit.read"
     USER_MANAGE = "user.manage"
+    SYSTEM_UPDATE = "system.update"
     JOB_CREATE = "job.create"
     CONFIG_PLAN = "config.plan"
     CONFIG_APPLY = "config.apply"
@@ -80,7 +81,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
 
 
 def has_permission(user: SessionUser, permission: Permission, site_id: str) -> bool:
-    if permission in {Permission.USER_MANAGE, Permission.AUDIT_READ}:
+    if permission in {Permission.USER_MANAGE, Permission.AUDIT_READ, Permission.SYSTEM_UPDATE}:
         return Role.SUPERADMIN in user.roles
     if site_id not in user.site_ids and "*" not in user.site_ids:
         return False

@@ -87,8 +87,9 @@ test("superadmin creates, edits, audits and deletes a user from the account work
   await page.setViewportSize({ width: 1536, height: 1080 });
   await login(page, names.superadmin);
   await page.locator(".topbar .account-link").click();
-  await expect(page).toHaveURL(`${origin}/account`);
-  await expect(page.getByRole("heading", { name: "Hesabım", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(`${origin}/settings`);
+  await expect(page.getByRole("heading", { name: "Ayarlar", exact: true })).toBeVisible();
+  await page.getByRole("navigation", { name: "Ayarlar bölümleri" }).getByRole("link", { name: /Kullanıcılar/ }).click();
   await page.getByRole("button", { name: "Kullanıcı oluştur", exact: true }).click();
   const dialog = page.getByRole("dialog");
   const username = `${prefix}-created`;
@@ -126,6 +127,7 @@ test("superadmin creates, edits, audits and deletes a user from the account work
   await page.screenshot({ path: join(evidence, "audit-superadmin.png"), fullPage: true });
 
   await page.locator(".sidebar-account-link").click();
+  await page.getByRole("navigation", { name: "Ayarlar bölümleri" }).getByRole("link", { name: /Kullanıcılar/ }).click();
   await page.getByRole("button", { name: `${username} kullanıcısını sil`, exact: true }).click();
   await dialog.getByLabel("Onay için kullanıcı adı", { exact: true }).fill(username);
   await dialog.getByRole("button", { name: "Kullanıcıyı sil", exact: true }).click();
@@ -177,11 +179,16 @@ test("mobile engineer account navigation and audit protection", async ({ page })
   await login(page, names.engineer);
   await page.getByRole("button", { name: "Menü", exact: true }).click();
   await page.locator(".sidebar-account-link").click();
-  await expect(page.getByRole("heading", { name: "Hesabım", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ayarlar", exact: true })).toBeVisible();
   await expect(page.locator(".sidebar")).toBeHidden();
   await expect(page.locator(".user-directory")).toHaveCount(0);
   await healthy(page, 390);
   await page.screenshot({ path: join(evidence, "account-engineer-mobile.png"), fullPage: true });
+  await page.getByRole("navigation", { name: "Ayarlar bölümleri" }).getByRole("link", { name: /Güncellemeler/ }).click();
+  await expect(page.getByRole("heading", { name: "Güncelleme sistemi", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Otomatik kurulumu aç", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Güncellemeyi kur", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Ayarlar bölümleri" }).getByRole("link", { name: /Kullanıcılar/ })).toHaveCount(0);
   await page.goto(`${origin}/audit`);
   await expect(page.getByText("Bu sayfayı yalnız superadmin görüntüleyebilir.", { exact: true })).toBeVisible();
   expect((await page.request.get(`${origin}/api/v1/audit`)).status()).toBe(403);

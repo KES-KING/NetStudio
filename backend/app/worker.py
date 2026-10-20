@@ -37,14 +37,16 @@ class Worker:
         try:
             while not self.stopping.is_set():
                 try:
-                    if self.scheduling and time.monotonic() - last_schedule >= 2:
+                    from .updates import maintenance
+                    paused = maintenance(self.store)
+                    if not paused and self.scheduling and time.monotonic() - last_schedule >= 2:
                         scheduler.schedule(self.store)
                         last_schedule = time.monotonic()
                     if time.monotonic() - last_cleanup >= 60:
                         from .history import maintain
                         maintain(self.store)
                         last_cleanup = time.monotonic()
-                    while len(self.tasks) < queue.MAX_RUNNING and (job := queue.claim(self.store, self.owner)):
+                    while not paused and len(self.tasks) < queue.MAX_RUNNING and (job := queue.claim(self.store, self.owner)):
                         task = asyncio.create_task(self.execute(job))
                         self.tasks.add(task)
                         task.add_done_callback(self.tasks.discard)

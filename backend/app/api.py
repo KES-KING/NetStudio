@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 import hmac
 import os
 import time
+import socket
 from uuid import UUID, uuid4
 
 import asyncssh
@@ -28,6 +29,10 @@ from .ssh import ConnectionPolicyError, SSHBroker
 from .telemetry import ingest, overview
 from .topology import install_topology_routes
 from .vault import CredentialVault, credential_values
+from . import updates
+from .settings_api import install as install_settings
+from .collection import upsert
+from starlette.concurrency import run_in_threadpool
 
 
 class Login(StrictModel):
@@ -50,6 +55,8 @@ def create_app(store=None, key_file=None):
         app.state.vault = CredentialVault(app.state.store, key_file)
         app.state.ssh = SSHBroker(app.state.store, app.state.vault, app.state.auth)
         app.state.jobs = set()
+        app.state.active_mutations = 0
+        presence_id = f"api:{socket.gethostname()}:{uuid4()}"
         # Production jobs belong to a separate durable worker. The embedded
         # mode exists for isolated tests and explicit single-process development.
         worker = worker_task = None
@@ -60,9 +67,23 @@ def create_app(store=None, key_file=None):
             worker_task = asyncio.create_task(worker.run())
         async def cleanup():
             while True:
-                await asyncio.sleep(5)
                 app.state.ssh.expire_pending()
+                with app.state.store.engine.begin() as conn:
+                    upsert(conn, app.state.store.runtime_presence, app.state.store.runtime_presence.c.id == presence_id,
+                        dict(id=presence_id, heartbeat_at=now(), active_sessions=len(app.state.ssh.sessions),
+                            active_mutations=app.state.active_mutations))
+                await asyncio.sleep(3)
+        async def update_checks():
+            while True:
+                if os.getenv("STOCC_UPDATES_CHECK_ENABLED", "1") == "1":
+                    try:
+                        await run_in_threadpool(updates.check, app.state.store)
+                    except Exception:
+                        import logging
+                        logging.getLogger(__name__).error("update_check_failed")
+                await asyncio.sleep(15)
         cleaner = asyncio.create_task(cleanup())
+        checker = asyncio.create_task(update_checks())
         try:
             yield
         finally:
@@ -70,11 +91,14 @@ def create_app(store=None, key_file=None):
                 worker.stopping.set()
                 await worker_task
             cleaner.cancel()
+            checker.cancel()
             for session in list(app.state.ssh.sessions.values()):
                 app.state.ssh.stop(session, "server_shutdown")
             for task in app.state.jobs:
                 task.cancel()
-            await asyncio.gather(cleaner, *app.state.jobs, return_exceptions=True)
+            await asyncio.gather(cleaner, checker, *app.state.jobs, return_exceptions=True)
+            with app.state.store.engine.begin() as conn:
+                conn.execute(app.state.store.runtime_presence.delete().where(app.state.store.runtime_presence.c.id == presence_id))
 
     app = FastAPI(title="Stocc NetStudio API", version="0.2.0", lifespan=lifespan)
 
@@ -87,6 +111,7 @@ def create_app(store=None, key_file=None):
             return JSONResponse({"detail": {"code": "invalid_content_length"}}, status_code=400)
         if length > 4_000_000:
             return JSONResponse({"detail": {"code": "request_too_large"}}, status_code=413)
+        tracked = False
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             body = bytearray()
             async for chunk in request.stream():
@@ -94,7 +119,19 @@ def create_app(store=None, key_file=None):
                 if len(body) > 4_000_000:
                     return JSONResponse({"detail": {"code": "request_too_large"}}, status_code=413)
             request._body = bytes(body)
-        response = await call_next(request)
+            permitted = request.url.path in {"/api/v1/session/login", "/api/v1/session/logout", "/api/v1/activity",
+                "/api/v1/notifications/read", "/api/v1/system/updates/policy"} or (
+                request.method == "DELETE" and request.url.path.startswith("/api/v1/ssh-sessions/"))
+            if request.url.path.startswith("/api/") and not permitted and await run_in_threadpool(updates.maintenance, app.state.store):
+                return JSONResponse({"detail": {"code": "system_maintenance"}}, status_code=503, headers={"Retry-After": "30"})
+            tracked = not permitted
+        if tracked:
+            app.state.active_mutations += 1
+        try:
+            response = await call_next(request)
+        finally:
+            if tracked:
+                app.state.active_mutations -= 1
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
@@ -174,6 +211,7 @@ def create_app(store=None, key_file=None):
         return app.state.auth.request(request, mutation)
 
     install_account_routes(app, context)
+    install_settings(app, context)
     install_topology_routes(app, context)
 
     def device_for(request, device_id, permission=Permission.INVENTORY_READ, mutation=False):
@@ -198,9 +236,10 @@ def create_app(store=None, key_file=None):
                 conn.execute(sa.select(app.state.store.devices.c.payload).limit(1))
                 conn.execute(sa.select(app.state.store.topology_boards.c.version).limit(1))
                 conn.execute(sa.select(app.state.store.polling.c.version).limit(1))
+                conn.execute(sa.select(app.state.store.system_update.c.id).limit(1))
         except Exception:
             fail("persistence_unavailable", 503)
-        return {"status": "ready", "service": "stocc-netstudio-api"}
+        return {"status": "ready", "service": "stocc-netstudio-api", "revision": os.getenv("STOCC_BUILD_REVISION", "unknown")}
 
     @app.post("/api/v1/session/login")
     def login(value: Login, request: Request, response: Response):

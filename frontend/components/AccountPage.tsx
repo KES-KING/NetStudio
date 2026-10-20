@@ -8,7 +8,7 @@ import { useSession } from "./ConsoleShell";
 import { UserAvatar } from "./UserAvatar";
 import { UserDirectory } from "./UserDirectory";
 
-export default function AccountPage() {
+export default function AccountPage({ embedded = false }: { embedded?: boolean }) {
   const session = useSession();
   const { mutate: mutateAll } = useSWRConfig();
   const { data: profile, error, mutate } = useSWR<UserProfile>("/api/v1/profile", api, { refreshInterval: 30000 });
@@ -19,10 +19,10 @@ export default function AccountPage() {
   }
   return (
     <>
-      <div className="page-heading"><div><p className="eyebrow">HESAP VE ERİŞİM</p><h1>Hesabım</h1>
+      {!embedded && <div className="page-heading"><div><p className="eyebrow">HESAP VE ERİŞİM</p><h1>Hesabım</h1>
         <p>Profil, avatar ve oturum güvenliği{session.permissions.includes("user.manage") ? "; kullanıcı ve yetki yönetimi." : "."}</p></div>
         <span className="status">{session.roles.map((role) => roleLabels[role]).join(" · ")}</span>
-      </div>
+      </div>}
       {notice && <p className="notice" role="status">{notice}</p>}
       {error ? <p role="alert" className="notice error">{errorMessage(error)}</p> : !profile ? <p role="status">Profil yükleniyor…</p> : (
         <>
@@ -33,7 +33,7 @@ export default function AccountPage() {
           <PasswordForm />
         </>
       )}
-      {session.permissions.includes("user.manage") && <UserDirectory />}
+      {!embedded && session.permissions.includes("user.manage") && <UserDirectory />}
     </>
   );
 }

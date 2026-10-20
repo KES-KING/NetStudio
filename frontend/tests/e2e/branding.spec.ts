@@ -108,7 +108,7 @@ for (const [name, viewport] of [
     if (name === "mobile")
       await page.getByRole("button", { name: "Menü", exact: true }).click();
 
-    const repositoryUrl = "https://github.com/KES-KING/stocc-netstudio";
+    const repositoryUrl = "https://github.com/KES-KING/NetStudio";
     const repository = page.getByRole("link", {
       name: "NetStudio GitHub reposu (yeni sekmede açılır)",
       exact: true,

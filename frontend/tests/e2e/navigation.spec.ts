@@ -61,14 +61,17 @@ test("animated rail preserves charts, persists across routes and reload, remains
     .toBeGreaterThan(originalWidth - 2);
   await noOverflow(page, 1536);
   const nav = page.getByRole("navigation", { name: "Ana navigasyon" });
-  await expect(nav.getByRole("link")).toHaveCount(4);
+  await expect(nav.getByRole("link")).toHaveCount(5);
   const jobs = nav.getByRole("link", { name: "İş geçmişi", exact: true });
   await jobs.focus();
+  await expect(jobs).toBeFocused();
   await expect(jobs).toHaveCSS("outline-style", "solid");
   await page.screenshot({ path: join(evidence, "collapsed-desktop.png"), animations: "disabled" });
   await page.screenshot({ path: join(evidence, "collapsed-fullpage.png"), fullPage: true, animations: "disabled" });
   expect((await page.locator(".topbar-brand").boundingBox())!.width).toBe(76);
-  await page.keyboard.press("Enter");
+  // Capture is a separate evidence step. Dispatch the keyboard interaction to
+  // its actual target instead of assuming global focus after both captures.
+  await jobs.press("Enter");
   await expect(page.locator(".topbar-page strong")).toHaveText("İş geçmişi");
   await expect(jobs).toHaveAttribute("aria-current", "page");
   await expectSidebarWidth(page, 76);

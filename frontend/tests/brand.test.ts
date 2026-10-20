@@ -25,7 +25,7 @@ describe("brand assets", () => {
 describe("repository navigation", () => {
   it("opens the actual project repository in an isolated new tab", () => {
     const markup = renderToStaticMarkup(createElement(RepositoryLink));
-    expect(markup).toContain('href="https://github.com/KES-KING/stocc-netstudio"');
+    expect(markup).toContain('href="https://github.com/KES-KING/NetStudio"');
     expect(markup).toContain('target="_blank"');
     expect(markup).toContain('rel="noopener noreferrer"');
   });

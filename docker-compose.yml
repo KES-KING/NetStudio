@@ -5,6 +5,8 @@ x-api-service: &api-service
   build:
     context: .
     dockerfile: backend/Dockerfile
+    args:
+      STOCC_BUILD_REVISION: ${STOCC_BUILD_REVISION:-unknown}
   environment:
     STOCC_ENV: ${STOCC_ENV:-development}
     DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://stocc:stocc@postgres:5432/stocc}
@@ -64,6 +66,7 @@ services:
       STOCC_ALLOWED_ORIGINS: ${STOCC_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       STOCC_SSH_ALLOWED_CIDRS: ${STOCC_SSH_ALLOWED_CIDRS:-}
       STOCC_KEYRING_FILE: /run/secrets/stocc-keyring.json
+      STOCC_UPDATES_CHECK_ENABLED: ${STOCC_UPDATES_CHECK_ENABLED:-1}
     volumes:
       - stocc-keyring:/run/secrets:ro
     ports:
@@ -118,6 +121,8 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        STOCC_BUILD_REVISION: ${STOCC_BUILD_REVISION:-unknown}
     restart: unless-stopped
     init: true
     environment:

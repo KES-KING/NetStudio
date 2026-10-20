@@ -58,6 +58,7 @@ export async function fetchSession(): Promise<Session | null> {
 }
 
 const messages: Record<string, string> = {
+  system_maintenance: "Sistem güncelleniyor; yeni değişiklikler ve bağlantılar geçici olarak durduruldu. Ayarlar → Güncellemeler bölümünü inceleyin.",
   host_key_not_trusted: "SSH anahtarı henüz onaylanmadı. Bağlantı bilgileri bölümünden anahtarı bulun ve doğrulayın.",
   host_discovery_rate_limited: "Bu cihaz için anahtar keşfi dakikada bir yapılabilir. Bir dakika sonra tekrar deneyin.",
   host_candidate_expired_or_changed: "Anahtar adayının süresi doldu veya bağlantı ayarları değişti. Anahtarı yeniden bulun.",

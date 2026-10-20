@@ -112,6 +112,7 @@ function NavigationAudit() {
     if (previous.current === key) return;
     previous.current = key;
     if (path === "/") recordActivity({ action: "page.view", page: "dashboard" });
+    else if (path.startsWith("/settings")) recordActivity({ action: "page.view", page: path === "/settings/updates" ? "updates" : "settings" });
     else if (path === "/topology") recordActivity({ action: "page.view", page: "topology" });
     else if (path.startsWith("/devices/")) recordActivity({ action: "page.view", page: "device", device_id: path.split("/")[2] });
     else if (path === "/jobs" || path === "/account") recordActivity({ action: "page.view", page: path.slice(1) as "jobs" | "account" });

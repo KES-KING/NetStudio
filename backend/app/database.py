@@ -98,6 +98,9 @@ class Store:
         from .automation_schema_v1 import define_tables
         for name, table in define_tables(self.meta).items():
             setattr(self, name, table)
+        from .system_schema_v1 import define_tables as system_tables
+        for name, table in system_tables(self.meta).items():
+            setattr(self, name, table)
 
     @contextmanager
     def user_transaction(self):

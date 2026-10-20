@@ -11,7 +11,7 @@ export function RepositoryLink() {
   return (
     <a
       className="repository-link"
-      href="https://github.com/KES-KING/stocc-netstudio"
+      href="https://github.com/KES-KING/NetStudio"
       target="_blank"
       rel="noopener noreferrer"
       aria-label="NetStudio GitHub reposu (yeni sekmede açılır)"

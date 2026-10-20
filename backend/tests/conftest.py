@@ -17,6 +17,7 @@ PASSWORD = "test-only-password-1234"
 @pytest.fixture
 def system(tmp_path, monkeypatch):
     monkeypatch.setenv("STOCC_ENV", "development")
+    monkeypatch.setenv("STOCC_UPDATES_CHECK_ENABLED", "0")
     monkeypatch.setenv("STOCC_ALLOWED_ORIGINS", ORIGIN)
     monkeypatch.setenv("STOCC_SSH_ALLOWED_CIDRS", "127.0.0.1/32")
     monkeypatch.setenv("STOCC_EMBEDDED_WORKER", "1")
