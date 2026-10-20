@@ -157,6 +157,15 @@ for (const [name, viewport] of [
     await expect(
       page.getByRole("heading", { name: "İş geçmişi", exact: true }),
     ).toBeVisible();
+    // Dashboard reports the initial filter after a one-second debounce.
+    // Wait for that real request, not networkidle's shorter quiet window,
+    // before the later logout so this visual test doesn't race session removal.
+    const homeActivity = page.waitForResponse((response) =>
+      response.url().endsWith("/api/v1/activity") &&
+      response.request().method() === "POST" &&
+      response.request().postDataJSON()?.action === "inventory.filter" &&
+      response.status() === 201,
+    );
     await brand.click();
     await expect(page).toHaveURL(
       new URL("/", process.env.PLAYWRIGHT_BASE_URL!).toString(),
@@ -164,6 +173,7 @@ for (const [name, viewport] of [
     await expect(
       page.getByRole("heading", { name: "Ağ cihazları", exact: true }),
     ).toBeVisible();
+    await homeActivity;
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(viewport.width);

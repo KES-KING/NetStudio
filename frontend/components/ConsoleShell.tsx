@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   createContext,
@@ -16,9 +15,7 @@ import useSWR, { useSWRConfig } from "swr";
 import { api, errorMessage, fetchSession, setSessionToken } from "../lib/api";
 import type { Session } from "../lib/contracts";
 import { Brand } from "./Brand";
-import { RepositoryLink } from "./RepositoryLink";
-import { UserAvatar } from "./UserAvatar";
-import { roleLabels } from "../lib/accounts";
+import { ConsoleNavigation } from "./ConsoleNavigation";
 import { recordActivity } from "../lib/activity";
 
 const SessionContext = createContext<Session | null>(null);
@@ -27,7 +24,6 @@ export function useSession() {
 }
 
 export function ConsoleShell({ children }: { children: ReactNode }) {
-  const path = usePathname();
   const { mutate: mutateAll } = useSWRConfig();
   const {
     data: user,
@@ -38,7 +34,6 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
     refreshInterval: 30000,
     shouldRetryOnError: false,
   });
-  const [menuOpen, setMenuOpen] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [loginNotice, setLoginNotice] = useState("");
   const clear = useCallback((event?: Event) => {
@@ -96,97 +91,14 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
   return (
     <SessionContext.Provider value={user}>
       <NavigationAudit />
-      <a href="#main-content" className="skip-link">
-        İçeriğe geç
-      </a>
-      <header className="topbar">
-        <Link href="/" className="brand" aria-label="NetStudio — Ağ cihazları">
-          <span className="brand-wordmark">
-            <Brand decorative />
-          </span>
-          <span className="brand-emblem">
-            <Brand variant="emblem" decorative />
-          </span>
-        </Link>
-        <button
-          className="mobile-menu"
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          Menü
-        </button>
-        <div className="session-nav">
-          <button onClick={logout}>Çıkış</button>
-          <Link href="/account" className="account-link" aria-label="Hesabım — profil ve kullanıcı yönetimi"
-            aria-current={path === "/account" ? "page" : undefined} onClick={() => setMenuOpen(false)}>
-            <UserAvatar id={user.user_id} name={user.display_name} version={user.avatar_version} />
-            <span className="account-link-text"><strong>{user.display_name}</strong><small>{user.roles.map((role) => roleLabels[role]).join(" · ")}</small></span>
-          </Link>
-        </div>
-      </header>
-      <div className="console-layout">
-        <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
-          <nav aria-label="Ana navigasyon">
-            <Link
-              onClick={() => setMenuOpen(false)}
-              aria-current={
-                path === "/" || path.startsWith("/devices") ? "page" : undefined
-              }
-              href="/"
-            >
-              Ağ cihazları
-            </Link>
-            <Link onClick={() => setMenuOpen(false)} aria-current={path === "/topology" ? "page" : undefined} href="/topology">
-              Topoloji
-            </Link>
-            <Link
-              onClick={() => setMenuOpen(false)}
-              aria-current={path === "/jobs" ? "page" : undefined}
-              href="/jobs"
-            >
-              İş geçmişi
-            </Link>
-            {user.permissions.includes("audit.read") && (
-              <Link
-                onClick={() => setMenuOpen(false)}
-                aria-current={path === "/audit" ? "page" : undefined}
-                href="/audit"
-              >
-                Denetim kayıtları
-              </Link>
-            )}
-          </nav>
-          <div className="sidebar-footer">
-            <div className="sidebar-session">
-              {user.display_name}
-              <br />
-              <span>
-                {user.roles
-                  .map(
-                    (r) =>
-                      roleLabels[r] ?? r,
-                  )
-                  .join(" · ")}
-              </span>
-            </div>
-            <div className="sidebar-footer-actions">
-              <RepositoryLink />
-              <Link href="/account" className="sidebar-account-link" aria-label="Hesabım — hesap sayfasını aç"
-                aria-current={path === "/account" ? "page" : undefined} onClick={() => setMenuOpen(false)}>
-                <span>Hesabım</span>
-              </Link>
-            </div>
-          </div>
-        </aside>
-        <main id="main-content" className="main-content">
-          {logoutError && (
-            <p role="alert" className="notice error">
-              {logoutError}
-            </p>
-          )}
-          {children}
-        </main>
-      </div>
+      <ConsoleNavigation key={user.user_id} user={user} onLogout={logout}>
+        {logoutError && (
+          <p role="alert" className="notice error">
+            {logoutError}
+          </p>
+        )}
+        {children}
+      </ConsoleNavigation>
     </SessionContext.Provider>
   );
 }

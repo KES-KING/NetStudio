@@ -102,8 +102,8 @@ test("white content, graphite navigation and stable ECharts across filtering", a
 
   const sidebar = page.locator(".sidebar");
   const sidebarBefore = await sidebar.boundingBox();
-  expect(sidebarBefore!.y).toBe(56);
-  expect(sidebarBefore!.height).toBe(1024 - 56);
+  expect(sidebarBefore!.y).toBe(68);
+  expect(sidebarBefore!.height).toBe(1024 - 68);
   await page.evaluate(() => window.scrollTo(0, 850));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   expect(await sidebar.boundingBox()).toEqual(sidebarBefore);
@@ -163,8 +163,8 @@ for (const width of [320, 768, 1024, 1920, 2560]) {
     await expectNoPageOverflow(page, width);
     if (width >= 1700) {
       const main = await page.locator(".main-content").boundingBox();
-      expect(main!.x).toBe(200);
-      expect(main!.width).toBe(width - 200);
+      expect(main!.x).toBe(232);
+      expect(main!.width).toBe(width - 232);
       await expect(page.locator(".main-content")).toHaveCSS("max-width", "none");
       await page.screenshot({ path: join(evidence, `dashboard-${width}.png`) });
     }

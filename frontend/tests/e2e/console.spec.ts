@@ -120,6 +120,7 @@ test("real API dashboard, shared filters, square design and keyboard ports", asy
   await page.screenshot({
     path: join(evidenceDir, "dashboard-desktop.png"),
     fullPage: true,
+    animations: "disabled",
   });
   await page.getByRole("button", { name: "1, Aktif", exact: true }).focus();
   await page.keyboard.press("Enter");
@@ -153,6 +154,7 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
   await page.screenshot({
     path: join(evidenceDir, "detail-desktop.png"),
     fullPage: true,
+    animations: "disabled",
   });
   await page.getByRole("button", { name: "SSH", exact: true }).click();
   await expect(page.getByText("Bağlandı", { exact: true })).toBeVisible({
@@ -194,6 +196,7 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
   await page.screenshot({
     path: join(evidenceDir, "detail-ssh-desktop.png"),
     fullPage: true,
+    animations: "disabled",
   });
   await page.setViewportSize({ width: 1200, height: 950 });
   await expect(page.locator(".xterm-rows")).toContainText("PTY");
