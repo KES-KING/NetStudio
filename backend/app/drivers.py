@@ -159,7 +159,10 @@ async def collect(store, vault, device, groups=GROUPS, authorize=lambda: None):
                     if command.group not in requested or command.text in outputs:
                         continue
                     authorize()
-                    if cached.get(command.text) in {"collector_command_unsupported", "collector_permission_denied", "collector_parse_failed"}:
+                    status = cached.get(command.text)
+                    if status in {"collector_command_unsupported", "collector_permission_denied"} or (
+                        status == "collector_parse_failed" and not command.required
+                    ):
                         unavailable[command.text] = cached[command.text]
                         continue
                     try:
@@ -181,6 +184,14 @@ async def collect(store, vault, device, groups=GROUPS, authorize=lambda: None):
     # by driver, software version or credential/connection revision changes.
     authorize()
     with store.engine.begin() as conn:
+        # A successful fresh read replaces any older negative capability.
+        # Required parse failures are retried under scheduler backoff; they are
+        # not evidence that a supported command can never be read again.
+        successful = outputs.keys() - unavailable.keys()
+        if successful:
+            conn.execute(store.capabilities.delete().where(
+                store.capabilities.c.device_id == device.id,
+                store.capabilities.c.command_id.in_(successful)))
         for command, code in unavailable.items():
             upsert(conn, store.capabilities,
                 (store.capabilities.c.device_id == device.id) & (store.capabilities.c.command_id == command),
@@ -277,10 +288,13 @@ def _parse_text(device, driver, outputs, unavailable, groups):
     if any(c.text in unavailable for c in required):
         return ReadResult(device, metadata={g: metadata(g, driver, quality="error", complete=False,
             reason="required_command_unavailable", diagnostics={c: quality(v) for c, v in unavailable.items()}) for g in groups})
+    parsing_command = None
     try:
         at = now()
+        parsing_command = interface_command if interface_command in outputs else None
         entries = module.parse_interfaces(outputs[interface_command]) if interface_command in outputs else {}
         warnings = []
+        parsing_command = "display version" if module is huawei else "show version"
         version = outputs.get("display version" if module is huawei else "show version", "")
         if version and identify({"version": version}) != driver:
             # IOS and IOS-XE share selected command parsers, not arbitrary OSes.
@@ -290,9 +304,12 @@ def _parse_text(device, driver, outputs, unavailable, groups):
                     "serial": device.serial, "health": Health(), "outputs": outputs, "unavailable": unavailable}
         if module is cisco:
             if entries:
+                parsing_command = "show interfaces status"
                 cisco.apply_status(entries, outputs["show interfaces status"])
             if "show ip interface" in outputs:
+                parsing_command = "show ip interface"
                 cisco.apply_addresses(entries, outputs["show ip interface"], warnings)
+            parsing_command = None
             release = re.search(r"\bVersion\s+([^,\s]+)", version)
             model = re.search(r"^\s*Model [Nn]umber\s*:\s*(\S+)", version, re.I | re.M) or re.search(
                 r"^\s*cisco\s+([A-Z][A-Z0-9-]+)\s+\(", version, re.I | re.M)
@@ -317,6 +334,7 @@ def _parse_text(device, driver, outputs, unavailable, groups):
                 if not any((temperature, fan, psu)):
                     unavailable["show environment all"] = "collector_parse_failed"
         else:
+            parsing_command = None
             release = re.search(r"VRP\s*\(R\)\s*software,\s*Version\s+([^\n]+)", version, re.I)
             snapshot["release"] = release[1][:160] if release else device.os_version
             model = re.search(r"^(?:Quidway|HUAWEI)\s+(\S+)\s+(?:Routing\s+)?Switch\s+uptime is", version, re.I | re.M)
@@ -341,6 +359,7 @@ def _parse_text(device, driver, outputs, unavailable, groups):
             units = {"year": 31536000, "week": 604800, "day": 86400, "hour": 3600, "minute": 60, "second": 1}
             parts = re.findall(r"(\d+)\s+(year|week|day|hour|minute|second)s?", uptime[1])
             snapshot["health"].uptime_seconds = sum(int(n) * units[u] for n, u in parts) if parts else None
+        parsing_command = None
         if entries:
             updated, batch = module.merge_snapshot(device, snapshot)
             if module is huawei and version:
@@ -354,11 +373,13 @@ def _parse_text(device, driver, outputs, unavailable, groups):
         result.inventory_complete = bool(entries)
         return result
     except (ValueError, KeyError, OverflowError, ConnectionPolicyError):
-        for command in DRIVERS[driver][1]:
-            if command.group in groups and command.text in outputs and (command.required or groups == {"health"}):
-                unavailable[command.text] = "collector_parse_failed"
+        # A status-table failure says nothing about `show version` or the
+        # interface-detail command. Do not poison unrelated capability entries.
+        if parsing_command and parsing_command in outputs:
+            unavailable[parsing_command] = "collector_parse_failed"
+        diagnostics = {parsing_command or "parsed_data_validation": "parse_error"}
         return ReadResult(device, metadata={g: metadata(g, driver, quality="parse_error",
-            complete=False, reason="collector_parse_failed") for g in groups})
+            complete=False, reason="collector_parse_failed", diagnostics=diagnostics) for g in groups})
 
 
 def enrich_ios(device, batch, outputs, unavailable):

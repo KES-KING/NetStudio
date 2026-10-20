@@ -165,7 +165,8 @@ def interface_kind(name):
         return "port_channel"
     if value.startswith("loopback"):
         return "loopback"
-    if value.startswith(("mgmt", "management")):
+    # Catalyst's out-of-band Fa0 has no slash and is not a front-panel port.
+    if value == "fastethernet0" or value.startswith(("mgmt", "management")):
         return "management"
     if re.match(r"(?:fastethernet|gigabitethernet|tengigabitethernet|ethernet)\d+(?:/\d+)+$", value):
         return "ethernet"
@@ -218,6 +219,9 @@ def parse_interfaces(raw):
         text = raw[header.end():headers[index + 1].start() if index + 1 < len(headers) else len(raw)]
         admin = False if "administratively down" in admin_state else True if admin_state in {"up", "down", "reset"} else None
         oper = True if protocol == "up" else False if protocol == "down" else None
+        hardware_absent = bool(re.search(r"^\s*Hardware is not present\s*$", text, re.I | re.M))
+        if hardware_absent and oper is not False:
+            raise ConnectionPolicyError("collector_parse_failed")
         speed_match = re.search(r"\b(?:a-)?(\d+(?:\.\d+)?)([GM]?)b/s\b", text, re.I)
         speed = parse_speed("".join(speed_match.groups())) if speed_match else None
         duplex_match = re.search(r"\b(?:a-)?(full|half)-duplex\b", text, re.I)
@@ -247,7 +251,7 @@ def parse_interfaces(raw):
         entries[key] = {
             "name": name, "kind": kind, "speed": speed, "connector": "unknown",
             "description": description.group(1).strip()[:500] if description else None,
-            "physical": False, "sample": sample,
+            "physical": False, "hardware_absent": hardware_absent, "sample": sample,
         }
     if not entries:
         raise ConnectionPolicyError("collector_parse_failed")
@@ -272,10 +276,16 @@ def apply_status(entries, raw):
         port, description, status, vlan, duplex, speed_token, media = values
         key = canonical(port)
         row = entries.get(key)
-        if row and row["kind"] != "ethernet":
-            continue
         if not row or key in matched:
             # A partially parsed table must not replace complete port inventory.
+            raise ConnectionPolicyError("collector_parse_failed")
+        matched.add(key)
+        if row["kind"] not in {"ethernet", "management"}:
+            continue
+        if not all((status, vlan, duplex, speed_token, media)):
+            raise ConnectionPolicyError("collector_parse_failed")
+        if row.get("hardware_absent"):
+            # Conflicting hardware evidence must not create a physical socket.
             raise ConnectionPolicyError("collector_parse_failed")
         state = status.lower()
         if state == "connected":
@@ -295,11 +305,16 @@ def apply_status(entries, raw):
             row["sample"].update(pvid=int(vlan), access_vlan=int(vlan), vlan_mode="access")
         elif vlan.lower() == "trunk":
             row["sample"]["vlan_mode"] = "trunk"
-        row.update(connector=connector_kind(media), physical=True,
+        row.update(connector=connector_kind(media), physical=row["kind"] == "ethernet",
                    description=(description or row["description"]))
         row["sample"]["transceiver_media"] = media[:160] if "sfp" in media.lower() else None
-        matched.add(key)
-    if not matched or matched != {key for key, row in entries.items() if row["kind"] == "ethernet"}:
+    physical = {key for key in matched if entries[key]["kind"] == "ethernet"}
+    # IOS may list inactive hardware personalities in `show interfaces` only.
+    # Exempt them solely on explicit device evidence, never model/port numbers
+    # or a down link. Ordinary missing rows still reject the entire snapshot.
+    expected = {key for key, row in entries.items()
+                if row["kind"] == "ethernet" and not row.get("hardware_absent")}
+    if not physical or physical != expected:
         raise ConnectionPolicyError("collector_parse_failed")
 
 

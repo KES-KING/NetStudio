@@ -10,7 +10,7 @@ from app.collection import ReadResult, metadata, persist
 from app.contracts import PollingSettings, Telemetry
 from app.database import now
 from app.drivers import parse_text
-from app.driver_catalog import GROUPS
+from app.driver_catalog import GROUPS, VERSION
 from app.history import rollup
 from app.models import Job
 from app.queue import claim, enqueue, finish, owned
@@ -137,6 +137,47 @@ def test_bad_health_does_not_discard_valid_ports(system):
     assert len(result.device.physical_ports) == 3
     data = persist(store, device, result)
     assert len(data["interfaces"]) == 4
+
+
+def test_status_parse_error_does_not_poison_other_command_capabilities(system):
+    client, store, _, _ = system
+    login(client)
+    device = store.get_device(add_device(client, collector="cisco_ios")["id"])
+    unavailable = {}
+    result = parse_text(device, "cisco_ios", {**OUTPUTS, "show interfaces status": "bad table"},
+                        unavailable, set(GROUPS))
+    assert unavailable == {"show interfaces status": "collector_parse_failed"}
+    assert result.metadata["fast"].diagnostics == {"show interfaces status": "parse_error"}
+    assert result.metadata["fast"].quality == "parse_error"
+    assert result.metadata["health"].quality == "ok"
+
+
+def test_new_driver_rechecks_old_negative_capabilities(system, ios_server):
+    from hashlib import sha256
+    from test_cisco import wait_job
+    client, store, _, _ = system
+    login(client)
+    port, key, state = ios_server
+    device = add_device(client, collector="cisco_ios", ssh_profile="huawei_legacy", legacy_ssh_confirmed=True,
+        ssh_port=port, credentials={"username": "lab", "password": "lab-secret"})
+    base = f"/api/v1/devices/{device['id']}"
+    assert client.put(base + "/host-key", json={
+        "public_key": key.export_public_key().decode(), "fingerprint": key.get_fingerprint()}).status_code == 200
+    current = store.get_device(device["id"])
+    assert VERSION != "2026.10.20.1"
+    previous = sha256(f"{current.connection_revision}:cisco_ios:2026.10.20.1:{current.os_version}".encode()).hexdigest()
+    with store.engine.begin() as conn:
+        for command in ("show interfaces", "show interfaces status", "show version", "show inventory"):
+            conn.execute(store.capabilities.insert().values(device_id=current.id, command_id=command,
+                revision_key=previous, status="collector_parse_failed", checked_at=now()))
+    job = wait_job(client, device)
+    assert job["result"]["groups"]["fast"]["quality"] == "ok"
+    assert {"show interfaces", "show interfaces status", "show version", "show inventory"} <= set(state["commands"])
+    with store.engine.connect() as conn:
+        cached = dict(conn.execute(sa.select(store.capabilities.c.command_id, store.capabilities.c.status)
+            .where(store.capabilities.c.device_id == current.id)).all())
+    assert not {"show interfaces", "show interfaces status", "show version"} & cached.keys()
+    assert cached["show inventory"] == "collector_command_unsupported"
 
 
 def test_failed_channel_change_keeps_original_sample_provenance(system):

@@ -151,6 +151,82 @@ def test_duplicate_physical_port_is_not_silently_accepted(system):
         snapshot(system, {**OUTPUTS, "show interfaces status": STATUS + STATUS.splitlines()[1] + "\n"})
 
 
+def management_and_absent_outputs():
+    """Synthetic IOS shapes, not a recording of a customer's terminal."""
+    management = """FastEthernet0 is down, line protocol is down (notconnect)
+  Hardware is Fast Ethernet, address is 0200.0000.00ff
+  Auto-duplex, 100Mb/s
+     0 packets input, 0 bytes, 0 no buffer
+     0 packets output, 0 bytes, 0 underruns
+"""
+    absent = "".join(
+        f"GigabitEthernet1/0/{number} is down, line protocol is down (notconnect)\n"
+        "  Hardware is Gigabit Ethernet\n  Hardware is not present\n"
+        for number in (49, 50))
+    return {**OUTPUTS, "show interfaces": INTERFACES + absent + management,
+            "show interfaces status": STATUS + status_row(
+                "Fa0", "", "notconnect", "routed", "auto", "auto", "10/100BaseTX")}
+
+
+def test_management_and_explicitly_absent_hardware_preserve_interface_identity(system):
+    device, batch = snapshot(system, management_and_absent_outputs())
+    by_name = {interface.name: interface for interface in device.interfaces}
+    assert len(by_name) == 7
+    assert len(device.physical_ports) == 3
+    assert by_name["FastEthernet0"].kind == "management"
+    unbound = {by_name[name].id for name in ("FastEthernet0", "GigabitEthernet1/0/49", "GigabitEthernet1/0/50")}
+    assert not any(binding.interface_id in unbound for binding in device.bindings)
+    assert all(sample.oper_up is False for sample in batch.interfaces if sample.interface_id in unbound)
+    again, _ = merge_snapshot(device, parse_snapshot(device, management_and_absent_outputs()))
+    assert [i.id for i in again.interfaces] == [i.id for i in device.interfaces]
+    assert [p.id for p in again.physical_ports] == [p.id for p in device.physical_ports]
+
+
+@pytest.mark.parametrize("hardware", [
+    "  Hardware is Gigabit Ethernet\n",
+    "  Hardware is Gigabit Ethernet\n  Auto-duplex, Auto-speed, media type is Not Present\n",
+])
+def test_down_or_empty_transceiver_is_not_proof_of_absent_hardware(system, hardware):
+    outputs = {**OUTPUTS, "show interfaces": INTERFACES +
+               "GigabitEthernet1/0/49 is down, line protocol is down (notconnect)\n" + hardware}
+    with pytest.raises(ConnectionPolicyError, match="collector_parse_failed"):
+        snapshot(system, outputs)
+
+
+def test_absent_hardware_with_operational_link_is_rejected(system):
+    outputs = management_and_absent_outputs()
+    outputs["show interfaces"] = outputs["show interfaces"].replace(
+        "GigabitEthernet1/0/49 is down, line protocol is down", "GigabitEthernet1/0/49 is up, line protocol is up")
+    with pytest.raises(ConnectionPolicyError, match="collector_parse_failed"):
+        snapshot(system, outputs)
+
+
+def test_logical_bundle_does_not_require_a_physical_type_column(system):
+    device, _ = snapshot(system, {**OUTPUTS,
+        "show interfaces": INTERFACES + "Port-channel1 is up, line protocol is up (connected)\n",
+        "show interfaces status": STATUS + status_row("Po1", "", "connected", "trunk", "a-full", "a-1000", "")})
+    assert len(device.physical_ports) == 3
+    assert any(i.kind == "port_channel" for i in device.interfaces)
+
+
+@pytest.mark.parametrize("corruption", ["missing_row", "truncated_row", "duplicate_management", "conflicting_hardware"])
+def test_management_support_does_not_hide_partial_or_conflicting_status(system, corruption):
+    outputs = management_and_absent_outputs()
+    if corruption == "missing_row":
+        outputs["show interfaces status"] = "\n".join(
+            line for line in outputs["show interfaces status"].splitlines() if not line.startswith("Gi1/0/2"))
+    elif corruption == "truncated_row":
+        outputs["show interfaces status"] = "\n".join(
+            line[:20] if line.startswith("Gi1/0/2") else line
+            for line in outputs["show interfaces status"].splitlines())
+    elif corruption == "duplicate_management":
+        outputs["show interfaces status"] += outputs["show interfaces status"].splitlines()[-1] + "\n"
+    else:
+        outputs["show interfaces status"] += status_row("Gi1/0/49", "", "notconnect", "1", "auto", "auto", "Not Present")
+    with pytest.raises(ConnectionPolicyError, match="collector_parse_failed"):
+        snapshot(system, outputs)
+
+
 def test_optional_outputs_and_manual_geometry_are_preserved(system):
     client, store, _, _ = system
     login(client)
@@ -296,5 +372,21 @@ def test_real_legacy_ssh_collection_and_failed_refresh_preserves_inventory(syste
     assert current["model"] == "WS-C2960X-48FPD-L"
     assert len(current["physical_ports"]) == 3
     state["outputs"]["show interfaces status"] = "unrecognized\n"
-    assert wait_job(client, device)["error_code"] == "collector_parse_failed"
+    failed = wait_job(client, device)
+    assert failed["error_code"] == "collector_parse_failed"
+    assert failed["result"]["groups"]["fast"]["diagnostics"] == {"show interfaces status": "parse_error"}
     assert client.get(base).json() == current
+    # One malformed response must not permanently disable mandatory commands.
+    before = len(state["commands"])
+    state["outputs"].update(management_and_absent_outputs())
+    recovered = wait_job(client, device)
+    assert recovered["status"] == "partial" and recovered["error_code"] is None
+    assert recovered["result"]["groups"]["fast"]["quality"] == "ok"
+    assert {"show interfaces", "show interfaces status", "show version"} <= set(state["commands"][before:])
+    # Unsupported optional commands remain cached to protect the device.
+    assert "show environment all" not in state["commands"][before:]
+    refreshed = client.get(base).json()
+    assert len(refreshed["interfaces"]) == 7 and len(refreshed["physical_ports"]) == 3
+    assert {i["name"]: i["id"] for i in refreshed["interfaces"] if i["name"] in {
+        original["name"] for original in current["interfaces"]}} == {
+        original["name"]: original["id"] for original in current["interfaces"]}
