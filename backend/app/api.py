@@ -18,6 +18,7 @@ from .auth import Auth, COOKIE, fail, session_response
 from .account_api import install_account_routes
 from .auditing import AuditRequest, audit_request, safe_text
 from .collector import collect_linux
+from .cisco import collect_cisco
 from .huawei import collect_huawei
 from .contracts import ConnectionSettings, Credentials, DeviceCreate, Inventory, ManagedDevice, StrictModel, Telemetry
 from .database import Store, now
@@ -359,7 +360,14 @@ def create_app(store=None, key_file=None):
                 target_allowed(app.state.store, device)
             authorize()
             if job.kind == "inventory_read":
-                collect = collect_huawei if device.collector == "huawei_vrp" else collect_linux
+                collectors = {
+                    "cisco_ios": collect_cisco,
+                    "huawei_vrp": collect_huawei,
+                    "linux_ssh": collect_linux,
+                }
+                collect = collectors.get(device.collector)
+                if collect is None:
+                    raise ConnectionPolicyError("invalid_collector")
                 device, batch = await collect(app.state.store, app.state.vault, device, authorize=authorize)
                 ingest(app.state.store, device, batch)
                 result = {"interface_count": len(batch.interfaces), "source": "ssh", "collector": device.collector,

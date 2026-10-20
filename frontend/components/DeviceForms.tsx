@@ -147,13 +147,14 @@ function ConnectionFields({ device }: { device?: Device }) {
             <option value="external">Harici toplayıcı / envanter aktarımı</option>
             <option value="linux_ssh">Linux · salt okunur SSH</option>
             <option value="huawei_vrp">Huawei VRP · salt okunur SSH</option>
+            <option value="cisco_ios">Cisco IOS · Catalyst 2960-X salt okunur SSH</option>
           </select>
         </label>
         <label>
           SSH uyumluluk profili
           <select name="ssh_profile" aria-label="SSH uyumluluk profili" value={profile} onChange={(event) => setProfile(event.target.value as "standard" | "huawei_legacy")}>
             <option value="standard">Standart (önerilen)</option>
-            <option value="huawei_legacy">Huawei legacy · eski VRP</option>
+            <option value="huawei_legacy">Eski VRP</option>
           </select>
         </label>
       </div>

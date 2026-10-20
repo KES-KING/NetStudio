@@ -37,7 +37,7 @@ export type Device = {
   read_only: boolean;
   support_status: string;
   ssh_port: number;
-  collector: "external" | "linux_ssh" | "huawei_vrp";
+  collector: "external" | "linux_ssh" | "huawei_vrp" | "cisco_ios";
   ssh_profile?: "standard" | "huawei_legacy";
   credential_configured: boolean;
   host_key_fingerprint: string | null;

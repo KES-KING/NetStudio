@@ -29,7 +29,7 @@ class Credentials(StrictModel):
         return self
 
 
-Collector = Literal["external", "linux_ssh", "huawei_vrp"]
+Collector = Literal["external", "linux_ssh", "huawei_vrp", "cisco_ios"]
 SSHProfile = Literal["standard", "huawei_legacy"]
 
 

@@ -30,6 +30,8 @@ for (const width of [1536, 390]) {
       const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible();
       await expect(dialog.getByLabel("SSH uyumluluk profili")).toHaveValue("standard");
+      await expect(dialog.getByRole("option", { name: "Eski VRP", exact: true })).toHaveAttribute("value", "huawei_legacy");
+      await expect(dialog.getByRole("option", { name: "Cisco IOS · Catalyst 2960-X salt okunur SSH", exact: true })).toHaveAttribute("value", "cisco_ios");
       await dialog.getByLabel("Veri kaynağı", { exact: true }).selectOption("huawei_vrp");
       await dialog.getByLabel("SSH uyumluluk profili").selectOption("huawei_legacy");
       const confirmation = dialog.getByRole("checkbox", { name: "Bu cihaz için eski SSH algoritmalarının kullanımını onaylıyorum." });
@@ -58,6 +60,12 @@ for (const width of [1536, 390]) {
       await page.getByRole("button", { name: "Bağlantı bilgileri", exact: true }).click();
       await expect(dialog.getByLabel("Veri kaynağı", { exact: true })).toHaveValue("huawei_vrp");
       await expect(dialog.getByLabel("SSH uyumluluk profili")).toHaveValue("huawei_legacy");
+      await dialog.getByLabel("Veri kaynağı", { exact: true }).selectOption("cisco_ios");
+      await dialog.getByRole("button", { name: "Bağlantı ayarlarını kaydet", exact: true }).click();
+      await expect(dialog.getByRole("status")).toContainText("Veri kaynağı ve SSH profili kaydedildi");
+      expect((await (await page.request.get(base)).json()).collector).toBe("cisco_ios");
+      await dialog.getByRole("button", { name: "Kapat", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Veri topla", exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
       expect(errors).toEqual([]);
     } finally {

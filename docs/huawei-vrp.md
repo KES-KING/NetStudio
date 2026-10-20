@@ -4,7 +4,7 @@
 
 1. Engineer veya superadmin olarak cihaz detayındaki **Bağlantı bilgileri** ekranını açın.
 2. **Veri kaynağı → Huawei VRP · salt okunur SSH** seçin.
-3. Modern SSH ile çalışıyorsa **Standart** profili koruyun. S5700S-28P-LI-AC / VRP 5.120 gibi yalnız eski algoritmalarla bağlanılan cihazda **Huawei legacy · eski VRP** seçin ve risk onayını işaretleyin. **Bağlantı ayarlarını kaydet** düğmesine basın.
+3. Modern SSH ile çalışıyorsa **Standart** profili koruyun. S5700S-28P-LI-AC / VRP 5.120 gibi yalnız eski algoritmalarla bağlanılan cihazda **Eski VRP** seçin ve risk onayını işaretleyin. **Bağlantı ayarlarını kaydet** düğmesine basın.
 4. Kimlik bilgilerini ve bağımsız güvenilir kanaldan doğrulanmış **cihazın public host anahtarını / SHA256 fingerprint'ini** tamamlayın. Sırlar geri okunmaz; boş sır alanı mevcut kaydı korur. Otomatik ilk güven yoktur.
 5. **Bağlantıyı test et**, ardından **Veri topla** kullanın. İş sonucu ve son gözlem zamanını kontrol edin. **SSH** aynı cihaz profilini kullanır.
 

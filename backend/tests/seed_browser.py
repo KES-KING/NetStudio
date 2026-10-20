@@ -31,7 +31,10 @@ def main():
             raise SystemExit("QA database already contains users. No account overwritten; use a new isolated project.")
         conn.execute(store.users.insert().values(id="qa-admin", username="qa-admin", password_hash=hasher.hash(PASSWORD), roles=["superadmin"], sites=["*"], enabled=True))
     container = os.getenv("STOCC_TEST_SSH_CONTAINER", "stocc-redesign-qa-ssh-lab-1")
-    address = subprocess.check_output(["docker", "--context", "default", "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", container], text=True).strip()
+    docker_context = os.getenv("STOCC_TEST_DOCKER_CONTEXT") or subprocess.check_output(
+        ["docker", "context", "show"], text=True
+    ).strip()
+    address = subprocess.check_output(["docker", "--context", docker_context, "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", container], text=True).strip()
     client = httpx.Client(base_url=origin, headers={"origin": origin}, timeout=30)
     response = client.post("/api/v1/session/login", json={"username": "qa-admin", "password": PASSWORD}); response.raise_for_status()
     client.headers["x-csrf-token"] = response.json()["csrf_token"]

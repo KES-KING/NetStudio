@@ -21,7 +21,7 @@ Arayüz: Next.js 16 / React 19 / TypeScript, Apache ECharts, xterm.js ve SWR. Ba
 - Taralı Topoloji çalışma alanı: kişisel zone’lar, taşınabilir cihazlar, port bağlantısı çizimi ve kaynak/zaman bilgili MAC/IP uç düğümleri.
 - Apache ECharts ile RX/TX, port durumu ve kapasite gösterimleri; bilinmeyen/eski verinin açık ayrımı.
 - Cihaz detayına entegre SSH terminali; backend tarafında site/rol denetimi ve kayıtlı host key doğrulaması.
-- Harici envanter/telemetri aktarımı; Linux ve Huawei VRP için kullanıcı tarafından başlatılan salt okunur SSH toplama işleri.
+- Harici envanter/telemetri aktarımı; Linux, Huawei VRP ve Cisco Catalyst 2960-X IOS için kullanıcı tarafından başlatılan salt okunur SSH toplama işleri.
 - Kişisel profil/avatar/parola yönetimi; `viewer`, `engineer`, `superadmin` rolleri ve yalnız superadmin'e açık kullanıcı yönetimi/ayrıntılı audit.
 - Docker Compose ile PostgreSQL, migration, sır deposu, API, frontend ve gateway kurulumu.
 
@@ -35,7 +35,7 @@ Aşağıdaki üç görüntü çalışan uygulamanın izole QA ortamından alınm
 
 **Güncellik kuralı:** Her görsel arayüz güncellemesinde aşağıdaki üç görüntünün tamamı güncel koddan yeniden alınır ve aynı değişiklik/PR içinde teslim edilir. İnsanlar ve yapay zekâ için ayrıntılar [rule.md](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile), ajanların uygulama adımları [agent.md](agent.md) içindedir.
 
-Son set: **20 Ekim 2026**, `stocc-sfp-topology-qa-20261020` izole Docker ortamı, Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `6022616` üzerine SFP sınıflandırması ve responsive IP topolojisi değişikliklerini içerir; mevcut kullanıcı kurulumu değiştirilmemiştir.
+Son set: **20 Ekim 2026**, `stocc-cisco-qa-20261020` izole Docker ortamı, sistem Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `ea974a7` üzerine Catalyst 2960-X collector ve bağlantı formu değişikliklerini içerir; mevcut `stocc-netstudio-fresh` kurulumu değiştirilmemiştir.
 
 ### Ana sayfa
 
@@ -187,13 +187,14 @@ Sonraki `ps`, `stop`, `up` ve `exec` işlemlerinde de aynı `-p stocc-netstudio-
 5. Veri toplama yöntemini seçin:
    - `Linux · salt okunur SSH`: **Veri topla**, sabit `ip -j -s link show`, `ip -j address show`, `/proc/uptime`, boot ID ve isteğe bağlı `ip -j neigh show` okumalarını gerçekleştirir. İki geçerli sayaç gözlemi trafik hızı için gerekir. Donanım port geometrisi bu çıktılardan tahmin edilmez.
    - `Huawei VRP · salt okunur SSH`: **Veri topla**, VRP sürümünü, arayüzleri/portları, RX/TX hız ve sayaçlarını, IP arayüzlerini, MAC/ARP gözlemlerini ve destekleniyorsa CPU/RAM ölçümlerini okur. VRP 5.120 / S5700 V200R002 biçimi için ayrıştırıcı testleri vardır; [Huawei kurulum ve veri sözleşmesine](docs/huawei-vrp.md) bakın. Model adına bakarak port eklenmez.
+   - `Cisco IOS · Catalyst 2960-X salt okunur SSH`: **Veri topla**, IOS/model kimliğini, cihazın raporladığı fiziksel portları, durum/hız/sayaçları, IP arayüzlerini ve MAC/ARP gözlemlerini okur. İlk desteklenen ürün ailesi `WS-C2960X-*`; ayrıntılar [Cisco IOS veri sözleşmesindedir](docs/cisco-ios.md). Nominal model kapasitesinden eksik port üretilmez.
    - `Harici toplayıcı`: Mevcut SNMP/NETCONF/üretici toplayıcınızı aşağıdaki envanter/gözlem API'sine bağlayın. Üretici komutları veya desteklenmeyen telemetri varsayılmaz. **Envanter aktar** doğrulanmış JSON dosyasını kabul eder.
 
-Mevcut bir cihazı yeniden eklemek gerekmez: **Bağlantı bilgileri → Veri kaynağı** alanından toplayıcısını değiştirin. Eski VRP sürümleri için **SSH uyumluluk profili → Huawei legacy** seçeneği, risk onayıyla yalnız bu cihaza SHA-1 KEX / ssh-rsa / aes128-cbc uyumluluğu ekler. Standart profil varsayılandır; otomatik downgrade veya host anahtarı kabulü yoktur. Profil/veri kaynağı değişikliği audit edilir ve açık terminalleri sonlandırır.
+Mevcut bir cihazı yeniden eklemek gerekmez: **Bağlantı bilgileri → Veri kaynağı** alanından toplayıcısını değiştirin. Eski VRP ve açıkça doğrulanmış benzer legacy SSH cihazlarında **SSH uyumluluk profili → Eski VRP** seçeneği, risk onayıyla yalnız bu cihaza SHA-1 KEX / ssh-rsa / aes128-cbc uyumluluğu ekler. Standart profil varsayılandır; otomatik downgrade veya host anahtarı kabulü yoktur. Profil/veri kaynağı değişikliği audit edilir ve açık terminalleri sonlandırır.
 
-**Yenile**, alınmış verileri yeniden okur; cihazı sorguladığı anlamına gelmez. Linux/Huawei toplama işleri açık kullanıcı eylemiyle başlar; zamanlanmış SNMP/SSH polling servisi bu sürümde yoktur. Harici toplayıcı kendi zamanlamasını yönetir. Tarayıcı her 15 saniyede ortak görünümü sorgular; bileşenler ayrı telemetri istekleri oluşturmaz.
+**Yenile**, alınmış verileri yeniden okur; cihazı sorguladığı anlamına gelmez. Linux/Huawei/Cisco toplama işleri açık kullanıcı eylemiyle başlar; zamanlanmış SNMP/SSH polling servisi bu sürümde yoktur. Harici toplayıcı kendi zamanlamasını yönetir. Tarayıcı her 15 saniyede ortak görünümü sorgular; bileşenler ayrı telemetri istekleri oluşturmaz.
 
-Diğer üreticiler/sürümler ve fiziksel cihaz kabulü ayrıca gerekir; Huawei ayrıştırıcı testleri fiziksel switch kabulü değildir. Önceki sürümde gerçek konfigürasyon uygulama veya yedekleme akışı bulunmuyordu; bu teslimat bu yetenekleri varmış gibi göstermez. SSH terminali salt okunur komut filtresi uygulamaz: uzak cihaz hesabının yetkileri geçerlidir. En az ayrıcalıklı cihaz hesabı kullanın.
+Diğer üreticiler/sürümler ve fiziksel cihaz kabulü ayrıca gerekir; Huawei/Cisco ayrıştırıcı testleri fiziksel switch kabulü değildir. Önceki sürümde gerçek konfigürasyon uygulama veya yedekleme akışı bulunmuyordu; bu teslimat bu yetenekleri varmış gibi göstermez. SSH terminali salt okunur komut filtresi uygulamaz: uzak cihaz hesabının yetkileri geçerlidir. En az ayrıcalıklı cihaz hesabı kullanın.
 
 ## HTTPS ve üretim sınırları
 
@@ -403,7 +404,7 @@ STOCC_QA=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:13000 npm run test:e2e -- --work
 
 Playwright Chromium kurulu değilse `npx playwright install chromium` çalıştırın; mevcut Chrome için `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome` kullanılabilir. Seed yalnız loopback `stocc_qa` veritabanını kabul eder; mevcut envanter veya kullanıcı varsa durur, hiçbir hesabın üzerine yazmaz. QA kullanıcı/parolası yalnız `backend/tests/conftest.py` içindeki test fixture'ıdır; üretimde kullanılmaz. SSH test sunucusu üretim imajına kopyalanmaz.
 
-Mevcut QA projesi kullanılıyorsa veya test hesabı değiştirilmişse hesabı sıfırlamayın. Yeni `COMPOSE_PROJECT_NAME` ve boşta olan PostgreSQL/API/web portlarıyla ayrı proje açın. QA SSH anahtar servisinin portu `STOCC_TEST_SSH_KEY_PORT` ile ayrılabilir. Seed sırasında `STOCC_TEST_ORIGIN`, `STOCC_TEST_SSH_KEY_URL`, `STOCC_TEST_SSH_CONTAINER` ve `STOCC_TEST_DATABASE_URL` değerlerini **aynı yeni projeyi** gösterecek şekilde verin; testlerde de `PLAYWRIGHT_BASE_URL` bu origin olmalıdır. Seed varsayılanları sırasıyla `http://127.0.0.1:13000`, `http://127.0.0.1:12223`, `stocc-redesign-qa-ssh-lab-1` adresleridir. Seed HTTP endpoint'leri yalnız loopback olabilir.
+Mevcut QA projesi kullanılıyorsa veya test hesabı değiştirilmişse hesabı sıfırlamayın. Yeni `COMPOSE_PROJECT_NAME` ve boşta olan PostgreSQL/API/web portlarıyla ayrı proje açın. QA SSH anahtar servisinin portu `STOCC_TEST_SSH_KEY_PORT` ile ayrılabilir. Seed sırasında `STOCC_TEST_ORIGIN`, `STOCC_TEST_SSH_KEY_URL`, `STOCC_TEST_SSH_CONTAINER` ve `STOCC_TEST_DATABASE_URL` değerlerini **aynı yeni projeyi** gösterecek şekilde verin; testlerde de `PLAYWRIGHT_BASE_URL` bu origin olmalıdır. Seed varsayılanları sırasıyla `http://127.0.0.1:13000`, `http://127.0.0.1:12223`, `stocc-redesign-qa-ssh-lab-1` adresleridir. Seed seçili Docker context'i kullanır; gerekirse `STOCC_TEST_DOCKER_CONTEXT` ile aynı QA projesinin context'ini açıkça belirtin. Seed HTTP endpoint'leri yalnız loopback olabilir.
 
 Tarayıcı testleri masaüstü/mobil yerleşim, filtre kapsamı, ECharts, klavye ile port seçimi, form akışı, boş sır alanı, inline SSH giriş/kopyalama/yapıştırma/resize/kapanış ve logout senaryolarını gerçek API/gateway üzerinden denetler. Ayrıca sayfa kimliği, framework hata katmanı, konsol ve cookie güvenlik nitelikleri kontrol edilir. Girişten önceki `/session/me` 401 yanıtı beklenen davranıştır. Ekran görüntüleri işletim sisteminin geçici dizinindeki `stocc-netstudio-qa/` altına, başarısız test izleri `stocc-netstudio-playwright/` altına yazılır; otomatik olarak repository'ye eklenmez. Görsel değişikliklerde [görüntü yenileme kuralına](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile) göre incelenmiş üç README görüntüsü ayrıca `docs/screenshots/` altına alınır ve aynı değişiklikle teslim edilir; diğer geçici test kanıtları repository dışında kalır. Bunlar **sentetik QA envanteridir; fiziksel cihaz kanıtı değildir**.
 
@@ -467,5 +468,13 @@ Yeni kullanıcı akışları için HTTPS/WSS, Safari/Firefox, yük testi, yedekt
 - İzole `stocc-sfp-topology-qa-20261020` Docker projesinde sistem Chrome ile **26 Playwright senaryosu geçti**. Cihaz detay topolojisi 1536 px ve 390 px genişlikte düğüm sınırları, yatay taşma, yakınlaştırma ve sıfırlama açısından doğrulandı; genel regresyon 320–2560 px aralığını ve gerçek izole SSH oturumunu kapsadı.
 - README'nin ana sayfa, SSH kapalı detay ve SSH açık detay görüntülerinin üçü de aynı güncel çalışma ağacından yenilendi. Kullanıcının çalışan `stocc-netstudio-fresh` kurulumu, verileri, anahtarları ve volume'leri değiştirilmedi; QA volume'leri ayrı tutuldu. Yeni DB migration gerekmez.
 - Bu koşuda fiziksel Huawei switch'e bağlanılmadı. Otomatik üretilmiş VRP envanteri bir sonraki başarılı veri toplamada yeni kuralla güncellenir; elle aktarılmış cihaz geometrisi korunur. HTTPS/WSS, Firefox/Safari ve büyük filo yük testi bu değişiklik için ayrıca doğrulanmadı. Starlette/httpx, Alembic, Vite ve legacy FFDH deprecation uyarıları başarısız test değildir.
+
+### Cisco Catalyst 2960-X collector doğrulaması — 2026-10-20
+
+- Backend: **102 test geçti, 1 isteğe bağlı PostgreSQL migration testi atlandı**. Yeni testler temizlenmiş `WS-C2960X-48FPD-L` IOS çıktısını, cihazın raporladığı portları model kapasitesinden ayırmayı, bakır/SFP/QSFP sınıflandırmasını, sayaç/VLAN/IP/MAC–ARP ayrıştırmasını, opsiyonel komut eksikliğini, elle aktarılmış geometrinin korunmasını ve gerçek yerel legacy SSH/PTY sayfalamasını kapsar.
+- Frontend: ESLint, TypeScript, **30 birim testi** ve production build geçti. Bağlantı formunda `Cisco IOS · Catalyst 2960-X salt okunur SSH` veri kaynağı ile `Eski VRP` etiketi doğrulandı.
+- Browser eklentisi bulunmadığından repository Playwright akışı ve sistem Chrome kullanıldı. İzole `stocc-cisco-qa-20261020` Docker projesinde **26/26 Playwright senaryosu geçti**; hedef form akışı 1536×1024 ve 390×844, genel responsive regresyon 320–2560 px aralığında kontrol edildi. Sayfa kimliği, dolu içerik, framework hata katmanı, konsol, gerçek QA SSH oturumu ve yatay taşma kontrolleri geçti.
+- README'nin ana sayfa, SSH kapalı detay ve SSH açık detay görüntüleri aynı çalışma ağacından yenilendi ve görsel olarak incelendi. Test verileri sentetiktir; mevcut `stocc-netstudio-fresh` veritabanı, kullanıcıları, anahtarları ve volume'leri değiştirilmedi. Yeni DB migration gerekmez.
+- Fiziksel `192.168.1.150` cihazında kullanıcı kimlik doğrulaması ve gerçek `show` çıktılarıyla tam veri toplama bu koşuda yapılmadı. Yerel entegrasyon fiziksel cihaz kabulü değildir; ilk canlı toplamada iş sonucu, model/sürüm, port sayısı ve uyarılar ayrıca kontrol edilmelidir.
 
 Önceki kapsam ve kararların tarihsel kaydı: [ilk uygulama raporu](stocc-netstudio-uygulama-raporu.md). Güncel çalışma sınırları bu README ve kaynak koddaki sözleşmelerdir.
