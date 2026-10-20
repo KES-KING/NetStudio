@@ -25,10 +25,11 @@ class CredentialVault:
         except (OSError, ValueError, KeyError, TypeError) as error:
             raise SecretStoreError("encryption_key_unavailable") from error
 
-    def encode(self, device_id, credentials):
+    def encode(self, device_id, credentials, protocol=None):
         key_id, keys = self.keyring()
         nonce = os.urandom(12)
-        ciphertext = AESGCM(keys[key_id]).encrypt(nonce, json.dumps(credentials).encode(), f"stocc:{device_id}:{key_id}".encode())
+        purpose = f"stocc:{device_id}:{key_id}" + (f":{protocol}" if protocol else "")
+        ciphertext = AESGCM(keys[key_id]).encrypt(nonce, json.dumps(credentials).encode(), purpose.encode())
         return {"device_id": device_id, "key_id": key_id, "nonce": nonce, "ciphertext": ciphertext}
 
     def save(self, device_id, credentials, conn):
@@ -44,6 +45,31 @@ class CredentialVault:
         try:
             _, keys = self.keyring()
             raw = AESGCM(keys[row["key_id"]]).decrypt(row["nonce"], row["ciphertext"], f"stocc:{device_id}:{row['key_id']}".encode())
+            return json.loads(raw)
+        except SecretStoreError:
+            raise
+        except Exception as error:
+            raise SecretStoreError("credential_decryption_failed") from error
+
+    def save_protocol(self, device_id, protocol, credentials, metadata, conn):
+        if protocol != "snmp":
+            raise SecretStoreError("unsupported_secret_protocol")
+        table = self.store.protocol_secrets
+        conn.execute(table.delete().where(table.c.device_id == device_id, table.c.protocol == protocol))
+        conn.execute(table.insert().values(**self.encode(device_id, credentials, protocol),
+                                          protocol=protocol, metadata=metadata))
+
+    def get_protocol(self, device_id, protocol):
+        table = self.store.protocol_secrets
+        with self.store.engine.connect() as conn:
+            row = conn.execute(sa.select(table).where(
+                table.c.device_id == device_id, table.c.protocol == protocol)).mappings().first()
+        if not row:
+            raise SecretStoreError("snmp_credentials_missing")
+        try:
+            _, keys = self.keyring()
+            raw = AESGCM(keys[row["key_id"]]).decrypt(
+                row["nonce"], row["ciphertext"], f"stocc:{device_id}:{row['key_id']}:{protocol}".encode())
             return json.loads(raw)
         except SecretStoreError:
             raise

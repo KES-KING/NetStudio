@@ -5,6 +5,10 @@ services:
       STOCC_ENV: production
       STOCC_ALLOWED_ORIGINS: ${STOCC_ALLOWED_ORIGINS:?Set an exact https origin}
     ports: !reset []
+  collector-worker:
+    environment:
+      STOCC_ENV: production
+      STOCC_ALLOWED_ORIGINS: ${STOCC_ALLOWED_ORIGINS:?Set an exact https origin}
   postgres:
     ports: !reset []
   gateway:

@@ -68,7 +68,7 @@ def linux_snapshot(device, links_raw, addresses_raw, uptime_raw, boot_id, neighb
     for link in links:
         name = link["ifname"]
         prior = existing.get(name)
-        identifier = prior.id if prior else f"{device.id}:if:{link['ifindex']}"
+        identifier = prior.id if prior else f"{device.id}:if:{sha256(name.encode()).hexdigest()[:20]}"
         def obs(value):
             return Observation(value=value, observed_at=at, stale_after_seconds=120, source="ssh", quality=ReadQuality.OK if value is not None else ReadQuality.UNKNOWN)
         kind = (link.get("linkinfo") or {}).get("info_kind")

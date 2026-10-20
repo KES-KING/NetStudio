@@ -14,6 +14,7 @@ import sqlalchemy as sa
 
 from .auth import COOKIE, fail
 from .security import Permission, SecretStoreError, has_permission
+from .ssh_profiles import attempt_profiles, options_for, target_signature
 
 
 class ConnectionPolicyError(Exception):
@@ -25,7 +26,8 @@ def target_allowed(store, device):
     # Never let an in-memory/ad-hoc target bypass the persisted inventory.
     registered = store.get_device(device.id)
     if not registered or any(getattr(registered, key) != getattr(device, key)
-                             for key in ("management_address", "ssh_port", "site", "ssh_profile", "collector", "host_key_fingerprint")):
+                             for key in ("management_address", "ssh_port", "site", "ssh_profile", "collector",
+                                         "host_key_fingerprint", "allow_legacy_ssh", "ssh_algorithms", "connection_revision")):
         raise ConnectionPolicyError("device_connection_changed")
     try:
         address = ip_address(device.management_address)
@@ -44,13 +46,63 @@ def target_allowed(store, device):
 
 
 def algorithm_options(device):
-    if device.ssh_profile == "standard":
-        return {}
-    if device.ssh_profile != "huawei_legacy":
-        raise ConnectionPolicyError("invalid_ssh_profile")
-    # Per connection only. No global defaults changed, no automatic downgrade.
-    return {"kex_algs": "+diffie-hellman-group-exchange-sha1,diffie-hellman-group1-sha1",
-            "server_host_key_algs": "+ssh-rsa", "encryption_algs": "+aes128-cbc"}
+    try:
+        return options_for(attempt_profiles(device)[0], device)
+    except ValueError as error:
+        raise ConnectionPolicyError(str(error)) from None
+
+
+def cached_profile(store, device):
+    with store.engine.connect() as conn:
+        return conn.execute(sa.select(store.ssh_cache.c.profile).where(
+            store.ssh_cache.c.device_id == device.id,
+            store.ssh_cache.c.target_signature == target_signature(device))).scalar_one_or_none()
+
+
+def remember_profile(store, device, profile, connection):
+    from .database import now
+    values = {key: connection.get_extra_info(key) for key in
+              ("send_cipher", "recv_cipher", "send_mac", "recv_mac")}
+    key = connection.get_server_host_key()
+    values["host_key_algorithm"] = key.get_algorithm() if key else None
+    values["profile"] = profile
+    target_allowed(store, device)
+    with store.engine.begin() as conn:
+        revision = conn.execute(sa.select(store.devices.c.payload).where(store.devices.c.id == device.id)
+            .with_for_update()).scalar_one()
+        if revision.get("connection_revision", 1) != device.connection_revision:
+            raise ConnectionPolicyError("device_connection_changed")
+        conn.execute(store.ssh_cache.delete().where(store.ssh_cache.c.device_id == device.id))
+        conn.execute(store.ssh_cache.insert().values(
+            device_id=device.id, target_signature=target_signature(device), profile=profile,
+            negotiated=values, updated_at=now()))
+
+
+async def discover_host_key(store, device, authorize=lambda: None):
+    """Unauthenticated handshake only; never reads the credential vault."""
+    target_allowed(store, device)
+    async with asyncio.timeout(30):
+        for index, profile in enumerate(profiles := attempt_profiles(device)):
+            authorize()
+            target_allowed(store, device)
+            try:
+                policy = options_for(profile, device)
+                options = asyncssh.SSHClientConnectionOptions(
+                    config=[], agent_path=None, client_keys=[], connect_timeout=7, login_timeout=7,
+                    **policy)
+                key = await asyncio.wait_for(asyncssh.get_server_host_key(
+                    device.management_address, device.ssh_port, options=options, config=[],
+                    kex_algs=policy["kex_algs"], server_host_key_algs=policy["server_host_key_algs"]), 8)
+                if key is None:
+                    raise ConnectionPolicyError("host_key_required")
+                authorize()
+                target_allowed(store, device)
+                return key, profile
+            except (asyncssh.KeyExchangeFailed, asyncssh.ConnectionLost):
+                # Some old peers close before delivering an SSH KEX error.
+                # This API has no authentication phase or credential access.
+                if index == len(profiles) - 1:
+                    raise
 
 
 def host_key(store, device_id):
@@ -75,12 +127,43 @@ async def connect(store, vault, device):
             raise ConnectionPolicyError("invalid_private_key") from error
     else:
         password = credentials["password"]
+    connection = None
     try:
-        connection = await asyncio.wait_for(asyncssh.connect(
-            device.management_address, port=device.ssh_port, username=credentials["username"], password=password,
-            client_keys=keys, agent_path=None, config=[], known_hosts=([trusted], [], [], [], [], [], []),
-            connect_timeout=10, login_timeout=10, keepalive_interval=20, keepalive_count_max=3,
-            encoding="utf-8", errors="replace", **algorithm_options(device)), timeout=12)
+        async with asyncio.timeout(30):
+            profiles = attempt_profiles(device, cached_profile(store, device))
+            for index, profile in enumerate(profiles):
+                target_allowed(store, device)
+                class AuthenticationPhase(asyncssh.SSHClient):
+                    started = False
+
+                    def begin_auth(self, username):
+                        self.started = True
+                phase = AuthenticationPhase()
+                try:
+                    connection = await asyncio.wait_for(asyncssh.connect(
+                        device.management_address, port=device.ssh_port,
+                        username=credentials["username"], password=password,
+                        client_factory=lambda: phase,
+                        client_keys=keys, agent_path=None, config=[], known_hosts=([trusted], [], [], [], [], [], []),
+                        connect_timeout=8, login_timeout=8, keepalive_interval=20, keepalive_count_max=3,
+                        encoding="utf-8", errors="replace", **options_for(profile, device)), timeout=10)
+                    target_allowed(store, device)
+                    remember_profile(store, device, profile, connection)
+                    break
+                except asyncssh.KeyExchangeFailed:
+                    if index == len(profiles) - 1:
+                        raise
+                except asyncssh.ConnectionLost:
+                    # Never replay credentials when a peer closes after auth
+                    # starts (including old devices which disconnect on failure).
+                    if phase.started or index == len(profiles) - 1:
+                        raise
+                # Authentication, host-key, timeout and policy failures never retry.
+    except BaseException:
+        if connection:
+            connection.close()
+            await connection.wait_closed()
+        raise
     finally:
         credentials.clear()
     try:

@@ -95,6 +95,9 @@ class Store:
         sa.Index("ix_audit_actor_time", self.audit.c.user_id, self.audit.c.occurred_at, self.audit.c.id)
         sa.Index("ix_audit_event_time", self.audit.c.event, self.audit.c.occurred_at, self.audit.c.id)
         sa.Index("ix_audit_target_time", self.audit.c.target_id, self.audit.c.occurred_at, self.audit.c.id)
+        from .automation_schema_v1 import define_tables
+        for name, table in define_tables(self.meta).items():
+            setattr(self, name, table)
 
     @contextmanager
     def user_transaction(self):
@@ -149,7 +152,7 @@ class Store:
     def save_device(self, device: ManagedDevice, conn=None):
         values = {key: getattr(device, key) for key in (
             "id", "name", "management_address", "site", "vendor", "platform", "model", "serial", "read_only", "support_status")}
-        values["payload"] = device.model_dump(mode="json", exclude={"credential_configured", "host_key_fingerprint"})
+        values["payload"] = device.model_dump(mode="json", exclude={"credential_configured", "host_key_fingerprint", "snmp_configured"})
         def save(connection):
             if connection.execute(sa.select(self.devices.c.id).where(self.devices.c.id == device.id)).first():
                 connection.execute(self.devices.update().where(self.devices.c.id == device.id).values(**values))
@@ -166,8 +169,11 @@ class Store:
             rows = conn.execute(sa.select(self.devices.c.payload).where(self.devices.c.payload.is_not(None))).scalars().all()
             credentials = set(conn.execute(sa.select(self.secrets.c.device_id)).scalars())
             keys = dict(conn.execute(sa.select(self.host_keys.c.device_id, self.host_keys.c.fingerprint)).all())
+            snmp = set(conn.execute(sa.select(self.protocol_secrets.c.device_id)
+                .where(self.protocol_secrets.c.protocol == "snmp")).scalars())
         return [ManagedDevice.model_validate(row).model_copy(update={
-            "credential_configured": row["id"] in credentials, "host_key_fingerprint": keys.get(row["id"])
+            "credential_configured": row["id"] in credentials, "host_key_fingerprint": keys.get(row["id"]),
+            "snmp_configured": row["id"] in snmp,
         }) for row in rows if row.get("support_status") != "demo_fixture"]
 
     def get_device(self, device_id):
@@ -176,11 +182,18 @@ class Store:
                 .outerjoin(self.secrets, self.secrets.c.device_id == self.devices.c.id)
                 .outerjoin(self.host_keys, self.host_keys.c.device_id == self.devices.c.id)
                 .where(self.devices.c.id == device_id)).mappings().first()
+            snmp = conn.execute(sa.select(self.protocol_secrets.c.device_id).where(
+                self.protocol_secrets.c.device_id == device_id, self.protocol_secrets.c.protocol == "snmp")).first()
         if not row or not row["payload"] or row["payload"].get("support_status") == "demo_fixture":
             return None
-        return ManagedDevice.model_validate(row["payload"]).model_copy(update={"credential_configured": bool(row["credential_id"]), "host_key_fingerprint": row["fingerprint"]})
+        return ManagedDevice.model_validate(row["payload"]).model_copy(update={"credential_configured": bool(row["credential_id"]),
+            "host_key_fingerprint": row["fingerprint"], "snmp_configured": bool(snmp)})
 
     def latest(self, device_id):
         with self.engine.connect() as conn:
-            return conn.execute(sa.select(self.telemetry.c.payload).where(self.telemetry.c.device_id == device_id)
+            current = conn.execute(sa.select(self.latest_telemetry.c.payload)
+                .where(self.latest_telemetry.c.device_id == device_id)).scalar_one_or_none()
+            external = conn.execute(sa.select(self.telemetry.c.payload).where(self.telemetry.c.device_id == device_id)
                 .order_by(self.telemetry.c.observed_at.desc()).limit(1)).scalar_one_or_none()
+            candidates = [value for value in (current, external) if value]
+            return max(candidates, key=lambda value: datetime.fromisoformat(value["observed_at"].replace("Z", "+00:00"))) if candidates else None

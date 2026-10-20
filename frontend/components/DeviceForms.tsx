@@ -9,6 +9,8 @@ import {
 import { api, errorMessage } from "../lib/api";
 import type { Device } from "../lib/contracts";
 import { useSession } from "./ConsoleShell";
+import useSWR from "swr";
+import { HostDiscovery, SNMPSettings } from "./CollectionControls";
 
 export function Dialog({
   title,
@@ -132,32 +134,53 @@ function connectionSettings(data: FormData) {
     collector: data.get("collector"),
     ssh_profile: data.get("ssh_profile"),
     legacy_ssh_confirmed: data.get("legacy_ssh_confirmed") === "on",
+    allow_legacy_ssh: data.get("allow_legacy_ssh") === "on" || data.get("legacy_ssh_confirmed") === "on",
+    ssh_algorithms: Object.fromEntries(["kex_algs", "server_host_key_algs", "signature_algs", "encryption_algs", "mac_algs"]
+      .map(field => [field, data.getAll(field)])),
   };
 }
 
 function ConnectionFields({ device }: { device?: Device }) {
-  const [profile, setProfile] = useState(device?.ssh_profile ?? "standard");
+  const [profile, setProfile] = useState<string>(device?.ssh_profile ?? "auto");
+  const { data: catalog } = useSWR<{ algorithms: Record<string, { id: string; legacy: boolean }[]> }>("/api/v1/ssh-profiles", api);
   return (
     <fieldset>
       <legend>Veri toplama ve SSH uyumluluğu</legend>
       <div className="form-grid">
         <label>
           Veri kaynağı
-          <select name="collector" aria-label="Veri kaynağı" defaultValue={device?.collector ?? "external"}>
+          <select name="collector" aria-label="Veri kaynağı" defaultValue={device?.collector ?? "auto"}>
+            <option value="auto">Otomatik sürücü seçimi</option>
             <option value="external">Harici toplayıcı / envanter aktarımı</option>
             <option value="linux_ssh">Linux · salt okunur SSH</option>
             <option value="huawei_vrp">Huawei VRP · salt okunur SSH</option>
             <option value="cisco_ios">Cisco IOS · Catalyst 2960-X salt okunur SSH</option>
+            <option value="cisco_iosxe">Cisco IOS-XE · deneysel</option>
+            <option value="cisco_nxos">Cisco NX-OS · JSON · deneysel</option>
+            <option value="juniper_junos">Juniper Junos · XML · deneysel</option>
           </select>
         </label>
         <label>
           SSH uyumluluk profili
-          <select name="ssh_profile" aria-label="SSH uyumluluk profili" value={profile} onChange={(event) => setProfile(event.target.value as "standard" | "huawei_legacy")}>
+          <select name="ssh_profile" aria-label="SSH uyumluluk profili" value={profile} onChange={(event) => setProfile(event.target.value)}>
+            <option value="auto">Otomatik</option>
             <option value="standard">Standart (önerilen)</option>
             <option value="huawei_legacy">Eski VRP</option>
+            <option value="legacy_sha1">Eski SSH · SHA-1</option>
+            <option value="legacy_cbc">Eski SSH · CBC/Group1</option>
+            <option value="advanced">Gelişmiş</option>
           </select>
         </label>
       </div>
+      {profile !== "huawei_legacy" && <label className="checkbox"><input type="checkbox" name="allow_legacy_ssh"
+        defaultChecked={device?.allow_legacy_ssh ?? false} required={["legacy_sha1", "legacy_cbc"].includes(profile)} />
+        Bu cihazda eski SSH algoritmalarına izin ver</label>}
+      {profile === "advanced" && <div className="form-grid">{Object.entries(catalog?.algorithms ?? {}).map(([field, choices]) =>
+        <label key={field}>{({ kex_algs: "Anahtar değişimi", server_host_key_algs: "Host imzası", signature_algs: "Kullanıcı anahtarı imzası",
+          encryption_algs: "Şifreleme", mac_algs: "MAC" } as Record<string, string>)[field]}
+          <select name={field} multiple defaultValue={device?.ssh_algorithms?.[field] ?? []}>
+            {choices.map(choice => <option key={choice.id} value={choice.id}>{choice.id}{choice.legacy ? " · eski / riskli" : ""}</option>)}
+          </select></label>)}</div>}
       <p className="field-help">
         Cihaz kaydı, bu yönetim IP adresi ve SSH portu için bağlantı onayıdır;
         cihaz başına .env izni gerekmez. Kurulum geneli ek ağ kısıtı varsa uygulanır.
@@ -441,7 +464,9 @@ export function ConnectionSettings({
             )}
           </div>
         )}
-        <form onSubmit={saveKey}>
+        <HostDiscovery device={device} onSaved={onSaved} />
+        <SNMPSettings device={device} onSaved={onSaved} />
+        <details><summary>Gelişmiş · host anahtarını elle gir</summary><form onSubmit={saveKey}>
           <fieldset>
             <legend>SSH host anahtarı</legend>
             <p className="field-help">
@@ -484,7 +509,7 @@ export function ConnectionSettings({
               <button disabled={busy}>Host anahtarını kaydet</button>
             </div>
           </fieldset>
-        </form>
+        </form></details>
         {message && (
           <p role="status" className="notice success">
             {message}

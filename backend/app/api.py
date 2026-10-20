@@ -17,14 +17,14 @@ import sqlalchemy as sa
 from .auth import Auth, COOKIE, fail, session_response
 from .account_api import install_account_routes
 from .auditing import AuditRequest, audit_request, safe_text
-from .collector import collect_linux
-from .cisco import collect_cisco
-from .huawei import collect_huawei
 from .contracts import ConnectionSettings, Credentials, DeviceCreate, Inventory, ManagedDevice, StrictModel, Telemetry
+from .automation_api import changed, install as install_automation
+from .queue import enqueue
+from .scheduler import ensure_policy
+from .ssh_profiles import options_for, attempt_profiles, target_signature
 from .database import Store, now
-from .models import Job
 from .security import Permission, SecretStoreError, has_permission
-from .ssh import ConnectionPolicyError, SSHBroker, connect, error_code, target_allowed
+from .ssh import ConnectionPolicyError, SSHBroker
 from .telemetry import ingest, overview
 from .topology import install_topology_routes
 from .vault import CredentialVault, credential_values
@@ -36,8 +36,9 @@ class Login(StrictModel):
 
 
 class HostKey(StrictModel):
-    public_key: str = Field(min_length=20, max_length=16384)
-    fingerprint: str = Field(min_length=20, max_length=160)
+    public_key: str | None = Field(default=None, min_length=20, max_length=16384)
+    fingerprint: str | None = Field(default=None, min_length=20, max_length=160)
+    candidate_id: str | None = Field(default=None, max_length=36)
     replace_existing: bool = False
 
 
@@ -49,10 +50,14 @@ def create_app(store=None, key_file=None):
         app.state.vault = CredentialVault(app.state.store, key_file)
         app.state.ssh = SSHBroker(app.state.store, app.state.vault, app.state.auth)
         app.state.jobs = set()
-        jobs_table = app.state.store.jobs_repository.jobs
-        with app.state.store.engine.begin() as conn:
-            conn.execute(jobs_table.update().where(jobs_table.c.status.in_(["queued", "running"]))
-                .values(status="failed", error_code="server_interrupted", finished_at=now()))
+        # Production jobs belong to a separate durable worker. The embedded
+        # mode exists for isolated tests and explicit single-process development.
+        worker = worker_task = None
+        if os.getenv("STOCC_EMBEDDED_WORKER") == "1":
+            from .worker import Worker
+            worker = Worker(app.state.store, app.state.vault, app.state.auth,
+                scheduling=os.getenv("STOCC_SCHEDULER_ENABLED", "1") == "1")
+            worker_task = asyncio.create_task(worker.run())
         async def cleanup():
             while True:
                 await asyncio.sleep(5)
@@ -61,6 +66,9 @@ def create_app(store=None, key_file=None):
         try:
             yield
         finally:
+            if worker:
+                worker.stopping.set()
+                await worker_task
             cleaner.cancel()
             for session in list(app.state.ssh.sessions.values()):
                 app.state.ssh.stop(session, "server_shutdown")
@@ -175,6 +183,8 @@ def create_app(store=None, key_file=None):
             fail("device_not_found_or_forbidden", 404)
         return auth, device
 
+    install_automation(app, context, device_for)
+
     @app.get("/healthz")
     def healthz():
         return {"status": "ok", "service": "stocc-netstudio-api"}
@@ -187,6 +197,7 @@ def create_app(store=None, key_file=None):
                 conn.execute(sa.select(app.state.store.audit.c.request_id).limit(1))
                 conn.execute(sa.select(app.state.store.devices.c.payload).limit(1))
                 conn.execute(sa.select(app.state.store.topology_boards.c.version).limit(1))
+                conn.execute(sa.select(app.state.store.polling.c.version).limit(1))
         except Exception:
             fail("persistence_unavailable", 503)
         return {"status": "ready", "service": "stocc-netstudio-api"}
@@ -221,6 +232,16 @@ def create_app(store=None, key_file=None):
     def dashboard(request: Request, minutes: int = Query(60, ge=5, le=1440)):
         return overview(app.state.store, devices(request), minutes)
 
+    @app.get("/api/v1/overview/summary")
+    def dashboard_summary(request: Request):
+        from .dashboard import summaries
+        return summaries(app.state.store, devices(request))
+
+    @app.get("/api/v1/overview/traffic")
+    def dashboard_traffic(request: Request, minutes: int = Query(60, ge=5, le=1440)):
+        from .dashboard import traffic
+        return traffic(app.state.store, devices(request), minutes)
+
     @app.get("/api/v1/devices/{device_id}")
     def device(request: Request, device_id: str):
         return device_for(request, device_id)[1]
@@ -236,7 +257,12 @@ def create_app(store=None, key_file=None):
         device = ManagedDevice(id=device_id, name=value.name, management_address=value.management_address, site=value.site,
             vendor=value.vendor, platform=value.collector, model=value.model, serial="", os_version="", support_status="generic_readonly",
             components=[], physical_ports=[], interfaces=[], bindings=[], device_type=value.device_type, ssh_port=value.ssh_port,
-            collector=value.collector, ssh_profile=value.ssh_profile)
+            collector=value.collector, ssh_profile=value.ssh_profile, allow_legacy_ssh=value.allow_legacy_ssh,
+            ssh_algorithms=value.ssh_algorithms)
+        try:
+            options_for(attempt_profiles(device)[0], device)
+        except ValueError as error:
+            fail(str(error), 422)
         credentials = None
         if value.credentials:
             try:
@@ -245,6 +271,7 @@ def create_app(store=None, key_file=None):
                 fail("credential_secret_required", 422)
         with app.state.store.engine.begin() as conn:
             app.state.store.save_device(device, conn)
+            ensure_policy(app.state.store, device, auth.user.user_id, conn)
             if credentials:
                 app.state.vault.save(device.id, credentials, conn)
         app.state.store.record(auth.user.user_id, "device.created", "succeeded", device.id,
@@ -261,9 +288,15 @@ def create_app(store=None, key_file=None):
             device = ManagedDevice.model_validate(current)
             if value.ssh_profile == "huawei_legacy" and device.ssh_profile != "huawei_legacy" and not value.legacy_ssh_confirmed:
                 fail("legacy_ssh_confirmation_required", 422)
-            before = {"collector": device.collector, "ssh_profile": device.ssh_profile}
-            after = value.model_dump(exclude={"legacy_ssh_confirmed"})
-            app.state.store.save_device(device.model_copy(update=after), conn)
+            before = device.model_dump(mode="json", include={"collector", "ssh_profile", "allow_legacy_ssh", "ssh_algorithms"})
+            after = value.model_dump(mode="json", exclude={"legacy_ssh_confirmed"})
+            updated = ManagedDevice.model_validate({**device.model_dump(), **after})
+            try:
+                options_for(attempt_profiles(updated)[0], updated)
+            except ValueError as error:
+                fail(str(error), 422)
+            app.state.store.save_device(updated, conn)
+            changed(app.state.store, device.id, conn)
         if before != after:
             app.state.ssh.revoke(device_id=device.id)
         app.state.store.record(auth.user.user_id, "device.connection.updated", "succeeded", device.id,
@@ -299,6 +332,7 @@ def create_app(store=None, key_file=None):
         credentials = credential_values(value)
         with app.state.store.engine.begin() as conn:
             app.state.vault.save(device.id, credentials, conn)
+            changed(app.state.store, device.id, conn)
         app.state.ssh.revoke(device_id=device.id)
         app.state.store.record(auth.user.user_id, "credentials.updated", "succeeded", device.id,
             details={"authentication_method": value.method, "credential_configured": True})
@@ -309,6 +343,7 @@ def create_app(store=None, key_file=None):
         auth, device = device_for(request, device_id, Permission.CREDENTIAL_MANAGE, True)
         with app.state.store.engine.begin() as conn:
             conn.execute(app.state.store.secrets.delete().where(app.state.store.secrets.c.device_id == device.id))
+            changed(app.state.store, device.id, conn)
         app.state.ssh.revoke(device_id=device.id)
         app.state.store.record(auth.user.user_id, "credentials.deleted", "succeeded", device.id)
         return {"credential_configured": False}
@@ -316,18 +351,33 @@ def create_app(store=None, key_file=None):
     @app.put("/api/v1/devices/{device_id}/host-key")
     def trust_host(device_id: str, value: HostKey, request: Request):
         auth, device = device_for(request, device_id, Permission.CREDENTIAL_MANAGE, True)
-        try:
-            key = asyncssh.import_public_key(value.public_key)
-            fingerprint = key.get_fingerprint("sha256")
-        except (ValueError, asyncssh.KeyImportError):
-            fail("invalid_host_key", 422)
-        if not hmac.compare_digest(value.fingerprint.strip(), fingerprint):
-            fail("host_fingerprint_mismatch", 422)
-        if device.host_key_fingerprint and not value.replace_existing:
-            fail("host_key_replacement_requires_confirmation", 409)
         with app.state.store.engine.begin() as conn:
+            store = app.state.store
+            payload = conn.execute(sa.select(store.devices.c.payload).where(store.devices.c.id == device.id).with_for_update()).scalar_one()
+            prior = conn.execute(sa.select(store.host_keys.c.fingerprint).where(store.host_keys.c.device_id == device.id)).scalar_one_or_none()
+            device = ManagedDevice.model_validate({**payload, "host_key_fingerprint": prior})
+            public_key, expected = value.public_key, value.fingerprint
+            if value.candidate_id:
+                row = conn.execute(sa.select(store.host_candidates).where(store.host_candidates.c.id == value.candidate_id,
+                    store.host_candidates.c.device_id == device.id, store.host_candidates.c.user_id == auth.user.user_id,
+                    store.host_candidates.c.expires_at > now(), store.host_candidates.c.consumed.is_(False)).with_for_update()).mappings().first()
+                if not row or not row["public_key"] or row["target_signature"] != target_signature(device):
+                    fail("host_candidate_expired_or_changed", 409)
+                public_key, expected = row["public_key"], row["fingerprint"]
+            try:
+                key = asyncssh.import_public_key(public_key or "")
+                fingerprint = key.get_fingerprint("sha256")
+            except (ValueError, asyncssh.KeyImportError):
+                fail("invalid_host_key", 422)
+            if not hmac.compare_digest((expected or "").strip(), fingerprint):
+                fail("host_fingerprint_mismatch", 422)
+            if prior and not value.replace_existing:
+                fail("host_key_replacement_requires_confirmation", 409)
             conn.execute(app.state.store.host_keys.delete().where(app.state.store.host_keys.c.device_id == device.id))
             conn.execute(app.state.store.host_keys.insert().values(device_id=device.id, public_key=key.export_public_key().decode(), fingerprint=fingerprint))
+            if value.candidate_id:
+                conn.execute(store.host_candidates.update().where(store.host_candidates.c.id == value.candidate_id).values(consumed=True))
+            changed(store, device.id, conn)
         app.state.ssh.revoke(device_id=device.id)
         app.state.store.record(auth.user.user_id, "host_key.trusted", "replaced" if device.host_key_fingerprint else "created", device.id)
         return {"fingerprint": fingerprint}
@@ -348,58 +398,12 @@ def create_app(store=None, key_file=None):
             fail("observation_not_found", 404)
         return result
 
-    async def perform_job(job, device, token):
-        repository = app.state.store.jobs_repository
-        job = job.model_copy(update={"status": "running", "started_at": now(), "attempt": 1})
-        repository.update(job)
-        try:
-            def authorize():
-                auth = app.state.auth.validate(token)
-                if not has_permission(auth.user, Permission.JOB_CREATE, device.site):
-                    fail("forbidden", 403)
-                target_allowed(app.state.store, device)
-            authorize()
-            if job.kind == "inventory_read":
-                collectors = {
-                    "cisco_ios": collect_cisco,
-                    "huawei_vrp": collect_huawei,
-                    "linux_ssh": collect_linux,
-                }
-                collect = collectors.get(device.collector)
-                if collect is None:
-                    raise ConnectionPolicyError("invalid_collector")
-                device, batch = await collect(app.state.store, app.state.vault, device, authorize=authorize)
-                ingest(app.state.store, device, batch)
-                result = {"interface_count": len(batch.interfaces), "source": "ssh", "collector": device.collector,
-                          "endpoint_status": batch.endpoints.status, "warnings": batch.health.alerts}
-            else:
-                async with connect(app.state.store, app.state.vault, device):
-                    authorize()
-                    result = {"reachable": True, "source": "ssh"}
-            job = job.model_copy(update={"status": "succeeded", "result": result, "result_code": "ssh_verified"})
-        except asyncio.CancelledError:
-            job = job.model_copy(update={"status": "failed", "error_code": "server_shutdown"})
-            raise
-        except Exception as error:
-            code = "session_revoked" if isinstance(error, HTTPException) else error_code(error)
-            job = job.model_copy(update={"status": "failed", "error_code": code})
-        finally:
-            repository.update(job.model_copy(update={"finished_at": now()}))
-            app.state.store.record(job.requested_by, "job.finished", job.status, device.id, str(job.id),
-                details={"job_id": str(job.id), "error_code": job.error_code, "result_code": job.result_code})
-
     async def queue_job(request, device_id, kind):
         auth, device = device_for(request, device_id, Permission.JOB_CREATE, True)
         if kind == "inventory_read" and device.collector == "external":
             fail("external_collector_required", 409)
-        if len(app.state.jobs) >= 4:
-            fail("collector_busy", 429)
-        job = Job(kind=kind, device_id=device.id, requested_by=auth.user.user_id)
-        app.state.store.jobs_repository.insert(job)
+        job = enqueue(app.state.store, device, kind, auth=auth)
         app.state.store.record(auth.user.user_id, "job.created", "succeeded", device.id, str(job.id), details={"action": kind, "job_id": str(job.id)})
-        task = asyncio.create_task(perform_job(job, device, request.cookies[COOKIE]))
-        app.state.jobs.add(task)
-        task.add_done_callback(app.state.jobs.discard)
         return job
 
     @app.post("/api/v1/devices/{device_id}/polls", status_code=202)

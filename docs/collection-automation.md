@@ -1,0 +1,206 @@
+# Çok markalı toplama ve bağlantı otomasyonu
+
+Bu belge kaynak kodun uyguladığı sözleşmeyi ve açık kabul kapılarını tanımlar.
+Bir markanın katalogda yer alması bütün modellerinin desteklendiği anlamına gelmez.
+`backend/app/driver_catalog.py` komut/platform/parçalama sürümü/yetki/süre/boyut
+sınırının, `/api/v1/driver-catalog` ise çalışan kurulumun destek durumunun kaynağıdır.
+
+## Kullanım
+
+1. Cihazı kaydedin. Yeni cihaz formunda otomatik sürücü ve otomatik SSH seçilidir;
+   eski algoritma izni kapalıdır. Eski API istemcilerinin açık olmayan tercihleri
+   için mevcut `external` / `standard` varsayılanı korunmuştur.
+2. Bağlantı bilgilerinde **Anahtarı bul ve bağlantıyı hazırla** eylemini kullanın.
+   Parola gönderilmeden public host anahtarı ve SHA256 fingerprint alınır.
+   Fingerprint'i konsol/kurum kaydı üzerinden karşılaştırıp bir kez onaylayın.
+3. SSH kimlik bilgilerini kaydedin, **Bağlantıyı test et** ve **Veri topla** ile
+   ilk sonucu inceleyin. Kayıtlı anahtar ve kimlik bilgisi hazır olduğunda etkin
+   toplama politikası worker tarafından işlenir; tarayıcının açık kalması gerekmez.
+4. Cihaz detayında grup bazlı kaynak, son doğru ölçüm, hata/eksik alanlar ve
+   istenen–etkin aralık gösterilir. Otomatik toplamayı aynı yerden durdurabilirsiniz.
+5. SNMPv3 isteğe bağlıdır. Mevcut salt okunur `authPriv` hesabını girin.
+   Cihaz üzerinde SNMP etkinleştirilmez; SNMPv1/v2c kullanılmaz.
+
+## Sürücü ve veri doğrulama seviyesi
+
+| Platform | Uygulanan temel okuma | Kanıt / sınır |
+| --- | --- | --- |
+| Cisco IOS / 2960-X | Port durumları, sayaç/CLI hız penceresi, VLAN/IP, FDB/ARP, CPU/RAM, NTC ile switchport/LAG/LLDP/PoE/modül alanları | Temizlenmiş 15.2(7)E çıktıları ve yerel eski SSH testi; fiziksel kabul ayrı |
+| Huawei VRP | Portlar, hız/sayaçlar, PVID, IP, FDB/ARP, CPU/RAM, sürüm/uptime | S5700 biçimli çıktı testleri; donanım/DOM/VRF gibi eksik alanlar açıkça bildirilir |
+| Cisco IOS-XE | IOS ortak komut alt kümesi | Deneysel; model/sürüm kabulü gerekir |
+| Junos | XML arayüz/lojik arayüz, sayaçlar, IP, routing-engine CPU/RAM, sürüm/chassis/modül, LLDP | Deneysel; fiziksel Juniper kabulü yok |
+| NX-OS | JSON arayüz/sayaçlar, sürüm, sistem kaynakları | Deneysel; diğer tabloların eşleştirilmediği çıktılar parse hatasıdır |
+| Linux | iproute2 JSON, sayaçlar, IP, ARP/NDP, uptime | Mevcut izole SSH sözleşmesi korunur |
+| Aruba AOS-CX/AOS-Switch, Comware, EOS, RouterOS, FortiOS, Dell OS9/10, Extreme | Katalogda planlanan aileler | `available=false`; henüz çalışan sürücü olarak sunulmaz |
+
+NTC şablonları `ntc-templates==9.3.0` / `textfsm==2.1.0` ile sabittir.
+Sadece katalogdaki salt okunur komutlar çalıştırılır; şablon paketinin bütün
+komutları otomatik çalıştırılmaz. CLI çıktısı log/API/DB'ye yazılmaz. Kalıcı kayıt
+yalnız doğrulanmış alanlar ve güvenli hata kodlarıdır.
+
+## Veri doğruluğu
+
+- SFP yuvası, takılan bakır modül nedeniyle RJ45'e dönüştürülmez. Modül ortamı ayrı
+  `transceiver_media` alanındadır. Geometri yalnız gözlemden üretilir.
+- IOS port tablosu bilinmeyen/tekrarlanan/eksik ethernet satırında reddedilir.
+  Tam doğrulanmamış envanter mevcut portları silemez. Elle düzenlenmiş fiziksel
+  yerleşim korunur. Kalıcı arayüz kimliği mevcut isim eşleştirmesinden korunur.
+- `collection.py` cihaz kilidi ve iş sahipliği kontrolünden sonra envanter,
+  grup projeksiyonları ve sayısal örnekleri aynı transaction içinde yazar.
+  Ağ beklerken veritabanı kilidi tutulmaz.
+- Bir grubun başarısız veya kısmi yenilemesi önceki tamamlanmış grubun değerini ve
+  ölçüm zamanını korur; son deneme zamanı ayrıca yenilenir. İlk kısmi okumada
+  bilinen alt küme kısmi işaretiyle saklanabilir. Grup bazlı koruma konservatiftir:
+  bir alt komut başarısızsa aynı gruptaki eski alanların zamanı da yenilenmez.
+- SNMP sayaçlarında kaynak, bit genişliği, `sysUpTime`, arayüz adı/ifIndex değişimi
+  ve `ifCounterDiscontinuityTime` yeni başlangıç örneği gerektirir. Reset/wrap
+  anında negatif fark veya sahte yüksek hız üretilmez.
+- CLI'nin 300 saniyelik ortalaması 30 saniyelik örnek gibi sunulmaz. Epoch kanıtı
+  olmayan CLI sayaçlarından hız türetilmez. Fiziksel trafik toplamında LAG
+  arayüzü ve fiziksel üyeler ikinci kez toplanmaz.
+- Eksik ölçümler sıfır değildir. LLDP/L2 ilişkisi ve MAC/IP gözlemi otomatik
+  fiziksel kablo kanıtı sayılmaz.
+
+## SSH güven sözleşmesi
+
+`ssh_profiles.py` ve `ssh.py` terminal ve toplayıcı tarafından ortaktır.
+
+- `auto`, `standard`, `huawei_legacy` (**Eski VRP**), `legacy_sha1`,
+  `legacy_cbc`, `advanced` desteklenir. Bunlar SSH-2 algoritma kümeleridir;
+  SSH-1, Telnet veya şifrelemesiz oturum eklenmez.
+- Otomatik seçim en fazla dört el sıkışması/30 saniye; yalnız KEX uyuşmazlığında
+  izinli kümeye geçiş yapar. KEX hatasını iletmeden bağlantıyı kapatan eski
+  cihazlarda yalnız kimlik doğrulama başlamadan kapanan el sıkışması da
+  uyumluluk denemesi olabilir. Yanlış parola, zaman aşımı veya host key değişiminde
+  parola tekrar tekrar denenmez. Modern algoritmalar her kümede önce gelir.
+- Eski VRP kayıtları önceki açık onaylarıyla çalışır. Diğer otomatik/eski seçimler
+  `allow_legacy_ssh` iznine tabidir. Gelişmiş seçenekler çalışan AsyncSSH
+  sürümünün izinli kataloğuyla backend'de doğrulanır.
+- Keşif adayı kullanıcı/cihaz/bağlantı revision/hedef imzasına bağlıdır, 10 dakika
+  geçerli ve tek kullanımlıktır; cihaz başına dakikada bir keşif yapılır.
+- Onay kimlik bilgisi gönderilmeden önce gerekir. Anahtar değişimi bağlantıyı
+  durdurur. Değiştirme ayrıca açık onay ister. Elle anahtar girişi gelişmiş
+  seçenek olarak korunur. Ayar/kimlik bilgisi/anahtar değişimi önbelleği ve eski
+  işlerin yazma yetkisini geçersiz kılar.
+
+## Kuyruk ve zamanlama
+
+`collector-worker` aynı backend imajını kullanır. Redis/Celery gerekmez.
+`queue.py` kısa transaction, global slot kilidi ve PostgreSQL
+`FOR UPDATE SKIP LOCKED` kullanır. Cihaz başına tek çalışan iş, kurulum başına
+en fazla sekiz iş; 30 saniyelik lease ve 5 saniyelik heartbeat vardır.
+Worker kaybında en fazla üç sahiplenme; eski sahip sonuç yazamaz. API açılışı
+artık bekleyen işleri topluca başarısız yapmaz.
+
+Manuel işler kullanıcı oturumunun hash referansıyla yetkiyi yeniden doğrular.
+Otomatik işler etkin/sürümü eşleşen kayıtlı cihaz politikasıyla sistem kimliğinde
+çalışır; cookie veya kullanıcı parolası kuyrukta tutulmaz. Aynı cihazın yinelenen
+istekleri birleştirilir. Çalışan iş istenen grupları kapsıyorsa aynı iş kimliği
+döner; hızlı bir işin karşılayamadığı tam manuel okuma için en fazla bir
+birleştirilmiş takip işi bekler. Aynı cihaza paralel toplama bağlantısı açılmaz.
+
+| Grup | Hedef |
+| --- | --- |
+| `fast` | 30 sn; eski SSH 60 sn altına inmez |
+| `health` | 120 sn |
+| `network` | 300 sn |
+| `inventory` | 3600 sn |
+
+Başlangıç dağıtılır; aralığa %10'a kadar sapma eklenir. Minimum/duty-cycle
+sınırı negatif sapmayı kısaltabilir. Gözlenen süre ×5 alt sınırı %20 çalışma
+oranını korur. İki yeni CPU okuması %80 üstündeyse aralık büyür; beş sağlıklı
+okuma kademeli toparlanır. Hata beklemesi en fazla 30 dakikadır. Kaçırılmış
+döngüler biriktirilmez. Yanlış kimlik/anahtar hatası politikayı duraklatır.
+Hedef/etkin aralık farklı alanlardır.
+
+## Saklama ve API
+
+`device_latest_telemetry` son durum; `device_collection_groups` grup son doğru
+değerleri; `device_metric_samples` yeni ayrıntılı sayısal örnekler;
+`device_metric_rollups` beş dakikalık özetlerdir. Ham örnekler en az 7 gün,
+özetler 90 gün saklanır. Özeti henüz üretilemeyen ham veri silinmez.
+Temizlik parçalıdır ve eski `device_telemetry` kayıtlarını silmez.
+Özetler yalnız geçerli ölçüm süresini ağırlıklandırır, kapsama oranını içerir.
+Envanter/ağ tablolarında aynı içerik tekrar tarihçeye kopyalanmaz.
+
+Ek API'ler:
+
+- `GET /api/v1/driver-catalog`, `/api/v1/ssh-profiles`
+- `POST /api/v1/devices/{id}/host-key-discoveries`
+- `GET /api/v1/devices/{id}/host-key-candidates/{candidate}`
+- Mevcut `PUT .../host-key`: elle alanlar veya `candidate_id`
+- `GET/PUT .../polling`, `PUT/DELETE .../snmp-credentials`
+- `GET .../metrics?hours=1&resolution=auto` (en fazla 2880 nokta)
+- `GET .../overview`: yalnız ilgili cihazın ayrıntısı
+- `GET /api/v1/overview/summary`, `/api/v1/overview/traffic`: ayrı güncel
+  durum ve sınırlı sayısal geçmiş. Dashboard geçmişi 60 sn, güncel durumu 15 sn
+  aralıkla ister; tüm cihazların tam telemetri geçmişini 15 sn'de indirmez.
+
+## Geçiş ve geri dönüş
+
+Migration `0006_collection_automation` yalnız ek tablolar/indeksler oluşturur.
+Mevcut cihazlar, sırlar, host anahtarları, arayüz/port kimlikleri yeniden
+oluşturulmaz. Kullanıcı kurulumunu değiştirmeden önce yedeği ve gerçek Compose
+proje/context/TLS override'larını doğrulayın.
+
+```bash
+# Mevcut kurulumun DOĞRULANMIŞ proje/context/override seçenekleriyle:
+docker compose build api web collector-worker
+docker compose run --rm migrate
+docker compose up -d api web collector-worker
+
+# Otomatik işi durdurmak için; veri/volume silinmez:
+docker compose stop collector-worker
+```
+
+API içinde worker varsayılan olarak çalışmaz. `STOCC_EMBEDDED_WORKER=1`
+yalnız açık geliştirme/izole test seçeneğidir. Backend testleri zamanlayıcıyı
+devre dışı bırakarak manuel iş semantiğini deterministik çalıştırır.
+Eski API'nin yalnız bellekte tuttuğu geçiş öncesi işlerde yeniden manuel tetikleme
+gerekebilir; bu işlerde sonradan kullanıcı yetkisi uydurulmaz.
+
+## Kabul durumu ve açık işler
+
+Bu teslim bütün planın tamamlandığı anlamına gelmez:
+
+| Plan adımı | Durum |
+| --- | --- |
+| SFP/kısmi tablo düzeltmeleri, atomik grup son-doğru kaydı | Uygulandı; alan bazlı daha ince birleştirme açık |
+| Sürücü kataloğu, Cisco/Huawei ortak akışı, Junos/NX-OS | Uygulandı; deneysel ailelerde ve bazı veri alanlarında kapsam kısmi |
+| Host key keşfi/onayı, ortak SSH profilleri | Uygulandı; yerel gerçek SSH ve tarayıcı testi |
+| Kalıcı kuyruk, zamanlayıcı, worker, SNMPv3 IF-MIB | Uygulandı; PostgreSQL kilit/lease ve yerel SNMPv3 testi |
+| Arayüz, kalite tanıları, sınırlı geçmiş, saklama | Uygulandı; gerçek tarayıcı ve yerel saklama testleri |
+| Fiziksel pilot, 100 cihaz gerçek 24 saat kabulü | Çalıştırılmadı; kapasite/üretim kabulü değildir |
+| Sonraki üretici dalgaları | Planlandı; çalışan sürücü değil |
+
+- Birim/yerel SSH testleri fiziksel cihaz kabulü değildir. 100 cihaz ×24 saat
+  hızlandırılmış zamanlayıcı testi gerçek 24 saatlik PostgreSQL/ağ yük testi
+  değildir. **1–100 kapasite hedefi REQUIRES BENCHMARK.**
+- Cisco/Huawei fiziksel pilot; CPU etkisi, toplama süresi ve çıktı karşılaştırması
+  gerçek cihazlarla ayrıca yapılmalıdır. Juniper fiziksel doğrulanmış sayılmaz.
+- Sonraki dalga sürücüler, bütün modellerin sürüm çıktıları, tam VRF/NDP/CDP,
+  breakout, DOM ve üreticiye özgü fan/PSU biçimleri henüz evrensel kapsama sahip
+  değildir; katalog/grup alanları eksikliği gösterir.
+- SNMPv3 IF-MIB ayrıştırma ve sır saklama yerel testlidir. Geçici yerel agent ile
+  gerçek UDP/SHA-256/AES-128 GET/GETBULK ve bilinmeyen kullanıcı reddi test edilir;
+  fiziksel vendor agent ve üretici MIB sağlık ölçümleri ayrıca kabul gerektirir.
+- SNMP uptime/counter epoch değişimi envanteri öne alır. SNMP kimlik hatası yalnız
+  SNMP kanalını duraklatır; otomatik kaynak seçimi SSH ile devam edebilir ve bunu
+  grup tanısında belirtir. Açık SNMP tercihinde başarısız hızlı ölçümün yerine
+  SSH ölçümü SNMP etiketiyle yazılmaz.
+- Grup bazlı korumadan daha ince alan bazlı son-doğru birleştirme ve tüm CLI
+  platformlarında reboot/donanım değişikliğinin erken tespiti açık iyileştirmelerdir.
+- SSH kimlik/host hatası şu anda cihaz politikasını duraklatır; SNMP'nin bu
+  durumda bağımsız sürmesi için SSH kanalına özel duraklatma ayrımı açık iştir.
+
+## Üretici/standart referansları
+
+- [Cisco 2960-X operational commands](https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst2960x/software/15-2_7_e/command_reference/b_1527_2960x_cr/interface_and_hardware_commands.html)
+- [Huawei interface commands](https://info.support.huawei.com/enterprise/en/doc/EDOC1100333403/cdd85713/basic-interface-configuration-commands)
+- [Junos XML mapping](https://www.juniper.net/documentation/us/en/software/junos/netconf/junos-xml-protocol/topics/task/junos-xml-protocol-rpcs-and-xml-mapping.html)
+- [NX-OS structured output](https://www.cisco.com/c/en/us/td/docs/dcn/nx-os/nexus9000/103x/command-reference/show/b_n9k_show_commands_103x/m_show_xml.html)
+- [AsyncSSH API](https://asyncssh.readthedocs.io/en/latest/api.html#asyncssh.get_server_host_key)
+- [IF-MIB / RFC 2863](https://www.rfc-editor.org/info/rfc2863/)
+- [PySNMP](https://github.com/lextudio/pysnmp)
+- [PostgreSQL row locking](https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE)
+- [NTC parser test guide](https://github.com/networktocode/ntc-templates/blob/master/docs/dev/dev_parser.md)

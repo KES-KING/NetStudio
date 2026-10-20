@@ -190,7 +190,10 @@ def test_real_ssh_jobs_and_linux_collector_preserve_hardware_provenance(system, 
             job = client.get(f"/api/v1/jobs/{identifier}").json()
             if job["status"] not in {"queued", "running"}: break
             time.sleep(.02)
-        assert job["status"] == "succeeded", job
+        assert job["status"] == ("succeeded" if kind == "connection-tests" else "partial"), job
+        if kind == "polls":
+            assert job["result"]["groups"]["fast"]["quality"] == "ok"
+            assert job["result"]["groups"]["network"]["diagnostics"]["endpoints"] == "parse_error"
         return job
     assert run("connection-tests")["result"]["reachable"] is True
     run("polls"); run("polls")

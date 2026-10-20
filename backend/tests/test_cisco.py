@@ -122,6 +122,7 @@ def test_2960x_inventory_uses_reported_ports_and_metrics(system):
     ("1000BaseT", "rj45"),
     ("SFP-10GBase-SR", "sfp"),
     ("1000BaseLX SFP", "sfp"),
+    ("1000BaseT SFP", "sfp"),
     ("QSFP-40G-SR4", "qsfp"),
     ("Not Present", "unknown"),
 ])
@@ -137,6 +138,17 @@ def test_connector_classification_requires_status_type_evidence(media, expected)
 def test_required_output_fails_closed(system, command, output, code):
     with pytest.raises(ConnectionPolicyError, match=code):
         snapshot(system, {**OUTPUTS, command: output})
+
+
+def test_partially_recognized_port_table_does_not_replace_inventory(system):
+    broken = "\n".join(STATUS.splitlines()[:2] + ["UnrecognizedRow bad-row-a"])
+    with pytest.raises(ConnectionPolicyError, match="collector_parse_failed"):
+        snapshot(system, {**OUTPUTS, "show interfaces status": broken})
+
+
+def test_duplicate_physical_port_is_not_silently_accepted(system):
+    with pytest.raises(ConnectionPolicyError, match="collector_parse_failed"):
+        snapshot(system, {**OUTPUTS, "show interfaces status": STATUS + STATUS.splitlines()[1] + "\n"})
 
 
 def test_optional_outputs_and_manual_geometry_are_preserved(system):
@@ -188,12 +200,13 @@ def test_reader_rejects_non_allowlisted_commands_and_output_overflow(monkeypatch
 def ios_server():
     loop, ready = asyncio.new_event_loop(), Future()
     key = asyncssh.generate_private_key("ssh-rsa")
-    state = {"commands": [], "outputs": dict(OUTPUTS), "pages": 0}
+    state = {"commands": [], "outputs": dict(OUTPUTS), "pages": 0, "auth_attempts": 0}
 
     class Server(asyncssh.SSHServer):
         def begin_auth(self, username): return True
         def password_auth_supported(self): return True
         def validate_password(self, username, password):
+            state["auth_attempts"] += 1
             return username == "lab" and password == "lab-secret"
 
     async def terminal(process):
@@ -254,7 +267,7 @@ def wait_job(client, device, kind="polls"):
     assert response.status_code == 202, response.text
     for _ in range(300):
         job = client.get(f"/api/v1/jobs/{response.json()['id']}").json()
-        if job["status"] in {"succeeded", "failed"}:
+        if job["status"] not in {"queued", "running"}:
             return job
         time.sleep(.02)
     pytest.fail("Job did not complete")
@@ -275,8 +288,9 @@ def test_real_legacy_ssh_collection_and_failed_refresh_preserves_inventory(syste
     assert trusted.status_code == 200
     assert wait_job(client, device, "connection-tests")["status"] == "succeeded"
     job = wait_job(client, device)
-    assert job["status"] == "succeeded", job
-    assert state["commands"] == list(COMMANDS)
+    assert job["status"] == "partial", job  # Lab doesn't implement optional health/LLDP commands.
+    from app.driver_catalog import IOS
+    assert state["commands"] == [c.text for c in IOS]
     assert state["pages"] == 1
     current = client.get(base).json()
     assert current["model"] == "WS-C2960X-48FPD-L"

@@ -1,119 +1,407 @@
-"""Device driver boundary.
+"""Bounded multi-platform reads using the same pinned SSH policy as terminals."""
+import asyncio
+from hashlib import sha256
+import json
+from pathlib import Path
+import re
+from ipaddress import ip_interface
 
-No driver method in this first slice opens a network socket. The fixture driver
-is intentionally explicit so it cannot be confused with real Cisco support.
-"""
+import ntc_templates
+import sqlalchemy as sa
+import textfsm
 
-from __future__ import annotations
+from . import cisco, huawei
+from .collection import ReadResult, metadata, upsert
+from .collector import linux_snapshot, read_limited
+from .contracts import Health, InterfaceSample
+from .database import now
+from .driver_catalog import CAPABILITIES, DRIVERS, GROUPS, VERSION
+from .ssh import ConnectionPolicyError, connect
+from .structured_parsers import parse_structured
+from .fixture_drivers import DeviceDriver, FixtureDriver, GenericReadOnlyDriver, UnsupportedCapability
 
-from dataclasses import dataclass
-from typing import Protocol
-
-from .models import Device, Job
-
-
-class UnsupportedCapability(RuntimeError):
-    """Raised instead of returning a fake successful result."""
-
-    code = "unsupported_capability"
-
-
-class DeviceDriver(Protocol):
-    def discover_identity(self, session: object) -> dict: ...
-    def discover_capabilities(self, session: object) -> dict: ...
-    def read_inventory(self, session: object) -> Device: ...
-    def read_interfaces(self, session: object) -> Device: ...
-    def read_neighbors(self, session: object) -> list[dict]: ...
-    def read_config(self, session: object, kind: str) -> dict: ...
-    def build_plan(self, intent: object, baseline: object) -> object: ...
-    def precheck(self, session: object, plan: object) -> object: ...
-    def apply(self, session: object, plan: object) -> object: ...
-    def verify(self, session: object, plan: object) -> object: ...
-    def persist(self, session: object, plan: object) -> object: ...
-    def rollback(self, session: object, plan: object) -> object: ...
+PAGER = re.compile(r"-{2,}\s*\(?more[^\r\n]{0,80}?-{2,}", re.I)
 
 
-class GenericReadOnlyDriver:
-    """A driver which can expose inventory but cannot mutate a device."""
+class Reader(cisco.IOSReader):
+    """Exact operational command allowlist; session-only pagination responses."""
+    def __init__(self, process, allowed):
+        super().__init__(process)
+        self.allowed = allowed
 
-    driver_id = "generic_readonly"
-    driver_version = "0.1.0"
+    async def read_prompt(self):
+        raw, pages = "", 0
+        while True:
+            chunk = await self.process.stdout.read(8192)
+            if not chunk:
+                raise ConnectionPolicyError("collector_disconnected")
+            raw += chunk
+            if len(raw.encode()) > 2_000_000:
+                raise ConnectionPolicyError("collector_output_limit")
+            output = cisco.clean(raw)
+            pattern = re.escape(self.prompt) if self.prompt else r"([^\s\n][^\n]{0,158}[>#])"
+            match = re.search(r"(?:^|\n)" + pattern + r"\s*$", output)
+            if match:
+                if self.prompt is None:
+                    self.prompt = match.group(1)
+                return PAGER.sub("", output[:match.start()])
+            # IOS can erase the marker with backspaces. Junos wraps "(more)".
+            count = max(len(PAGER.findall(output)), len(PAGER.findall(cisco.ANSI.sub("", raw))))
+            if count > pages:
+                if count > 200:
+                    raise ConnectionPolicyError("collector_pagination_limit")
+                self.process.stdin.write(" " * (count - pages))
+                await self.process.stdin.drain()
+                pages = count
 
-    def __init__(self, device: Device):
-        self.device = device
-
-    def discover_identity(self, session: object) -> dict:
-        return {
-            "vendor": self.device.vendor,
-            "platform": self.device.platform,
-            "model": self.device.model,
-            "serial": self.device.serial,
-            "support_status": self.device.support_status,
-        }
-
-    def discover_capabilities(self, session: object) -> dict:
-        return {
-            "interfaces.read": {"support": "supported", "validation": "generic", "effective_allowed": True},
-            "interface.description.set": {
-                "support": "unknown",
-                "validation": "not_tested",
-                "effective_allowed": False,
-                "denied_reason": "device_read_only",
-            },
-            "interface.access_vlan.set": {
-                "support": "unsupported",
-                "validation": "not_applicable",
-                "effective_allowed": False,
-                "denied_reason": "demo_fixture",
-            },
-        }
-
-    def read_inventory(self, session: object) -> Device:
-        return self.device
-
-    def read_interfaces(self, session: object) -> Device:
-        return self.device
-
-    def read_neighbors(self, session: object) -> list[dict]:
-        return []
-
-    def read_config(self, session: object, kind: str) -> dict:
-        raise UnsupportedCapability(f"config.read.{kind}")
-
-    def build_plan(self, intent: object, baseline: object) -> object:
-        raise UnsupportedCapability("config.plan")
-
-    def precheck(self, session: object, plan: object) -> object:
-        raise UnsupportedCapability("config.precheck")
-
-    def apply(self, session: object, plan: object) -> object:
-        raise UnsupportedCapability("config.apply")
-
-    def verify(self, session: object, plan: object) -> object:
-        raise UnsupportedCapability("config.verify")
-
-    def persist(self, session: object, plan: object) -> object:
-        raise UnsupportedCapability("config.persist")
-
-    def rollback(self, session: object, plan: object) -> object:
-        raise UnsupportedCapability("config.rollback")
+    async def command(self, command):
+        if command not in self.allowed:
+            raise ConnectionPolicyError("collector_command_denied")
+        self.process.stdin.write(command + "\n")
+        await self.process.stdin.drain()
+        output = await asyncio.wait_for(self.read_prompt(), 20)
+        # Remove the echoed command, not lines with arbitrary matching substrings.
+        lines = output.splitlines()
+        if lines and lines[0].strip() == command:
+            output = "\n".join(lines[1:])
+        if re.search(r"authorization failed|not authorized|permission denied|insufficient privilege|no permission", output, re.I):
+            raise ConnectionPolicyError("collector_permission_denied")
+        if re.search(r"^\s*(?:%\s*(?:Invalid|Incomplete|Ambiguous|Unrecognized)|Error\s*:|Unrecognized command|syntax error)", output, re.I | re.M):
+            raise ConnectionPolicyError("collector_command_unsupported")
+        return output
 
 
-@dataclass(frozen=True)
-class FixtureDriver:
-    """Deterministic local adapter used by tests and the demo profile."""
+def ntc(parser, raw):
+    name = parser.removeprefix("ntc.") + ".textfsm"
+    # Only the literal catalog supplies parser names. No uploaded templates.
+    root = Path(ntc_templates.__file__).parent / "templates"
+    with (root / name).open() as template:
+        machine = textfsm.TextFSM(template)
+        rows = machine.ParseText(raw)
+    if len(rows) > 8192:
+        raise ValueError("template_row_limit")
+    return [dict(zip((key.lower() for key in machine.header), row)) for row in rows]
 
-    device: Device
-    driver_id: str = "fixture"
-    driver_version: str = "0.1.0"
 
-    def connection_test(self) -> dict:
-        return {
-            "reachable": False,
-            "transport": "fixture",
-            "message": "Demo profili gerçek ağ bağlantısı açmaz.",
-            "driver_id": self.driver_id,
-        }
+def quality(code):
+    return {"collector_permission_denied": "permission_denied", "collector_command_unsupported": "unsupported",
+            "collector_timeout": "timeout", "collector_parse_failed": "parse_error"}.get(code, "error")
 
-    def run(self, job: Job) -> Job:
-        return job.model_copy(update={"status": "succeeded", "result": self.connection_test(), "result_code": "fixture_unreachable"})
+
+def identify(outputs):
+    text = "\n".join(outputs.values())
+    if re.search(r"VRP\s*\(R\)|Huawei Versatile Routing", text, re.I):
+        return "huawei_vrp"
+    if re.search(r"Junos:|JUNOS|<junos-version>", text):
+        return "juniper_junos"
+    if re.search(r"NX-OS|NXOS|nxos_ver_str", text):
+        return "cisco_nxos"
+    if re.search(r"Cisco IOS", text, re.I):
+        return "cisco_iosxe" if re.search(r"IOS XE|IOS-XE", text, re.I) else "cisco_ios"
+    raise ConnectionPolicyError("collector_platform_unsupported")
+
+
+async def collect(store, vault, device, groups=GROUPS, authorize=lambda: None):
+    requested = set(groups)
+    driver = device.resolved_collector if device.collector == "auto" else device.collector
+    if driver and driver not in DRIVERS:
+        raise ConnectionPolicyError("collector_platform_unsupported")
+    if driver == "linux_ssh":
+        async with connect(store, vault, device) as connection:
+            values = []
+            for command in ("ip -j -s link show", "ip -j address show", "cat /proc/uptime",
+                            "cat /proc/sys/kernel/random/boot_id", "ip -j neigh show"):
+                authorize()
+                try:
+                    values.append(await read_limited(connection, command))
+                except ValueError:
+                    if command != "ip -j neigh show":
+                        raise
+                    values.append(None)
+        updated, batch = linux_snapshot(device, *values[:3], values[3].strip(), values[4])
+        updated = updated.model_copy(update={"resolved_collector": driver, "driver_version": VERSION,
+            "validation_level": DRIVERS[driver][3]})
+        result = split(updated, batch, requested, driver, {}, {})
+        result.inventory_complete = True
+        return result
+    outputs, unavailable = {}, {}
+    async with asyncio.timeout(180):
+        async with connect(store, vault, device) as connection:
+            authorize()
+            process = await connection.create_process(term_type="vt100", term_size=(240, 60))
+            all_commands = {c.text for _, plan, _, _ in DRIVERS.values() for c in plan} | {"show version", "display version"}
+            reader = Reader(process, all_commands)
+            try:
+                await asyncio.wait_for(reader.read_prompt(), 20)
+                if not driver:
+                    for probe in ("show version", "display version"):
+                        authorize()
+                        try:
+                            outputs[probe] = await reader.command(probe)
+                            driver = identify(outputs)
+                            break
+                        except ConnectionPolicyError as error:
+                            if str(error) not in {"collector_platform_unsupported", "collector_command_unsupported"}:
+                                raise
+                    if not driver:
+                        raise ConnectionPolicyError("collector_platform_unsupported")
+                if not device.driver_version:
+                    requested.update(GROUPS)
+                # Current interface identity is needed to correlate slow network
+                # tables. It is read once in this SSH session, not per command.
+                if requested & {"inventory", "network"}:
+                    requested.add("fast")
+                revision = sha256(f"{device.connection_revision}:{driver}:{VERSION}:{device.os_version}".encode()).hexdigest()
+                with store.engine.connect() as conn:
+                    cached = dict(conn.execute(sa.select(store.capabilities.c.command_id, store.capabilities.c.status)
+                        .where(store.capabilities.c.device_id == device.id, store.capabilities.c.revision_key == revision)).all())
+                for command in DRIVERS[driver][1]:
+                    if command.group not in requested or command.text in outputs:
+                        continue
+                    authorize()
+                    if cached.get(command.text) in {"collector_command_unsupported", "collector_permission_denied", "collector_parse_failed"}:
+                        unavailable[command.text] = cached[command.text]
+                        continue
+                    try:
+                        outputs[command.text] = await reader.command(command.text)
+                    except ConnectionPolicyError as error:
+                        if str(error) not in {"collector_command_unsupported", "collector_permission_denied"}:
+                            raise
+                        unavailable[command.text] = str(error)
+                authorize()
+            finally:
+                process.close()
+    if driver in {"juniper_junos", "cisco_nxos"}:
+        result = parse_structured(device, driver, outputs, unavailable, requested)
+    else:
+        result = parse_text(device, driver, outputs, unavailable, requested)
+    result.device = result.device.model_copy(update={"resolved_collector": driver, "driver_version": VERSION,
+        "validation_level": DRIVERS[driver][3]})
+    # Cache only status, never CLI output. Unsupported commands are invalidated
+    # by driver, software version or credential/connection revision changes.
+    authorize()
+    with store.engine.begin() as conn:
+        for command, code in unavailable.items():
+            upsert(conn, store.capabilities,
+                (store.capabilities.c.device_id == device.id) & (store.capabilities.c.command_id == command),
+                dict(device_id=device.id, command_id=command, revision_key=revision, status=code, checked_at=now()))
+    return result
+
+
+NETWORK_FIELDS = {"interface_id", "addresses", "vrf", "vrf_known", "access_vlan", "pvid", "vlan_mode",
+                  "native_vlan", "allowed_vlans", "lag_interface_id", "optical_rx_dbm", "optical_tx_dbm",
+                  "transceiver_media", "transceiver_model", "transceiver_present"}
+
+
+def split(updated, batch, groups, driver, unavailable, extra):
+    data = batch.model_dump(mode="json")
+    result = ReadResult(updated)
+    for group in groups:
+        diagnostics = {c.text: quality(unavailable[c.text]) for c in DRIVERS[driver][1]
+                       if c.group == group and c.text in unavailable}
+        required = [c for c in DRIVERS[driver][1] if c.group == group and c.required]
+        failed = next((unavailable[c.text] for c in required if c.text in unavailable), None)
+        if failed:
+            result.metadata[group] = metadata(group, driver, quality=quality(failed), complete=False,
+                reason=failed, diagnostics=diagnostics)
+            continue
+        if group == "fast":
+            payload = {"interfaces": [{k: v for k, v in s.items() if k not in NETWORK_FIELDS - {"interface_id"}} for s in data["interfaces"]]}
+        elif group == "network":
+            payload = {k: data[k] for k in ("endpoints", "neighbors")}
+            payload["interfaces"] = [{k: v for k, v in s.items() if k in NETWORK_FIELDS} for s in data["interfaces"]]
+            if data["endpoints"]["status"] in {"partial", "error"}:
+                diagnostics["endpoints"] = "partial" if data["endpoints"]["status"] == "partial" else "parse_error"
+        elif group == "health":
+            payload = {"health": data["health"], "interfaces": [
+                {"interface_id": s["interface_id"], "poe_watts": s["poe_watts"]} for s in data["interfaces"] if s.get("poe_watts") is not None]}
+        else:
+            payload = {"model": updated.model, "serial": updated.serial, "os_version": updated.os_version,
+                       "components": [c.model_dump(mode="json") for c in updated.components], **extra}
+            result.inventory_complete = True
+        # Unsupported fields are explicit even where the valid subset succeeds.
+        fields = {key: "unsupported" for key in CAPABILITIES[group]}
+        if group in {"fast", "health"}:
+            values = payload.get("interfaces", []) if group == "fast" else [payload["health"]]
+            for key in fields:
+                if any(s.get(key) is not None and s.get(key) != "unknown" for s in values):
+                    fields[key] = "ok"
+        else:
+            for key in fields:
+                if payload.get(key):
+                    fields[key] = "ok"
+            if group == "network":
+                if data["endpoints"]["status"] == "ok":
+                    fields["arp"] = "ok"
+                    if driver == "linux_ssh":
+                        fields["ndp"] = "ok"
+                    else:
+                        fields["fdb"] = "ok"
+                if data["neighbors"]:
+                    fields["lldp"] = "ok"
+                for name in ("addresses", "vrf"):
+                    if any(s.get(name) for s in data["interfaces"]):
+                        fields[name] = "ok"
+                for name, columns in {"vlan": ("access_vlan", "pvid", "native_vlan", "allowed_vlans"),
+                                      "lag": ("lag_interface_id",), "dom": ("optical_rx_dbm", "optical_tx_dbm")}.items():
+                    if any(s.get(column) is not None for s in data["interfaces"] for column in columns):
+                        fields[name] = "ok"
+            elif group == "inventory" and any(c["kind"] == "chassis" for c in payload["components"]):
+                fields["chassis"] = "ok"
+        if group == "health" and payload["interfaces"]:
+            fields["poe_watts"] = "ok"
+        result.payloads[group] = payload
+        result.metadata[group] = metadata(group, driver, quality="partial" if diagnostics else "ok",
+            complete=not diagnostics, diagnostics=diagnostics, fields=fields,
+            reason="optional_commands_unavailable" if diagnostics else None)
+    return result
+
+
+def parse_text(device, driver, outputs, unavailable, groups):
+    """Health parsing cannot invalidate otherwise valid interface inventory."""
+    health_commands = {c.text for c in DRIVERS[driver][1] if c.group == "health"}
+    result = _parse_text(device, driver, {k: v for k, v in outputs.items() if k not in health_commands},
+                         unavailable, groups - {"health"}) if groups - {"health"} else ReadResult(device)
+    if "health" in groups:
+        health = _parse_text(result.device, driver, {k: v for k, v in outputs.items()
+            if k in health_commands or k in {"show version", "display version"}}, unavailable, {"health"})
+        result.payloads.update(health.payloads)
+        result.metadata.update(health.metadata)
+    return result
+
+
+def _parse_text(device, driver, outputs, unavailable, groups):
+    module = huawei if driver == "huawei_vrp" else cisco
+    interface_command = "display interface" if module is huawei else "show interfaces"
+    required = [c for c in DRIVERS[driver][1] if c.required and c.group in groups]
+    if any(c.text in unavailable for c in required):
+        return ReadResult(device, metadata={g: metadata(g, driver, quality="error", complete=False,
+            reason="required_command_unavailable", diagnostics={c: quality(v) for c, v in unavailable.items()}) for g in groups})
+    try:
+        at = now()
+        entries = module.parse_interfaces(outputs[interface_command]) if interface_command in outputs else {}
+        warnings = []
+        version = outputs.get("display version" if module is huawei else "show version", "")
+        if version and identify({"version": version}) != driver:
+            # IOS and IOS-XE share selected command parsers, not arbitrary OSes.
+            if {identify({"version": version}), driver} - {"cisco_ios", "cisco_iosxe"}:
+                raise ValueError("platform_mismatch")
+        snapshot = {"at": at, "entries": entries, "release": device.os_version, "model": device.model,
+                    "serial": device.serial, "health": Health(), "outputs": outputs, "unavailable": unavailable}
+        if module is cisco:
+            if entries:
+                cisco.apply_status(entries, outputs["show interfaces status"])
+            if "show ip interface" in outputs:
+                cisco.apply_addresses(entries, outputs["show ip interface"], warnings)
+            release = re.search(r"\bVersion\s+([^,\s]+)", version)
+            model = re.search(r"^\s*Model [Nn]umber\s*:\s*(\S+)", version, re.I | re.M) or re.search(
+                r"^\s*cisco\s+([A-Z][A-Z0-9-]+)\s+\(", version, re.I | re.M)
+            serial = re.search(r"(?:System serial number\s*:|Processor board ID)\s*(\S+)", version, re.I)
+            snapshot.update(release=release[1] if release else device.os_version,
+                            model=model[1] if model else device.model, serial=serial[1] if serial else device.serial)
+            cpu = re.search(r"CPU utilization for five seconds:\s*(\d+(?:\.\d+)?)%", outputs.get("show processes cpu", ""), re.I)
+            memory = re.search(r"(?:Processor|System)\s+\S+\s+(\d+)\s+(\d+)", outputs.get("show memory statistics", ""))
+            snapshot["health"] = Health(cpu_percent=float(cpu[1]) if cpu else None,
+                memory_percent=100 * int(memory[2]) / int(memory[1]) if memory and int(memory[1]) else None)
+            for command, value in (("show processes cpu", cpu), ("show memory statistics", memory)):
+                if command in outputs and value is None:
+                    unavailable[command] = "collector_parse_failed"
+            environment = outputs.get("show environment all")
+            if environment is not None:
+                temperature = re.search(r"System Temperature Value\s*:\s*(-?\d+(?:\.\d+)?)", environment, re.I)
+                fan = re.search(r"^\s*((?:FAN|Fan|System FAN)[^\n]{0,100}(?:OK|Good|Failed|Faulty))\s*$", environment, re.M)
+                psu = re.search(r"^\s*((?:Power Supply|PSU)[^\n]{0,100}(?:OK|Good|Failed|Faulty))\s*$", environment, re.M)
+                snapshot["health"].temperature_c = float(temperature[1]) if temperature else None
+                snapshot["health"].fan = fan[1] if fan else None
+                snapshot["health"].power_supply = psu[1] if psu else None
+                if not any((temperature, fan, psu)):
+                    unavailable["show environment all"] = "collector_parse_failed"
+        else:
+            release = re.search(r"VRP\s*\(R\)\s*software,\s*Version\s+([^\n]+)", version, re.I)
+            snapshot["release"] = release[1][:160] if release else device.os_version
+            model = re.search(r"^(?:Quidway|HUAWEI)\s+(\S+)\s+(?:Routing\s+)?Switch\s+uptime is", version, re.I | re.M)
+            snapshot["model"] = model[1][:160] if model else device.model
+            for line in outputs.get("display ip interface brief", "").splitlines():
+                fields = line.split()
+                if len(fields) > 1 and module.canonical(fields[0]) in entries and "/" in fields[1]:
+                    try:
+                        address = str(ip_interface(fields[1]))
+                        entries[module.canonical(fields[0])]["sample"]["addresses"] = [address]
+                    except ValueError:
+                        unavailable["display ip interface brief"] = "collector_parse_failed"
+            snapshot["health"] = Health(
+                cpu_percent=huawei.match_value(r"CPU (?:usage|utilization)\s*(?:for five seconds)?\s*:\s*(\d+(?:\.\d+)?)%", outputs.get("display cpu-usage", ""), float),
+                memory_percent=huawei.match_value(r"Memory Using Percentage Is\s*:\s*(\d+(?:\.\d+)?)%", outputs.get("display memory-usage", ""), float))
+            for command, value in (("display cpu-usage", snapshot["health"].cpu_percent),
+                                   ("display memory-usage", snapshot["health"].memory_percent)):
+                if command in outputs and value is None:
+                    unavailable[command] = "collector_parse_failed"
+        uptime = re.search(r"uptime is\s+([^\n]+)", version)
+        if uptime:
+            units = {"year": 31536000, "week": 604800, "day": 86400, "hour": 3600, "minute": 60, "second": 1}
+            parts = re.findall(r"(\d+)\s+(year|week|day|hour|minute|second)s?", uptime[1])
+            snapshot["health"].uptime_seconds = sum(int(n) * units[u] for n, u in parts) if parts else None
+        if entries:
+            updated, batch = module.merge_snapshot(device, snapshot)
+            if module is huawei and version:
+                updated = updated.model_copy(update={"model": snapshot["model"], "vendor": "Huawei"})
+        else:
+            from .contracts import Telemetry
+            updated, batch = device, Telemetry(observed_at=at, source="ssh", reachability="reachable", health=snapshot["health"],
+                interfaces=[InterfaceSample(interface_id=i.id, quality="unknown") for i in device.interfaces])
+        extra = enrich_ios(updated, batch, outputs, unavailable) if module is cisco else {}
+        result = split(updated, batch, groups, driver, unavailable, extra)
+        result.inventory_complete = bool(entries)
+        return result
+    except (ValueError, KeyError, OverflowError, ConnectionPolicyError):
+        for command in DRIVERS[driver][1]:
+            if command.group in groups and command.text in outputs and (command.required or groups == {"health"}):
+                unavailable[command.text] = "collector_parse_failed"
+        return ReadResult(device, metadata={g: metadata(g, driver, quality="parse_error",
+            complete=False, reason="collector_parse_failed") for g in groups})
+
+
+def enrich_ios(device, batch, outputs, unavailable):
+    samples = {cisco.canonical(i.name): next((s for s in batch.interfaces if s.interface_id == i.id), None) for i in device.interfaces}
+    extra = {}
+    for command in DRIVERS["cisco_ios"][1]:
+        if not command.parser.startswith("ntc.") or command.text not in outputs:
+            continue
+        try:
+            rows = ntc(command.parser, outputs[command.text])
+            if not rows and outputs[command.text].strip():
+                raise ValueError("unrecognized_empty_result")
+            if command.text == "show inventory":
+                extra["modules"] = rows
+            for row in rows:
+                sample = samples.get(cisco.canonical(row.get("interface", row.get("local_interface", ""))))
+                if command.text == "show interfaces switchport" and sample:
+                    sample.access_vlan = int(row["access_vlan"]) if row["access_vlan"].isdigit() else None
+                    sample.native_vlan = int(row["native_vlan"]) if row["native_vlan"].isdigit() else None
+                    sample.vlan_mode = "trunk" if "trunk" in row["mode"] else "access" if "access" in row["mode"] else "unknown"
+                    vlans = set()
+                    for value in row["trunking_vlans"]:
+                        for token in value.split(","):
+                            if re.fullmatch(r"\d+(?:-\d+)?", token):
+                                bounds = [int(v) for v in token.split("-")]
+                                if not 1 <= bounds[0] <= bounds[-1] <= 4094:
+                                    raise ValueError("vlan_range")
+                                vlans.update(range(bounds[0], bounds[-1] + 1))
+                    sample.allowed_vlans = sorted(vlans) if vlans else None
+                elif command.text == "show etherchannel summary":
+                    bundle = samples.get(cisco.canonical(row["bundle_name"]))
+                    for member in row["member_interface"]:
+                        if bundle and (member_sample := samples.get(cisco.canonical(member))):
+                            member_sample.lag_interface_id = bundle.interface_id
+                elif command.text == "show power inline" and sample:
+                    sample.poe_watts = float(row["power"]) if re.fullmatch(r"\d+(?:\.\d+)?", row["power"]) else None
+                elif command.text == "show lldp neighbors detail" and sample:
+                    from .contracts import Neighbor
+                    peer = row.get("neighbor_name") or row.get("chassis_id")
+                    if peer:
+                        batch.neighbors.append(Neighbor(id=sha256(f"{sample.interface_id}:{peer}:{row.get('neighbor_port_id')}".encode()).hexdigest(),
+                            interface_id=sample.interface_id, label=peer[:160], relation="l2",
+                            evidence=("LLDP: " + row.get("neighbor_port_id", ""))[:300]))
+        except (ValueError, KeyError, textfsm.TextFSMError):
+            unavailable[command.text] = "collector_parse_failed"
+    return extra

@@ -164,13 +164,14 @@ def connector_kind(name, text):
     represented by ``sfp`` in our inventory contract (SFP/SFP+/SFP28). Faster
     optical interfaces remain unknown unless the CLI explicitly names QSFP.
     """
-    if re.search(r"\bPort Mode\s*:\s*(?:COMMON|FORCE)\s+COPPER\b", text, re.I):
-        return "rj45"
-    upper = text.upper()
+    # Electrical medium is not the cage; a copper SFP remains pluggable.
+    upper = "\n".join(line for line in text.upper().splitlines() if not line.strip().startswith("DESCRIPTION"))
     if re.search(r"(?:^|[^A-Z0-9])QSFP(?:\+|28|DD)?(?:[^A-Z0-9]|$)", upper):
         return "qsfp"
     if re.search(r"(?:^|[^A-Z0-9Q])SFP(?:\+|28)?(?:[^A-Z0-9]|$)", upper):
         return "sfp"
+    if re.search(r"\bPort Mode\s*:\s*(?:COMMON|FORCE)\s+COPPER\b", text, re.I):
+        return "rj45"
     if not re.search(r"\bPort Mode\s*:\s*(?:COMMON|FORCE)\s+FIBER\b", text, re.I):
         return "unknown"
     value = canonical(name)
@@ -181,7 +182,8 @@ def connector_kind(name, text):
 
 def parse_interfaces(raw):
     headers = list(HEADER.finditer(raw))
-    if not headers or len(headers) > 8192:
+    expected = len(re.findall(r"^(?!\s*Line protocol\b)[^\n]*\bcurrent state\s*:", raw, re.M | re.I))
+    if not headers or len(headers) > 8192 or len(headers) != expected:
         raise ConnectionPolicyError("collector_parse_failed")
     entries = {}
     for index, header in enumerate(headers):
@@ -390,4 +392,5 @@ def parse_endpoints(interfaces, outputs, unavailable):
                 addresses=[address], discovery="arp", state=state, evidence="display arp all; L3 gözlemi, fiziksel kablo kanıtı değil")
         except ValidationError:
             partial = True
-    return EndpointCollection(status="partial" if partial else "ok", entries=list(entries.values()))
+    return EndpointCollection(status="partial" if partial else "ok", entries=list(entries.values()),
+                              truncated=len(entries) >= 2048, total_count=None if partial else len(entries))

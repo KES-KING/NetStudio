@@ -194,9 +194,12 @@ def connector_kind(media):
         return "unknown"
     if "qsfp" in value:
         return "qsfp"
+    # The socket is SFP even when its removable module terminates copper.
+    if "sfp" in value:
+        return "sfp"
     if re.search(r"(?:base-?t\b|baset\b|10/100|100/1000)", value):
         return "rj45"
-    if "sfp" in value or re.search(r"base-?(?:sx|lx|ex|zx|sr|lr|er)\b", value):
+    if re.search(r"base-?(?:sx|lx|ex|zx|sr|lr|er)\b", value):
         return "sfp"
     return "unknown"
 
@@ -260,7 +263,7 @@ def apply_status(entries, raw):
     starts = [header.lower().find(label.lower()) for label in labels]
     if starts != sorted(starts) or any(value < 0 for value in starts):
         raise ConnectionPolicyError("collector_parse_failed")
-    matched = 0
+    matched = set()
     for line in raw.splitlines()[raw.splitlines().index(header) + 1:]:
         if not line.strip() or re.match(r"^\s*-{3,}", line):
             continue
@@ -269,8 +272,11 @@ def apply_status(entries, raw):
         port, description, status, vlan, duplex, speed_token, media = values
         key = canonical(port)
         row = entries.get(key)
-        if not row or row["kind"] != "ethernet":
+        if row and row["kind"] != "ethernet":
             continue
+        if not row or key in matched:
+            # A partially parsed table must not replace complete port inventory.
+            raise ConnectionPolicyError("collector_parse_failed")
         state = status.lower()
         if state == "connected":
             row["sample"].update(admin_up=True, oper_up=True)
@@ -291,8 +297,9 @@ def apply_status(entries, raw):
             row["sample"]["vlan_mode"] = "trunk"
         row.update(connector=connector_kind(media), physical=True,
                    description=(description or row["description"]))
-        matched += 1
-    if not matched:
+        row["sample"]["transceiver_media"] = media[:160] if "sfp" in media.lower() else None
+        matched.add(key)
+    if not matched or matched != {key for key, row in entries.items() if row["kind"] == "ethernet"}:
         raise ConnectionPolicyError("collector_parse_failed")
 
 
@@ -460,4 +467,5 @@ def parse_endpoints(interfaces, outputs, unavailable):
             if len(entries) >= 2048:
                 partial = True
                 break
-    return EndpointCollection(status="partial" if partial else "ok", entries=list(entries.values()))
+    return EndpointCollection(status="partial" if partial else "ok", entries=list(entries.values()),
+                              truncated=len(entries) >= 2048, total_count=None if partial else len(entries))

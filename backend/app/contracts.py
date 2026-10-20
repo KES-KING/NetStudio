@@ -29,14 +29,70 @@ class Credentials(StrictModel):
         return self
 
 
-Collector = Literal["external", "linux_ssh", "huawei_vrp", "cisco_ios"]
-SSHProfile = Literal["standard", "huawei_legacy"]
+Collector = Literal[
+    "external", "auto", "linux_ssh", "huawei_vrp", "cisco_ios", "cisco_iosxe",
+    "cisco_nxos", "juniper_junos", "arista_eos", "aruba_aoscx", "hp_procurve",
+    "hp_comware", "mikrotik_routeros", "fortinet", "dell_os10", "dell_force10",
+    "extreme_exos", "extreme_vsp",
+]
+SSHProfile = Literal["auto", "standard", "huawei_legacy", "legacy_sha1", "legacy_cbc", "advanced"]
+CollectionGroup = Literal["fast", "health", "network", "inventory"]
+CollectionQuality = Literal[
+    "ok", "partial", "unknown", "unsupported", "permission_denied",
+    "parse_error", "timeout", "error",
+]
+
+
+class SSHAlgorithms(StrictModel):
+    kex_algs: list[str] = Field(default_factory=list, max_length=32)
+    server_host_key_algs: list[str] = Field(default_factory=list, max_length=32)
+    signature_algs: list[str] = Field(default_factory=list, max_length=32)
+    encryption_algs: list[str] = Field(default_factory=list, max_length=32)
+    mac_algs: list[str] = Field(default_factory=list, max_length=32)
+
+    @field_validator("*")
+    @classmethod
+    def exact_algorithm_names(cls, values):
+        import re
+        if len(set(values)) != len(values) or any(
+            not re.fullmatch(r"[a-zA-Z0-9@._/-]{1,100}", v) or v == "none" for v in values
+        ):
+            raise ValueError("invalid_ssh_algorithms")
+        return values
+
+
+class PollingSettings(StrictModel):
+    enabled: bool = True
+    fast_seconds: int = Field(default=30, ge=30, le=3600)
+    health_seconds: int = Field(default=120, ge=120, le=86400)
+    network_seconds: int = Field(default=300, ge=300, le=86400)
+    inventory_seconds: int = Field(default=3600, ge=600, le=86400)
+    preferred_source: Literal["auto", "ssh", "snmp"] = "auto"
+
+
+class SNMPCredentials(StrictModel):
+    username: str = Field(min_length=1, max_length=32)
+    port: int = Field(default=161, ge=1, le=65535)
+    context: str = Field(default="", max_length=128)
+    auth_protocol: Literal["sha256", "sha1"] = "sha256"
+    privacy_protocol: Literal["aes128"] = "aes128"
+    auth_password: SecretStr = Field(min_length=8, max_length=128)
+    privacy_password: SecretStr = Field(min_length=8, max_length=128)
+    legacy_auth_confirmed: bool = False
+
+    @model_validator(mode="after")
+    def legacy_confirmation(self):
+        if self.auth_protocol == "sha1" and not self.legacy_auth_confirmed:
+            raise ValueError("legacy_snmp_confirmation_required")
+        return self
 
 
 class ConnectionSettings(StrictModel):
     collector: Collector = "external"
     ssh_profile: SSHProfile = "standard"
     legacy_ssh_confirmed: bool = False
+    allow_legacy_ssh: bool = False
+    ssh_algorithms: SSHAlgorithms = Field(default_factory=SSHAlgorithms)
 
 
 class DeviceCreate(ConnectionSettings):
@@ -69,6 +125,13 @@ class ManagedDevice(Device):
     host_key_fingerprint: str | None = None
     inventory_observed_at: datetime | None = None
     inventory_source: str | None = None
+    allow_legacy_ssh: bool = False
+    ssh_algorithms: SSHAlgorithms = Field(default_factory=SSHAlgorithms)
+    connection_revision: int = 1
+    resolved_collector: str | None = None
+    driver_version: str | None = None
+    validation_level: Literal["experimental", "fixture_tested", "lab_validated", "physical_validated"] = "experimental"
+    snmp_configured: bool = False
 
 
 class Inventory(StrictModel):
@@ -135,6 +198,17 @@ class InterfaceSample(StrictModel):
     addresses: list[str] = Field(default_factory=list, max_length=128)
     vrf: str | None = Field(default=None, max_length=160)
     vrf_known: bool = True
+    native_vlan: int | None = Field(default=None, ge=1, le=4094)
+    allowed_vlans: list[int] | None = Field(default=None, max_length=4094)
+    lag_interface_id: str | None = Field(default=None, max_length=160)
+    transceiver_media: str | None = Field(default=None, max_length=160)
+    optical_rx_dbm: float | None = Field(default=None, ge=-150, le=100)
+    optical_tx_dbm: float | None = Field(default=None, ge=-150, le=100)
+    temperature_c: float | None = Field(default=None, ge=-100, le=250)
+    field_quality: dict[str, CollectionQuality] = Field(default_factory=dict, max_length=64)
+    observed_at: datetime | None = None
+    source: Literal["ssh", "snmp", "netconf", "manual"] | None = None
+    counter_bits: Literal[32, 64] | None = None
 
     @field_validator("addresses")
     @classmethod
@@ -204,6 +278,8 @@ class EndpointObservation(StrictModel):
 class EndpointCollection(StrictModel):
     status: Literal["ok", "partial", "unknown", "unsupported", "error"] = "unknown"
     entries: list[EndpointObservation] = Field(default_factory=list, max_length=2048)
+    truncated: bool = False
+    total_count: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def valid_entries(self):
@@ -212,6 +288,23 @@ class EndpointCollection(StrictModel):
         if len({e.id for e in self.entries}) != len(self.entries):
             raise ValueError("duplicate_endpoint_id")
         return self
+
+
+class GroupObservation(StrictModel):
+    quality: CollectionQuality = "unknown"
+    observed_at: datetime | None = None
+    attempted_at: datetime
+    stale_after_seconds: int = Field(default=120, ge=10, le=259200)
+    source: Literal["ssh", "snmp", "netconf", "manual"] = "ssh"
+    attempted_source: Literal["ssh", "snmp", "netconf", "manual"] | None = None
+    driver: str = Field(default="", max_length=80)
+    parser_version: str = Field(default="", max_length=80)
+    attempted_driver: str | None = Field(default=None, max_length=80)
+    attempted_parser_version: str | None = Field(default=None, max_length=80)
+    reason: str | None = Field(default=None, max_length=160)
+    diagnostics: dict[str, str] = Field(default_factory=dict, max_length=100)
+    fields: dict[str, CollectionQuality] = Field(default_factory=dict, max_length=100)
+    complete: bool = False
 
 
 class Telemetry(StrictModel):
@@ -224,6 +317,8 @@ class Telemetry(StrictModel):
     health: Health = Field(default_factory=Health)
     neighbors: list[Neighbor] = Field(default_factory=list, max_length=1024)
     endpoints: EndpointCollection = Field(default_factory=EndpointCollection)
+    groups: dict[CollectionGroup, GroupObservation] = Field(default_factory=dict)
+    schema_version: Literal[1, 2] = 1
 
     @model_validator(mode="after")
     def valid(self):

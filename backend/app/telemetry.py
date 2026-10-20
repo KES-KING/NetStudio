@@ -32,6 +32,10 @@ def normalize(batch, previous):
                 reason = "baseline_required"
             elif prior.get("quality") not in {"ok", "partial"}:
                 reason = "previous_sample_invalid"
+            elif (sample.get("source") or batch.source) != (prior.get("source") or previous.get("source")):
+                reason = "counter_source_changed"
+            elif sample.get("counter_bits") != prior.get("counter_bits"):
+                reason = "counter_width_changed"
             elif elapsed <= 0 or elapsed > max(batch.stale_after_seconds, previous["stale_after_seconds"]):
                 reason = "invalid_or_missing_interval"
             elif sample["discontinuity"] != prior.get("discontinuity"):
@@ -58,6 +62,9 @@ def ingest(store, device, batch: Telemetry):
             fail("unknown_interface_id", 422)
         previous = conn.execute(sa.select(store.telemetry.c.payload).where(store.telemetry.c.device_id == device.id)
             .order_by(store.telemetry.c.observed_at.desc()).limit(1)).scalar_one_or_none()
+        automated = conn.execute(sa.select(store.latest_telemetry.c.payload).where(store.latest_telemetry.c.device_id == device.id)).scalar_one_or_none()
+        if automated and (not previous or timestamp(automated["observed_at"]) > timestamp(previous["observed_at"])):
+            previous = automated
         if previous and batch.observed_at <= timestamp(previous["observed_at"]):
             fail("out_of_order_observation", 409)
         data = normalize(batch, previous)
@@ -141,8 +148,11 @@ def projection(device, data, at=None):
     stale = bool(data and (at - timestamp(data["observed_at"])).total_seconds() > data["stale_after_seconds"])
     availability = "unknown" if stale or not data else data["reachability"]
     state = "no_data" if not data else "stale" if stale else "error" if data.get("error") else "unreachable" if availability == "unreachable" else "current"
+    health = (data or {}).get("groups", {}).get("health")
+    health_stale = bool(health and (health.get("observed_at") is None or
+        (at - timestamp(health["observed_at"])).total_seconds() > health["stale_after_seconds"] or health["quality"] not in {"ok", "partial"}))
     return {"device": device.model_dump(mode="json"), "telemetry": data, "data_state": state,
-        "reachability": availability, "health_status": "unknown" if state != "current" else data["health"]["status"],
+        "reachability": availability, "health_status": "unknown" if state != "current" or health_stale else data["health"]["status"],
         "ports": physical_summary(device, data, state != "current" or availability != "reachable"), "topology": topology(device, data)}
 
 
@@ -166,6 +176,15 @@ def overview(store, devices, minutes):
             rows = conn.execute(sa.select(window.c.device_id, window.c.payload).where(window.c.rank <= 2881).order_by(window.c.observed_at)).all()
         for device_id, payload in rows:
             histories[device_id].append(payload)
+        with store.engine.connect() as conn:
+            automated = conn.execute(sa.select(store.latest_telemetry.c.device_id, store.latest_telemetry.c.payload)
+                .where(store.latest_telemetry.c.device_id.in_(ids))).all()
+        for device_id, payload in automated:
+            if device_id not in latest or timestamp(payload["observed_at"]) >= timestamp(latest[device_id]["observed_at"]):
+                latest[device_id] = payload
+                fast = payload.get("groups", {}).get("fast", {})
+                if fast.get("observed_at"):
+                    successes[device_id] = timestamp(fast["observed_at"])
     result = []
     for device in devices:
         row = projection(device, latest.get(device.id))

@@ -39,19 +39,22 @@ export default function Dashboard() {
     return () => window.clearTimeout(timer);
   }, [query, type, status, minutes]);
   const { data, error, isLoading, isValidating, mutate } = useSWR<Overview>(
-    `/api/v1/overview?minutes=${minutes}`,
+    "/api/v1/overview/summary",
     api,
     { refreshInterval: 15000, keepPreviousData: true },
+  );
+  const { data: traffic } = useSWR<Record<string, Projection["traffic"]>>(
+    `/api/v1/overview/traffic?minutes=${minutes}`, api, { refreshInterval: 60000, keepPreviousData: true },
   );
   const rows = useMemo(
     () =>
       filterDevices(
-        (data?.devices ?? []).map((row) => displayProjection(row, !!error)),
+        (data?.devices ?? []).map((row) => displayProjection({ ...row, traffic: traffic?.[row.device.id] ?? [] }, !!error)),
         query,
         type,
         status,
       ),
-    [data, error, query, type, status],
+    [data, traffic, error, query, type, status],
   );
   const [adding, setAdding] = useState(false);
   const pageCount = Math.max(1, Math.ceil(rows.length / 20)),

@@ -84,6 +84,35 @@ services:
       - application
     stop_grace_period: 20s
 
+  collector-worker:
+    <<: *api-service
+    command: ["python", "-m", "app.worker"]
+    restart: unless-stopped
+    init: true
+    environment:
+      STOCC_ENV: ${STOCC_ENV:-development}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://stocc:stocc@postgres:5432/stocc}
+      STOCC_ALLOWED_ORIGINS: ${STOCC_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      STOCC_SSH_ALLOWED_CIDRS: ${STOCC_SSH_ALLOWED_CIDRS:-}
+      STOCC_KEYRING_FILE: /run/secrets/stocc-keyring.json
+    volumes:
+      - stocc-keyring:/run/secrets:ro
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.worker", "--healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      secrets-init:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - database
+      - application
+    stop_grace_period: 20s
+
   web:
     image: stocc-netstudio-web:${IMAGE_TAG:-local}
     build:

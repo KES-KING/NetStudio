@@ -5,24 +5,24 @@
 1. Engineer veya superadmin olarak cihaz detayındaki **Bağlantı bilgileri** ekranını açın.
 2. **Veri kaynağı → Huawei VRP · salt okunur SSH** seçin.
 3. Modern SSH ile çalışıyorsa **Standart** profili koruyun. S5700S-28P-LI-AC / VRP 5.120 gibi yalnız eski algoritmalarla bağlanılan cihazda **Eski VRP** seçin ve risk onayını işaretleyin. **Bağlantı ayarlarını kaydet** düğmesine basın.
-4. Kimlik bilgilerini ve bağımsız güvenilir kanaldan doğrulanmış **cihazın public host anahtarını / SHA256 fingerprint'ini** tamamlayın. Sırlar geri okunmaz; boş sır alanı mevcut kaydı korur. Otomatik ilk güven yoktur.
+4. Kimlik bilgilerini tamamlayın; **Anahtarı bul ve bağlantıyı hazırla** ile host anahtarını alın. SHA256 fingerprint'i bağımsız güvenilir kaynaktan karşılaştırıp bir kez onaylayın. Sırlar geri okunmaz; boş sır alanı mevcut kaydı korur. Otomatik ilk güven yoktur.
 5. **Bağlantıyı test et**, ardından **Veri topla** kullanın. İş sonucu ve son gözlem zamanını kontrol edin. **SSH** aynı cihaz profilini kullanır.
 
 Cihazın yetkili envanter kaydı kendi yönetim IP/SSH portunun onayıdır; cihaz başına `.env` düzenlenmez. İsteğe bağlı `STOCC_SSH_ALLOWED_CIDRS` doluysa ek kurulum sınırı olarak uygulanır. Loopback açık CIDR izni ister; link-local (metadata servisleri dahil), multicast ve belirsiz hedefler reddedilir. Tarayıcı terminal API'si serbest hedef kabul etmez. Bu değişiklik mevcut global CIDR sınırını veya cihazın bağımsız host güven kaydını silmez.
 
 ## Uyumluluk profili
 
-`standard` varsayılandır. `huawei_legacy`, yalnız seçilen cihazın bağlantısına aşağıdakileri **ekler**, diğer cihazların varsayılanlarını değiştirmez:
+Yeni cihaz formunda `auto` varsayılandır; eski kayıtların `standard` / `huawei_legacy` değerleri korunur. `huawei_legacy`, yalnız seçilen cihazın bağlantısına aşağıdakileri **ekler**, diğer cihazların varsayılanlarını değiştirmez:
 
 - KEX: `diffie-hellman-group-exchange-sha1`, `diffie-hellman-group1-sha1`.
 - Sunucu host imzası: `ssh-rsa`.
 - Şifre: `aes128-cbc`.
 
-Bunlar eski/zayıf algoritmalardır. Uygunsa cihaz yazılımını ve SSH yapılandırmasını modernleştirip Standart profile dönün. Otomatik algoritma düşürme yapılmaz; kayıtlı host anahtarı değişirse her iki profilde de bağlantı durur. Profil/toplayıcı değişikliği denetlenir ve açık terminalleri kapatır. Tasarım, [AsyncSSH bağlantı seçenekleri](https://asyncssh.readthedocs.io/en/latest/api.html#supported-algorithms) ve [OpenSSH legacy rehberindeki](https://www.openssh.org/legacy.html) cihaz bazlı açık seçim yaklaşımını kullanır.
+Bunlar eski/zayıf algoritmalardır. Uygunsa cihaz yazılımını ve SSH yapılandırmasını modernleştirip Standart profile dönün. Otomatik profil yalnız cihazda eski algoritma izni varsa sınırlı uyumluluk denemesi yapar; yanlış parola veya değişen host anahtarı deneme gerekçesi değildir. Profil/toplayıcı değişikliği denetlenir ve açık terminalleri kapatır. Ayrıntılar [toplama otomasyonu](collection-automation.md), [AsyncSSH bağlantı seçenekleri](https://asyncssh.readthedocs.io/en/latest/api.html#supported-algorithms) ve [OpenSSH legacy rehberinde](https://www.openssh.org/legacy.html).
 
 ## Komut ve veri sözleşmesi
 
-Toplayıcı `backend/app/huawei.py` içindedir. İnteraktif, sınırlı bir PTY üzerinden yalnız aşağıdaki sabit komutları çalıştırır. `system-view`, `save`, konfigürasyon okuma/yazma veya kullanıcıdan alınan komut parçaları yoktur. Sayfalama istemine yalnız boşluk gönderir; cihazın kalıcı/session paging ayarını değiştirmez.
+Ayrıştırıcılar `backend/app/huawei.py`, ortak akış `drivers.py`, komut/grup tanımları `driver_catalog.py` içindedir. İnteraktif, sınırlı bir PTY üzerinden aşağıdaki sabit komutlar çalışır. `system-view`, `save`, konfigürasyon okuma/yazma veya kullanıcıdan alınan komut parçaları yoktur. Sayfalama istemine yalnız boşluk gönderir; cihazın kalıcı/session paging ayarını değiştirmez.
 
 | Komut | Veri / hata davranışı |
 | --- | --- |
@@ -54,7 +54,7 @@ FDB ile ARP yalnız aynı açık arayüzde veya FDB VLAN'ına karşılık gelen 
 
 ## Dağıtım ve doğrulama sınırı
 
-Yeni alanlar mevcut cihaz JSON kaydında tutulur; eski kayıtlar `ssh_profile:standard` ile okunur, DB migration gerekmez. Backend ve frontend imajlarını birlikte yeniden build edin. Örneğin mevcut Desktop kurulumu `stocc-netstudio-fresh` ise aynı repository içinde:
+Eski SSH profilleri ve cihaz JSON kayıtları korunur. Yeni otomasyon için `0006_collection_automation` ek tabloları ve ayrı `collector-worker` gerekir; [geçiş adımlarını](collection-automation.md#geçiş-ve-geri-dönüş) inceleyin. Backend, frontend ve worker imajlarını birlikte build edin. Örneğin doğrulanmış mevcut Desktop kurulumu `stocc-netstudio-fresh` ise aynı repository içinde:
 
 ```bash
 docker --context desktop-linux compose -p stocc-netstudio-fresh up --build -d --wait

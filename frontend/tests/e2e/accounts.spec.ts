@@ -24,6 +24,19 @@ test.beforeAll(async ({ request }) => {
   const headers = await admin(request);
   const devices = await (await request.get("/api/v1/devices")).json();
   expect(devices.some((device: { name: string; site: string }) => device.name === "QA-Core-01" && device.site === "TEST FIXTURE / isolated")).toBeTruthy();
+  // The disposable SSH container can rotate its key during an image rebuild.
+  // Trust only the independently supplied key of this exact isolated fixture.
+  const core = devices.find((device: { name: string }) => device.name === "QA-Core-01");
+  const keyUrl = process.env.STOCC_QA_SSH_KEY_URL;
+  if (keyUrl) {
+    expect(new URL(keyUrl).hostname).toBe("127.0.0.1");
+    const trustedLab = await (await request.get(keyUrl)).json();
+    if (core.host_key_fingerprint !== trustedLab.fingerprint) {
+      expect((await request.put(`/api/v1/devices/${core.id}/host-key`, { headers,
+        data: { public_key: trustedLab.public_key, fingerprint: trustedLab.fingerprint, replace_existing: true },
+      })).status()).toBe(200);
+    }
+  }
   for (const role of ["superadmin", "engineer", "viewer"] as const) {
     const response = await request.post("/api/v1/users", { headers, data: {
       username: names[role], display_name: `QA ${role}`, password, role, sites: role === "superadmin" ? ["*"] : ["TEST FIXTURE / isolated"],
@@ -142,7 +155,9 @@ test("viewer edits own profile, persists an avatar and changes password without 
   await expect(page.locator(".topbar .user-avatar img")).toBeVisible();
   await page.reload();
   await expect(page.locator(".topbar .user-avatar img")).toBeVisible();
-  expect(await page.locator(".topbar .user-avatar img").evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBe(32);
+  // Visibility precedes decoding of the authenticated image after reload.
+  await expect.poll(() => page.locator(".topbar .user-avatar img").evaluate(
+    (image) => (image as HTMLImageElement).naturalWidth)).toBe(32);
   await page.getByRole("button", { name: "Avatarı kaldır", exact: true }).click();
   await expect(page.locator(".topbar .user-avatar img")).toHaveCount(0);
   await page.getByLabel("Mevcut parola", { exact: true }).fill(password);

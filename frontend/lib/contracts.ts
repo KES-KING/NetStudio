@@ -37,8 +37,11 @@ export type Device = {
   read_only: boolean;
   support_status: string;
   ssh_port: number;
-  collector: "external" | "linux_ssh" | "huawei_vrp" | "cisco_ios";
-  ssh_profile?: "standard" | "huawei_legacy";
+  collector: "external" | "auto" | "linux_ssh" | "huawei_vrp" | "cisco_ios" | "cisco_iosxe" | "cisco_nxos" | "juniper_junos";
+  ssh_profile?: "auto" | "standard" | "huawei_legacy" | "legacy_sha1" | "legacy_cbc" | "advanced";
+  allow_legacy_ssh?: boolean;
+  ssh_algorithms?: Record<string, string[]>;
+  snmp_configured?: boolean;
   credential_configured: boolean;
   host_key_fingerprint: string | null;
   inventory_observed_at: string | null;

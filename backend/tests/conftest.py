@@ -19,6 +19,8 @@ def system(tmp_path, monkeypatch):
     monkeypatch.setenv("STOCC_ENV", "development")
     monkeypatch.setenv("STOCC_ALLOWED_ORIGINS", ORIGIN)
     monkeypatch.setenv("STOCC_SSH_ALLOWED_CIDRS", "127.0.0.1/32")
+    monkeypatch.setenv("STOCC_EMBEDDED_WORKER", "1")
+    monkeypatch.setenv("STOCC_SCHEDULER_ENABLED", "0")
     store = Store(f"sqlite+pysqlite:///{tmp_path / 'test.db'}")
     store.meta.create_all(store.engine)
     key_file = tmp_path / "keyring.json"

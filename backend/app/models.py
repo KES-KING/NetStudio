@@ -106,9 +106,9 @@ class Device(BaseModel):
 
 class Job(BaseModel):
     id: UUID = Field(default_factory=uuid4)
-    kind: Literal["connection_test", "inventory_read"]
+    kind: Literal["connection_test", "inventory_read", "ssh_discovery"]
     device_id: str
-    status: Literal["queued", "running", "succeeded", "failed", "unknown"] = "queued"
+    status: Literal["queued", "running", "succeeded", "partial", "blocked", "cancelled", "failed", "unknown"] = "queued"
     requested_by: str
     created_at: datetime = Field(default_factory=utc_now)
     started_at: datetime | None = None

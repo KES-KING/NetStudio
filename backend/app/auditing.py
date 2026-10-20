@@ -43,6 +43,9 @@ SAFE_KEYS = frozenset({
     "scope", "session_count", "avatar_changed", "confirmation_username", "from", "to", "actor", "event", "outcome", "target_id",
     "version", "zone_count", "device_count", "link_count", "zones", "placements", "links", "id", "x", "y", "tone", "zone_id",
     "source_device_id", "source_port_id", "target_device_id", "target_port_id",
+    "allow_legacy_ssh", "ssh_algorithms", "kex_algs", "server_host_key_algs", "signature_algs", "encryption_algs", "mac_algs",
+    "settings", "fast_seconds", "health_seconds", "network_seconds", "inventory_seconds", "preferred_source",
+    "auth_protocol", "privacy_protocol",
 })
 SECRET_TEXT = re.compile(
     r"-----BEGIN .*PRIVATE KEY-----|\bBearer\s+\S+|(?:password|passwd|passphrase|secret|token|authorization|cookie|private_key)\s*[:=]",

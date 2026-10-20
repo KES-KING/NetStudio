@@ -20,7 +20,10 @@ Cihaz sırları, şifreleme anahtarları, kullanıcı oturumları ve site bazlı
 - SSH hedefi yalnız yetkili kullanıcı tarafından eklenmiş cihazın güncel yönetim IP/port kaydından gelmelidir. Cihaz ekleme bu hedefin bağlantı onayıdır; tarayıcıdan serbest hedef kabul edilmez.
 - `STOCC_SSH_ALLOWED_CIDRS` isteğe bağlı kurulum geneli ek kısıttır: boşsa kayıtlı hedefler kabul edilir; doluysa bu sınır da uygulanır. Geçersiz kısıt güvenli biçimde reddedilmelidir. Geçersiz, multicast ve link-local hedefler reddedilir; loopback hedefler yalnız açık CIDR izniyle kabul edilir.
 - SSH host anahtarı bağımsız doğrulanıp kaydedilmelidir; ilk bağlantıda otomatik güven veya anahtar değişiminde sessiz kabul yapılmaz.
-- Eski SSH algoritmaları varsayılan olarak açılmaz; yalnız yetkili kullanıcının cihaz bazlı uyumluluk profili seçimiyle etkinleşir ve audit edilir. Otomatik algoritma düşürme uygulanmaz; uyumluluk seçimi host key, oturum veya rol/site kontrolünü kaldırmaz.
+- Eski SSH algoritmaları varsayılan olarak açılmaz. Cihaz bazlı açık izin audit edilir; otomatik profil yalnız bu izin kapsamında en fazla dört el sıkışması/30 saniye deneyebilir. Yanlış parola, host key değişimi veya yetki hatası algoritma deneme gerekçesi değildir. Uyumluluk seçimi host key, oturum veya rol/site kontrolünü kaldırmaz.
+- Host key keşfi kimlik bilgisi göndermez; keşif güven onayı değildir. Tek kullanımlık, 10 dakika geçerli aday kullanıcıya/cihaza/bağlantı sürümüne bağlanır. Değiştirme açık kullanıcı onayı gerektirir.
+- Zamanlanmış işler etkin cihaz politikasının sürümüne bağlı sistem kimliğiyle; manuel işler güncel kullanıcı/site yetkisiyle çalışır. Worker lease kaybında ağ işlemleri durmalı ve eski sonuç envanteri ezememelidir.
+- SNMP yalnız kayıtlı IP'de v3 authPriv ile, sınırlı GET/GETBULK okumaları yapar. SNMP sırları protokol ayrımlı AAD ile şifrelenir; v1/v2c veya SET kullanılmaz.
 - Cihaz sırları okuma API'lerine, frontend kalıcı depolarına veya genel loglara sızmamalıdır.
 - Eksik anahtar, geçersiz oturum veya yetki kaybında ilgili işlem güvenli biçimde reddedilmelidir.
 

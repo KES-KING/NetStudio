@@ -13,12 +13,16 @@ dependencies = [
   "asyncssh>=2.24,<3",
   "bcrypt>=4.2,<6",
   "cryptography>=46,<52",
+  "defusedxml==0.7.1",
   "alembic>=1.13,<2",
   "fastapi>=0.115,<1",
   "pydantic>=2.8,<3",
+  "ntc-templates==9.3.0",
   "Pillow>=13.0,<14",
   "psycopg[binary]>=3.2,<4",
+  "pysnmp==7.1.30",
   "sqlalchemy>=2.0,<3",
+  "textfsm==2.1.0",
   "uvicorn[standard]>=0.30,<1",
 ]
 

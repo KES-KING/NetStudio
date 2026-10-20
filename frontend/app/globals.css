@@ -500,6 +500,19 @@ h3 {
 .panel > .panel-heading {
   background: var(--ui-soft);
 }
+.collection-controls {
+  margin-bottom: 16px;
+}
+.collection-controls > p,
+.collection-controls > details {
+  margin: 12px 16px;
+}
+.collection-controls summary {
+  cursor: pointer;
+}
+.collection-controls td {
+  overflow-wrap: anywhere;
+}
 .chart-panel .panel-heading {
   border: 0;
   padding-bottom: 0;

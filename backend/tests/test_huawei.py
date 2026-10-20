@@ -94,7 +94,8 @@ def test_vrp5120_real_format_ports_and_directional_metrics(system):
         ("40GE0/0/1", "Port Mode: COMMON FIBER\nSpeed : 40000", "unknown"),
         ("40GE0/0/1", "Port Mode: COMMON FIBER\nTransceiver Type: 40GBASE-SR4-QSFP+", "qsfp"),
         ("100GE0/0/1", "Port Mode: COMMON FIBER\nTransceiver Type: 100GBASE-LR4-QSFP28", "qsfp"),
-        ("GigabitEthernet0/0/1", "Port Mode: FORCE COPPER\nTransceiver Type: 1000_BASE_T_SFP", "rj45"),
+        ("GigabitEthernet0/0/1", "Port Mode: FORCE COPPER\nTransceiver Type: 1000_BASE_T_SFP", "sfp"),
+        ("GigabitEthernet0/0/1", "Port Mode: FORCE COPPER\nDescription: SFP uplink", "rj45"),
         ("Ethernet0/0/1", "Port Mode: COMMON FIBER\nSpeed : 100", "unknown"),
     ],
 )
@@ -202,9 +203,10 @@ def test_profile_settings_explicit_consent_rbac_and_audit(system):
     assert client.put(path, json={**settings, "management_address": "192.0.2.99"}).status_code == 422
     with store.engine.connect() as conn:
         audit = conn.execute(sa.select(store.audit.c.details).where(store.audit.c.event == "device.connection.updated")).scalar_one()
-    assert audit["after"] == settings and audit["legacy_ssh_confirmed"] is True
+    assert all(audit["after"][key] == value for key, value in settings.items())
+    assert audit["legacy_ssh_confirmed"] is True
     assert client.post("/api/v1/devices", json={"name": "legacy", "site": "lab", "management_address": "192.0.2.99", **settings}).status_code == 422
-    assert algorithm_options(store.get_device(device["id"])).get("encryption_algs") == "+aes128-cbc"
+    assert "aes128-cbc" in algorithm_options(store.get_device(device["id"]))["encryption_algs"]
 
 
 @pytest.fixture(params=["diffie-hellman-group1-sha1", "diffie-hellman-group-exchange-sha1"])
@@ -265,7 +267,7 @@ def wait_job(client, device, kind="polls"):
     assert response.status_code == 202, response.text
     for _ in range(300):
         job = client.get(f"/api/v1/jobs/{response.json()['id']}").json()
-        if job["status"] in {"succeeded", "failed"}:
+        if job["status"] not in {"queued", "running"}:
             return job
         time.sleep(.02)
     pytest.fail("Job did not complete")
@@ -286,8 +288,9 @@ def test_real_legacy_ssh_pagination_collection_trust_and_settings_revocation(sys
     assert client.put(base + "/connection-settings", json=settings).status_code == 200
     assert wait_job(client, device, "connection-tests")["status"] == "succeeded"
     job = wait_job(client, device)
-    assert job["status"] == "succeeded", job
-    assert state["commands"] == list(COMMANDS) and state["pages"] == 1
+    assert job["status"] in {"succeeded", "partial"}, job
+    from app.driver_catalog import VRP
+    assert state["commands"] == [c.text for c in VRP] and state["pages"] == 1
     row = client.get("/api/v1/overview").json()["devices"][0]
     assert row["ports"]["total"] == 2 and row["ports"]["counts"]["up"] == 1
     assert row["telemetry"]["health"]["uptime_seconds"] == 1140

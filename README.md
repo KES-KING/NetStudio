@@ -21,11 +21,12 @@ Arayüz: Next.js 16 / React 19 / TypeScript, Apache ECharts, xterm.js ve SWR. Ba
 - Taralı Topoloji çalışma alanı: kişisel zone’lar, taşınabilir cihazlar, port bağlantısı çizimi ve kaynak/zaman bilgili MAC/IP uç düğümleri.
 - Apache ECharts ile RX/TX, port durumu ve kapasite gösterimleri; bilinmeyen/eski verinin açık ayrımı.
 - Cihaz detayına entegre SSH terminali; backend tarafında site/rol denetimi ve kayıtlı host key doğrulaması.
-- Harici envanter/telemetri aktarımı; Linux, Huawei VRP ve Cisco Catalyst 2960-X IOS için kullanıcı tarafından başlatılan salt okunur SSH toplama işleri.
+- Harici envanter/telemetri aktarımı; sürümlü Cisco/Huawei/Junos sürücü kataloğu, salt okunur manuel ve zamanlanmış toplama, isteğe bağlı SNMPv3.
+- Parola göndermeden host key keşfi, bir defalık açık güven onayı ve cihaz bazlı izinle otomatik SSH uyumluluk seçimi.
 - Kişisel profil/avatar/parola yönetimi; `viewer`, `engineer`, `superadmin` rolleri ve yalnız superadmin'e açık kullanıcı yönetimi/ayrıntılı audit.
 - Docker Compose ile PostgreSQL, migration, sır deposu, API, frontend ve gateway kurulumu.
 
-Bu proje geliştirme aşamasındadır. Fiziksel cihaz/üretim kabulü, çok worker desteği ve üreticiye özgü konfigürasyon uygulama/yedekleme yetenekleri varmış gibi sunulmaz. CI rozeti GitHub'daki gerçek durumu gösterir; aşağıdaki tarihli yerel doğrulama sonuçları onun yerine geçmez.
+Bu proje geliştirme aşamasındadır. Toplayıcı worker'ları kalıcı kuyruk üzerinden koordineli çalışır; API/terminal broker'ı hâlâ tek süreç varsayar. Fiziksel cihaz/üretim kabulü, 100 cihaz kapasitesi ve üreticiye özgü konfigürasyon uygulama/yedekleme yetenekleri doğrulanmış sayılmaz. Sürücü sınırları [destek matrisinde](docs/collection-automation.md#sürücü-ve-veri-doğrulama-seviyesi) belirtilir. CI rozeti GitHub'daki gerçek durumu gösterir; aşağıdaki tarihli yerel doğrulama sonuçları onun yerine geçmez.
 
 Marka varlıkları `frontend/public/branding/` içindedir: `netstudio-logo.png` README, giriş ekranı ve masaüstü üst barda, `netstudio-emblem.png` mobil üst bar ve sekme simgesinde kullanılır. Orijinal PNG içerikleri ve şeffaflık korunur; ortak `Brand` bileşeni uygulama içinde yalnız şeffaf kenar boşluklarını görünümde çerçeveler. Logoların arkasında ayrı bir zemin yoktur; üst barın tamamı okunabilirlik için `nav-header` tokenıyla açık gri tutulur. Sekme simgesi `app/icon.tsx` ile amblemden şeffaf zemin üzerinde üretilir. Docker web imajı `public/` dizinini de içerir.
 
@@ -35,7 +36,7 @@ Aşağıdaki üç görüntü çalışan uygulamanın izole QA ortamından alınm
 
 **Güncellik kuralı:** Her görsel arayüz güncellemesinde aşağıdaki üç görüntünün tamamı güncel koddan yeniden alınır ve aynı değişiklik/PR içinde teslim edilir. İnsanlar ve yapay zekâ için ayrıntılar [rule.md](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile), ajanların uygulama adımları [agent.md](agent.md) içindedir.
 
-Son set: **20 Ekim 2026**, `stocc-cisco-qa-20261020` izole Docker ortamı, sistem Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `ea974a7` üzerine Catalyst 2960-X collector ve bağlantı formu değişikliklerini içerir; mevcut `stocc-netstudio-fresh` kurulumu değiştirilmemiştir.
+Son set: **20 Ekim 2026**, `stocc-automation-qa-20261020` izole Docker ortamı, sistem Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `824d4b1` üzerine çok markalı toplama, kalıcı worker ve bağlantı otomasyonu değişikliklerini içerir; mevcut `stocc-netstudio-fresh` kurulumu değiştirilmemiştir.
 
 ### Ana sayfa
 
@@ -182,17 +183,19 @@ Sonraki `ps`, `stop`, `up` ve `exec` işlemlerinde de aynı `-p stocc-netstudio-
 
 1. **Cihaz Ekle** ile yönetim IP'sini, siteyi, SSH portunu ve cihaz türünü kaydedin. İsteğe bağlı olarak SSH kullanıcı adı ve parola ya da özel anahtar/passphrase tanımlayın. Eksik kimlik bilgilerini daha sonra **Bağlantı bilgileri** üzerinden tamamlayabilirsiniz.
 2. **Yetkili kullanıcı tarafından cihaz eklenmesi, kayıtlı yönetim IP/SSH portu için bağlantı onayıdır.** Cihaz başına `.env` izni eklenmez. `STOCC_SSH_ALLOWED_CIDRS` yalnız isteğe bağlı kurulum geneli ek sınırdır: boşsa kayıtlı hedefler kabul edilir, doluysa bu CIDR sınırı da uygulanır; geçersiz CIDR bağlantıyı reddeder. Loopback adresler ayrıca açık CIDR izni ister; belirsiz, multicast ve link-local hedefler reddedilir. Mevcut kurulumda tanımlı ek sınırlar otomatik kaldırılmaz.
-3. Cihazın OpenSSH **public host anahtarını** ve bağımsız, güvenilir bir kanaldan doğruladığınız SHA256 fingerprint'i **Bağlantı bilgileri** ekranına girin. Bu alan cihazın host anahtarıdır; kullanıcının oturum açma public anahtarı değildir. Anahtarın yalnız ağdan alınması kimliğini doğrulamaz. Otomatik TOFU/`known_hosts=None` kullanılmaz.
+3. **Bağlantı bilgileri → Anahtarı bul ve bağlantıyı hazırla** ile public host anahtarını ve SHA256 fingerprint'i getirin. Fingerprint'i bağımsız güvenilir kaynaktan karşılaştırıp bir kez onaylayın. Elle giriş gelişmiş seçenek olarak korunur. Bu anahtar cihazın kimliğidir; kullanıcının oturum açma public anahtarı değildir. Ağdan keşif tek başına güven sağlamaz; onaysız kimlik doğrulama yapılmaz.
 4. **Bağlantıyı test et** ile gerçek SSH el sıkışmasını kontrol edin. **SSH** üst paneli böler; cihaz solda, terminal sağda kalır. Dar ekranda iki alan alt alta geçer. Terminal açıkken yeniden tıklamak ikinci oturum oluşturmaz.
 5. Veri toplama yöntemini seçin:
+
+   - `Otomatik`: desteklenen Cisco IOS/IOS-XE/NX-OS, Huawei VRP veya Junos sürücüsünü sürüm yanıtından belirler. Tanınmayan platformda açık hata verir; bütün modellerin desteklendiği anlamına gelmez.
    - `Linux · salt okunur SSH`: **Veri topla**, sabit `ip -j -s link show`, `ip -j address show`, `/proc/uptime`, boot ID ve isteğe bağlı `ip -j neigh show` okumalarını gerçekleştirir. İki geçerli sayaç gözlemi trafik hızı için gerekir. Donanım port geometrisi bu çıktılardan tahmin edilmez.
    - `Huawei VRP · salt okunur SSH`: **Veri topla**, VRP sürümünü, arayüzleri/portları, RX/TX hız ve sayaçlarını, IP arayüzlerini, MAC/ARP gözlemlerini ve destekleniyorsa CPU/RAM ölçümlerini okur. VRP 5.120 / S5700 V200R002 biçimi için ayrıştırıcı testleri vardır; [Huawei kurulum ve veri sözleşmesine](docs/huawei-vrp.md) bakın. Model adına bakarak port eklenmez.
    - `Cisco IOS · Catalyst 2960-X salt okunur SSH`: **Veri topla**, IOS/model kimliğini, cihazın raporladığı fiziksel portları, durum/hız/sayaçları, IP arayüzlerini ve MAC/ARP gözlemlerini okur. İlk desteklenen ürün ailesi `WS-C2960X-*`; ayrıntılar [Cisco IOS veri sözleşmesindedir](docs/cisco-ios.md). Nominal model kapasitesinden eksik port üretilmez.
    - `Harici toplayıcı`: Mevcut SNMP/NETCONF/üretici toplayıcınızı aşağıdaki envanter/gözlem API'sine bağlayın. Üretici komutları veya desteklenmeyen telemetri varsayılmaz. **Envanter aktar** doğrulanmış JSON dosyasını kabul eder.
 
-Mevcut bir cihazı yeniden eklemek gerekmez: **Bağlantı bilgileri → Veri kaynağı** alanından toplayıcısını değiştirin. Eski VRP ve açıkça doğrulanmış benzer legacy SSH cihazlarında **SSH uyumluluk profili → Eski VRP** seçeneği, risk onayıyla yalnız bu cihaza SHA-1 KEX / ssh-rsa / aes128-cbc uyumluluğu ekler. Standart profil varsayılandır; otomatik downgrade veya host anahtarı kabulü yoktur. Profil/veri kaynağı değişikliği audit edilir ve açık terminalleri sonlandırır.
+Mevcut bir cihazı yeniden eklemek gerekmez: **Bağlantı bilgileri → Veri kaynağı** alanından toplayıcısını değiştirin. Yeni formda **Otomatik** SSH varsayılandır; eski algoritma izni kapalıdır. Eski cihaz için açık cihaz bazlı izin verin veya **Eski VRP**, **Eski SSH · SHA-1**, **Eski SSH · CBC/Group1**, **Gelişmiş** profillerini seçin. Onaysız algoritma düşürme veya host anahtarı kabulü yoktur. Eski `standard` / `huawei_legacy` kayıtları korunur. Profil/veri kaynağı değişikliği audit edilir ve açık terminalleri sonlandırır.
 
-**Yenile**, alınmış verileri yeniden okur; cihazı sorguladığı anlamına gelmez. Linux/Huawei/Cisco toplama işleri açık kullanıcı eylemiyle başlar; zamanlanmış SNMP/SSH polling servisi bu sürümde yoktur. Harici toplayıcı kendi zamanlamasını yönetir. Tarayıcı her 15 saniyede ortak görünümü sorgular; bileşenler ayrı telemetri istekleri oluşturmaz.
+**Yenile**, alınmış verileri yeniden okur; cihazı sorguladığı anlamına gelmez. **Veri topla** kalıcı kuyruğa manuel iş ekler. Etkin cihaz politikası ve hazır kimlik/host güven kaydı varsa ayrı `collector-worker` tarayıcı kapalıyken de toplar. Detayda hedef/etkin aralık, duraklama ve grup kalitesi görünür. Dashboard hafif özeti 15 sn, sınırlı trafik geçmişini 60 sn aralıkla ister. Harici toplayıcı kendi zamanlamasını yönetir. [Zamanlama, saklama ve geçiş sözleşmesine](docs/collection-automation.md) bakın.
 
 Diğer üreticiler/sürümler ve fiziksel cihaz kabulü ayrıca gerekir; Huawei/Cisco ayrıştırıcı testleri fiziksel switch kabulü değildir. Önceki sürümde gerçek konfigürasyon uygulama veya yedekleme akışı bulunmuyordu; bu teslimat bu yetenekleri varmış gibi göstermez. SSH terminali salt okunur komut filtresi uygulamaz: uzak cihaz hesabının yetkileri geçerlidir. En az ayrıcalıklı cihaz hesabı kullanın.
 
@@ -233,7 +236,7 @@ docker compose exec api python -m app.admin create-user --username engineer --ro
 docker compose exec api python -m app.admin disable-user --username engineer
 ```
 
-Terminal ticket'ı 30 saniye geçerli, tek kullanımlı ve oluşturan oturuma bağlıdır; tek başına bearer token değildir. Hedef host/port tarayıcıdan alınmaz. Kullanıcı başına 3, süreç başına 20 terminal; aynı kullanıcı/cihaz için 1 oturum sınırı vardır. Bağlantı 12 sn, varsayılan boşta kalma 300 sn, toplam oturum 3600 sn; giriş mesajı 16 KiB ve 64 KiB/sn ile sınırlıdır. Süreler `STOCC_SSH_IDLE_SECONDS` / `STOCC_SSH_MAX_SECONDS` backend ortam değişkenleriyle ayarlanabilir. Yetki/oturum iptali en geç izleme döngüsünün yaklaşık 1 saniyelik kontrolünde uygulanır. Bağlantı kurulma aşamasında tekrar doğrulama PTY açılmadan yapılır.
+Terminal ticket'ı 30 saniye geçerli, tek kullanımlı ve oluşturan oturuma bağlıdır; tek başına bearer token değildir. Hedef host/port tarayıcıdan alınmaz. Kullanıcı başına 3, süreç başına 20 terminal; aynı kullanıcı/cihaz için 1 oturum sınırı vardır. Ortak SSH bağlantı politikası en fazla 30 sn / dört uyumluluk denemesiyle sınırlıdır; varsayılan boşta kalma 300 sn, toplam oturum 3600 sn; giriş mesajı 16 KiB ve 64 KiB/sn ile sınırlıdır. Süreler `STOCC_SSH_IDLE_SECONDS` / `STOCC_SSH_MAX_SECONDS` backend ortam değişkenleriyle ayarlanabilir. Yetki/oturum iptali en geç izleme döngüsünün yaklaşık 1 saniyelik kontrolünde uygulanır. Bağlantı kurulma aşamasında tekrar doğrulama PTY açılmadan yapılır.
 
 Panel kapanması, sayfadan çıkış, çıkış yapma, kimlik bilgisi değişimi/silinmesi ve host anahtarı değişimi terminali sonlandırır. Uzak PTY boyutu tarayıcı terminaliyle birlikte güncellenir. Terminal çıktısı xterm'e metin olarak iletilir; HTML olarak işlenmez. SSH denetimi kullanıcı, cihaz, oturum kimliği, başlangıç/bitiş, süre ve sonucu kapsar; ham terminal, parola, private key veya cookie loglanmaz.
 
@@ -361,7 +364,7 @@ Mevcut `POST /api/v1/devices/{id}/observations` gövdesi isteğe bağlı şu ala
 
 Bu parça tek başına tam telemetri isteği değildir; mevcut `observed_at`, `source` ve diğer alanlarla gönderilir. ID toplayıcıda kararlı tutulmalı; arayüz envanterde bulunmalıdır. `status`: `ok`, `partial`, `unknown`, `unsupported`, `error`; alan gönderilmemiş eski gözlemler **henüz toplanmadı**, başarılı boş tablo **kayıt yok** şeklinde ayrılır. Bir snapshot en fazla 2048 uç içerir; kısmi tabloda `partial` gönderin. MAC tekil yayın adresi olarak doğrulanır, IP’ler IPv4/IPv6 olarak ayrıştırılır. `discovery` FDB, ARP veya NDP’dir; `state` komşuluk durumudur, bilgisayarın çevrimiçi olduğunu varsaymaz. Zaman/kaynak ve güncellik telemetri snapshot’ından gelir.
 
-Linux toplayıcısı [iproute2 komşuluk tablosunu](https://github.com/iproute2/iproute2/blob/main/man/man8/ip-neighbour.8) salt okunur biçimde alır; FAILED/INCOMPLETE kayıtları uç olarak çizmez ve NUD STALE durumunu saklar. Bridge/SVI ARP kaydını tahminen fiziksel porta dağıtmaz. FDB/VLAN eşlemesi ve üretici switch tabloları harici toplayıcıdan gelmelidir; otomatik SNMP/LLDP tarayıcısı eklenmemiştir. Yönetim IP’si veya eşleşen cihaz adı üzerinden kablo üretilmez.
+Linux toplayıcısı [iproute2 komşuluk tablosunu](https://github.com/iproute2/iproute2/blob/main/man/man8/ip-neighbour.8) salt okunur biçimde alır; FAILED/INCOMPLETE kayıtları uç olarak çizmez ve NUD STALE durumunu saklar. Bridge/SVI ARP kaydını tahminen fiziksel porta dağıtmaz. Switch FDB/ARP ve LLDP kapsamı sürücü kataloğunda belirtilir; SNMPv3 kanalı IF-MIB port/sayaç okumasıdır, bütün ağı taramaz. Yönetim IP’si veya eşleşen cihaz adı üzerinden kablo üretilmez.
 
 Uç düğümlerin bilgisayar sembolü **uç kaydı** anlamındadır, donanım türü kanıtı değildir. IP bilinmiyorsa boşluğu açıkça gösterir. Seçimde MAC, tüm IP’ler, VLAN, arayüz, yalnız explicit eşlenmiş fiziksel port, kaynak, kanıt ve gözlem zamanı görünür. Aynı MAC farklı cihaz/port/VLAN’da gözlenirse kayıtlar birleştirilmez; arada switch/telefon/köprü bulunabilir.
 
@@ -387,6 +390,16 @@ API başlatırken migrate edilmiş `DATABASE_URL` gerekir; üretim uygulamasınd
 
 Testler SQLite ile izole API/şifreleme/RBAC semantiğini ve geçici gerçek AsyncSSH sunucusuyla terminal el sıkışmasını, parola ve passphrase'li anahtar doğrulamasını, yanlış host anahtarının reddini, PTY resize, mesaj sınırı ve logout kapanmasını denetler. Domain fixture'ları yalnız testlerde kullanılır.
 
+### Toplama otomasyonu
+
+Kalıcı PostgreSQL kuyruğu ve ayrı `collector-worker`, otomatik host key keşfi/onayı,
+cihaz bazlı SSH uyumluluk profilleri, grup bazlı kalite ve isteğe bağlı SNMPv3
+eklendi. Kurulum, API sözleşmesi, destek matrisi, saklama politikası ve **henüz
+doğrulanmamış fiziksel/yük kabul kapıları** için [toplama otomasyonu rehberine](docs/collection-automation.md) bakın.
+Yeni tablolara geçiş `0006_collection_automation` migration'ıdır. Mevcut cihazlar,
+sırlar ve anahtarlar yeniden eklenmez. Worker durdurularak otomatik toplama,
+veri/volume silmeden kapatılabilir.
+
 ### İzole tarayıcı test ortamı
 
 Mevcut kurulumun project/volume'lerini kullanmayın. Aşağıdaki ortam ayrı test veritabanı ve anahtar deposu oluşturur. QA CIDR izni yalnız bu test ağı içindir; gerçek `.env` dosyasına taşımayın.
@@ -399,7 +412,7 @@ export STOCC_ALLOWED_ORIGINS=http://127.0.0.1:13000 STOCC_SSH_ALLOWED_CIDRS=172.
 docker compose -f docker-compose.yml -f deploy/compose.qa.yml up --build -d --wait
 STOCC_TEST_DATABASE_URL=postgresql+psycopg://stocc:stocc@127.0.0.1:18432/stocc_qa .venv/bin/python backend/tests/seed_browser.py
 cd frontend
-STOCC_QA=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:13000 npm run test:e2e -- --workers=1
+STOCC_QA=1 STOCC_QA_SSH_KEY_URL=http://127.0.0.1:12223 PLAYWRIGHT_BASE_URL=http://127.0.0.1:13000 npm run test:e2e -- --workers=1
 ```
 
 Playwright Chromium kurulu değilse `npx playwright install chromium` çalıştırın; mevcut Chrome için `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome` kullanılabilir. Seed yalnız loopback `stocc_qa` veritabanını kabul eder; mevcut envanter veya kullanıcı varsa durur, hiçbir hesabın üzerine yazmaz. QA kullanıcı/parolası yalnız `backend/tests/conftest.py` içindeki test fixture'ıdır; üretimde kullanılmaz. SSH test sunucusu üretim imajına kopyalanmaz.
@@ -476,5 +489,44 @@ Yeni kullanıcı akışları için HTTPS/WSS, Safari/Firefox, yük testi, yedekt
 - Browser eklentisi bulunmadığından repository Playwright akışı ve sistem Chrome kullanıldı. İzole `stocc-cisco-qa-20261020` Docker projesinde **26/26 Playwright senaryosu geçti**; hedef form akışı 1536×1024 ve 390×844, genel responsive regresyon 320–2560 px aralığında kontrol edildi. Sayfa kimliği, dolu içerik, framework hata katmanı, konsol, gerçek QA SSH oturumu ve yatay taşma kontrolleri geçti.
 - README'nin ana sayfa, SSH kapalı detay ve SSH açık detay görüntüleri aynı çalışma ağacından yenilendi ve görsel olarak incelendi. Test verileri sentetiktir; mevcut `stocc-netstudio-fresh` veritabanı, kullanıcıları, anahtarları ve volume'leri değiştirilmedi. Yeni DB migration gerekmez.
 - Fiziksel `192.168.1.150` cihazında kullanıcı kimlik doğrulaması ve gerçek `show` çıktılarıyla tam veri toplama bu koşuda yapılmadı. Yerel entegrasyon fiziksel cihaz kabulü değildir; ilk canlı toplamada iş sonucu, model/sürüm, port sayısı ve uyarılar ayrıca kontrol edilmelidir.
+
+### Çok markalı toplama ve SSH otomasyonu doğrulaması — 2026-10-20
+
+| Kontrol | Sonuç |
+| --- | --- |
+| Backend | `.venv/bin/pytest -q backend/tests`: **127 geçti, 2 isteğe bağlı PostgreSQL testi atlandı** |
+| PostgreSQL kuyruk / migration sözleşmesi | Ayrı boş `stocc_automation_test_*` veritabanıyla `test_automation_migration.py`: **2 geçti**; eşzamanlı sahiplenme, sekiz slot, lease kaybında eski sahibi engelleme ve eski kayıtların korunması |
+| Frontend | **30 birim testi**, ESLint, TypeScript ve Docker production build geçti |
+| Tarayıcı | İzole `stocc-automation-qa-20261020`, `http://127.0.0.1:13006`: **28 senaryolu tam tur geçti**; son backend/Compose değişikliğinden sonra otomasyon/console kapsamındaki **6 senaryo tekrar geçti** |
+| SSH / SNMP | Geçici gerçek SSH sunucularıyla legacy profil, yanlış parolada tek giriş, değişen anahtarda durma; yerel UDP SNMPv3 SHA-256/AES-128 GET/GETBULK ve bilinmeyen kullanıcı reddi geçti |
+| Dağıtım | QA'da `0006_collection_automation`, sağlıklı ayrı worker ve API; TLS Compose birleştirmesinde API/worker üretim ve HTTPS origin eşliği doğrulandı |
+
+Hedef akış: cihaz detayı → anahtar keşfi → bağımsız QA anahtarıyla fingerprint
+karşılaştırması → açık onay → bağlantı testi → toplama aralığı düzenleme.
+Ayrı senaryoda yalnız test için eklenen cihazla çıkış yapılıp tarayıcı kapatıldı;
+worker yaklaşık 37 saniye sonra yeni ölçüm aldı, manuel poll çağrısı yapılmadı.
+İş `system:collector` kimliğinde tamamlandı; test sonunda yalnız o cihazın
+otomatik politikası kapatıldı.
+
+Browser eklentisi listelenmediği için repository Playwright akışı ve sistem Chrome
+kullanıldı. Yeni akışlar 1536×1024 ve 390×844; genel regresyonlar 320–2560 px
+genişliklerde doğrulandı. Sayfa kimliği, dolu içerik, hata katmanı, konsol,
+etkileşim ve yatay taşma kontrolleri geçti. Beklenen giriş öncesi 401 dışında
+ilgili konsol hatası bulunmadı. Önceki avatar testindeki görüntü decode yarışı,
+görüntünün yüklenmesini bekleyen assertion ile düzeltildi; host key/CIDR
+kontrolleri test için gevşetilmedi.
+
+README'nin üç görüntüsü son QA uygulamasından yeniden alınıp görsel olarak
+incelendi. Ek anahtar/mobil kanıtları `/tmp/stocc-netstudio-automation/`
+dizinindedir. React/PostgreSQL rehberleri doğrultusunda mevcut SWR/tasarım
+korundu, hafif özet ve geçmiş istekleri ayrıldı, kuyruk kilitleri kısa
+transaction'larla sınırlandı.
+
+Bu kanıtlar fiziksel switch, gerçek 100 cihaz ×24 saat yük, yeni akışların
+HTTPS/WSS tarayıcı kabulü, Firefox/Safari veya üretim kabulü değildir.
+Hızlandırılmış 100 cihaz zamanlayıcı testi kapasite benchmark'ı sayılmaz.
+Kalan sürücü/alan/kanal ayrımı işleri [açık kabul tablosunda](docs/collection-automation.md#kabul-durumu-ve-açık-işler)
+yer alır. Mevcut `stocc-netstudio-fresh` kurulumu, kullanıcıları, sırları, anahtarları
+ve volume'leri değiştirilmedi; migration ve imaj geçişi yalnız izole QA'ya uygulandı.
 
 Önceki kapsam ve kararların tarihsel kaydı: [ilk uygulama raporu](stocc-netstudio-uygulama-raporu.md). Güncel çalışma sınırları bu README ve kaynak koddaki sözleşmelerdir.

@@ -114,13 +114,13 @@ test("real API dashboard, shared filters, square design and keyboard ports", asy
       .getByRole("button", { name: "Cihaz Ekle", exact: true })
       .evaluate((e) => getComputedStyle(e).borderRadius),
   ).toBe("0px");
-  await page.screenshot({
-    path: join(evidenceDir, "dashboard-desktop.png"),
-    fullPage: false,
-  });
   await page.getByLabel("Cihaz ara", { exact: true }).fill("QA-Core-01");
   await expect(page.locator(".device-row")).toHaveCount(1);
   await expect(page.locator(".refresh-info")).toContainText("1 cihaz");
+  await page.screenshot({
+    path: join(evidenceDir, "dashboard-desktop.png"),
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "1, Aktif", exact: true }).focus();
   await page.keyboard.press("Enter");
   await expect(
@@ -262,7 +262,8 @@ test("device create and credential completion preserve secrets", async ({
   await dialog.getByLabel("Cihaz adı", { exact: true }).fill(name);
   await dialog
     .getByLabel("Yönetim IP adresi", { exact: true })
-    .fill("192.0.2.200");
+    // Inside the isolated QA CIDR; the missing key must block before network IO.
+    .fill("172.31.255.200");
   await dialog
     .getByLabel("Site", { exact: true })
     .fill("TEST FIXTURE / isolated");

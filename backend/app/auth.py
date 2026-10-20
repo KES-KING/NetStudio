@@ -51,12 +51,16 @@ class Auth:
     def validate(self, token):
         if not token or len(token) > 128:
             fail("authentication_required", 401)
+        return self.validate_hash(digest(token))
+
+    def validate_hash(self, token_hash):
+        """Validate an internal queued-job session reference, never a bearer token."""
         with self.store.engine.connect() as conn:
             row = conn.execute(sa.select(self.store.sessions, self.store.users.c.username,
                 self.store.users.c.display_name, self.store.users.c.avatar_version,
                 self.store.users.c.roles, self.store.users.c.sites, self.store.users.c.enabled)
                 .join(self.store.users, self.store.users.c.id == self.store.sessions.c.user_id)
-                .where(self.store.sessions.c.token_hash == digest(token))).mappings().first()
+                .where(self.store.sessions.c.token_hash == token_hash)).mappings().first()
         if not row or row["expires_at"] <= time.time() or not row["enabled"]:
             fail("session_expired", 401)
         return AuthContext(SessionUser(user_id=row["user_id"], username=row["username"],

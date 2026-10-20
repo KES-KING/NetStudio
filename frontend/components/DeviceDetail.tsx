@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { api, ApiError, errorMessage } from "../lib/api";
 import { recordActivity } from "../lib/activity";
-import type { Job, Overview, Projection, SSHTicket } from "../lib/contracts";
+import type { Job, Projection, SSHTicket } from "../lib/contracts";
 import {
   displayProjection,
   formatRate,
@@ -22,15 +22,16 @@ import { DevicePanel, PortDetails } from "./DevicePanel";
 import { IPTopology } from "./IPTopology";
 import { Empty } from "./OperationSummary";
 import { SSHWorkspace } from "./SSHWorkspace";
+import { CollectionControls } from "./CollectionControls";
 
 export default function DeviceDetail({ id }: { id: string }) {
   const session = useSession();
-  const { data, error, isLoading, isValidating, mutate } = useSWR<Overview>(
-    "/api/v1/overview?minutes=60",
+  const { data, error, isLoading, isValidating, mutate } = useSWR<Projection>(
+    `/api/v1/devices/${id}/overview`,
     api,
     { refreshInterval: 15000 },
   );
-  const received = data?.devices.find((p) => p.device.id === id);
+  const received = data;
   const row = received ? displayProjection(received, !!error) : undefined;
   const [selectedId, setSelectedId] = useState<string>(),
     [settings, setSettings] = useState(false),
@@ -51,7 +52,7 @@ export default function DeviceDetail({ id }: { id: string }) {
     },
   );
   useEffect(() => {
-    if (jobState?.status === "succeeded") void mutate();
+    if (jobState?.status && ["succeeded", "partial"].includes(jobState.status)) void mutate();
   }, [jobState?.status, mutate]);
   useEffect(
     () => () => {
@@ -140,7 +141,7 @@ export default function DeviceDetail({ id }: { id: string }) {
           </div>
           <p>
             Son başarılı gözlem: {formatTime(row.last_success_at)} · Ekran:{" "}
-            {formatTime(data?.generated_at)}
+            {formatTime(data?.telemetry?.received_at)}
           </p>
         </div>
         <div className="toolbar-actions">
@@ -217,6 +218,9 @@ export default function DeviceDetail({ id }: { id: string }) {
               queued: "Sırada",
               running: "Çalışıyor",
               succeeded: "Tamamlandı",
+              partial: "Kısmi · eksik grupları inceleyin",
+              blocked: "Engellendi",
+              cancelled: "İptal edildi",
               failed: "Başarısız",
             } as Record<string, string>
           )[jobState.status] ?? jobState.status}
@@ -232,6 +236,7 @@ export default function DeviceDetail({ id }: { id: string }) {
           gösterilir; güncel sağlık veya kapasite olarak değerlendirilmez.
         </p>
       )}
+      <CollectionControls device={device} />
       <div className={`device-workspace ${sshOpen ? "with-terminal" : ""}`}>
         <section className="panel front-panel">
           <div className="panel-heading">

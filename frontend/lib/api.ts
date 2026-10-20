@@ -58,6 +58,13 @@ export async function fetchSession(): Promise<Session | null> {
 }
 
 const messages: Record<string, string> = {
+  host_key_not_trusted: "SSH anahtarı henüz onaylanmadı. Bağlantı bilgileri bölümünden anahtarı bulun ve doğrulayın.",
+  host_discovery_rate_limited: "Bu cihaz için anahtar keşfi dakikada bir yapılabilir. Bir dakika sonra tekrar deneyin.",
+  host_candidate_expired_or_changed: "Anahtar adayının süresi doldu veya bağlantı ayarları değişti. Anahtarı yeniden bulun.",
+  legacy_ssh_not_allowed: "Bu cihazda eski SSH algoritmalarına izin verilmemiş.",
+  collector_platform_unsupported: "Cihazın işletim sistemi bu sürücüde desteklenmiyor. Sürücü seçimini ve destek matrisini kontrol edin.",
+  snmp_read_failed: "SNMPv3 okuması başarısız. Cihaz erişimini ve salt okunur SNMP ayarlarını kontrol edin.",
+  snmp_authentication_failed: "SNMPv3 kimlik doğrulaması başarısız; otomatik kanal duraklatıldı.",
   topology_version_conflict: "Yerleşim başka bir sekmede değişti. Taslağınız korunuyor; güncel yerleşimi yükleyip değişikliklerinizi yeniden uygulayın.",
   topology_reference_unavailable: "Bir cihaz veya port artık erişilebilir değil. Gözlemleri yenileyip bu bağlantıyı kaldırın.",
   username_taken: "Bu kullanıcı adı zaten kullanımda.",
