@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { api, ApiError, errorMessage } from "../lib/api";
 import { recordActivity } from "../lib/activity";
-import type { Job, Projection, SSHTicket } from "../lib/contracts";
+import type { Job, PhysicalPort, Projection, SSHTicket } from "../lib/contracts";
 import {
   displayProjection,
   formatRate,
@@ -18,7 +18,8 @@ import {
 } from "../lib/metrics";
 import { useSession } from "./ConsoleShell";
 import { ConnectionSettings, InventoryImport } from "./DeviceForms";
-import { DevicePanel, PortDetails } from "./DevicePanel";
+import { DevicePanel } from "./DevicePanel";
+import { DevicePanelInspector, PortPopover } from "./DevicePanelInspector";
 import { IPTopology } from "./IPTopology";
 import { Empty } from "./OperationSummary";
 import { SSHWorkspace } from "./SSHWorkspace";
@@ -36,6 +37,21 @@ export default function DeviceDetail({ id }: { id: string }) {
   const [selectedId, setSelectedId] = useState<string>(),
     [settings, setSettings] = useState(false),
     [importing, setImporting] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [portAnchor, setPortAnchor] = useState<HTMLButtonElement>();
+  const closePort = useCallback(() => {
+    setSelectedId(undefined);
+    setPortAnchor(undefined);
+  }, [setSelectedId, setPortAnchor]);
+  const selectPort = (port: PhysicalPort, anchor: HTMLButtonElement) => {
+    setSelectedId(port.id);
+    setPortAnchor(anchor);
+    recordActivity({ action: "port.select", page: "device", device_id: id, port_id: port.id });
+  };
+  const openPanel = () => {
+    setPortAnchor(undefined);
+    setPanelOpen(true);
+  };
   const [sshOpen, setSSHOpen] = useState(false),
     [ticket, setTicket] = useState<SSHTicket>(),
     [actionError, setActionError] = useState<string>(),
@@ -241,15 +257,16 @@ export default function DeviceDetail({ id }: { id: string }) {
         <section className="panel front-panel">
           <div className="panel-heading">
             <h2>Cihaz ön paneli</h2>
-            <span>{portDescription(row)}</span>
+            <div className="front-panel-actions">
+              <span>{portDescription(row)}</span>
+              <button onClick={openPanel} aria-haspopup="dialog">Tam ekran <span aria-hidden="true">⛶</span></button>
+            </div>
           </div>
           <DevicePanel
             row={row}
             selectedId={selected?.id}
-            onSelect={(port) => {
-              setSelectedId(port.id);
-              recordActivity({ action: "port.select", page: "device", device_id: id, port_id: port.id });
-            }}
+            onSelect={selectPort}
+            onExpand={openPanel}
           />
           <p className="source-note">
             Envanter: {formatTime(device.inventory_observed_at)} ·{" "}
@@ -277,11 +294,17 @@ export default function DeviceDetail({ id }: { id: string }) {
             </section>
           ))}
       </div>
-      {selected && (
-        <PortDetails
+      {!panelOpen && selected && portAnchor && (
+        <PortPopover row={row} port={selected} anchor={portAnchor} onClose={closePort} />
+      )}
+      {panelOpen && (
+        <DevicePanelInspector
           row={row}
-          port={selected}
-          onClose={() => setSelectedId(undefined)}
+          selected={selected}
+          anchor={portAnchor}
+          onSelect={selectPort}
+          onClosePort={closePort}
+          onClose={() => { setPanelOpen(false); setPortAnchor(undefined); }}
         />
       )}
       <div className="detail-lower">

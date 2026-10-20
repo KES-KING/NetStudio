@@ -36,7 +36,7 @@ Aşağıdaki üç görüntü çalışan uygulamanın izole QA ortamından alınm
 
 **Güncellik kuralı:** Her görsel arayüz güncellemesinde aşağıdaki üç görüntünün tamamı güncel koddan yeniden alınır ve aynı değişiklik/PR içinde teslim edilir. İnsanlar ve yapay zekâ için ayrıntılar [rule.md](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile), ajanların uygulama adımları [agent.md](agent.md) içindedir.
 
-Son set: **20 Ekim 2026**, `stocc-automation-qa-20261020` izole Docker ortamı, sistem Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `824d4b1` üzerine çok markalı toplama, kalıcı worker ve bağlantı otomasyonu değişikliklerini içerir; mevcut `stocc-netstudio-fresh` kurulumu değiştirilmemiştir.
+Son set: **20 Ekim 2026**, `stocc-automation-qa-20261020` izole Docker ortamı, sistem Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `2df37b1` üzerine tam ekran ön panel ve porta bağlı bilgi kutusu değişikliklerini içerir; mevcut `stocc-netstudio-fresh` kurulumu değiştirilmemiştir.
 
 ### Ana sayfa
 
@@ -50,7 +50,9 @@ Tam genişlikte etkileşimli cihaz ön paneli; kasa üzerinde envanterdeki cihaz
 
 Port yuvalarının yanındaki göstergeler aynı telemetri durumunu kullanır: **UP** yeşil, **DOWN** sönük gri, **ADM** idari kapalı, **?** bilinmiyor. İdari kapalı port arızalı sayılmaz; güncelliğini kaybeden veri aktif LED olarak gösterilmez. Port seçimi dış çerçeveyle ayrıca belirtilir. Dar alanda panel yatay kayar; portlar okunamayacak kadar küçültülmez.
 
-![NetStudio cihaz detayı: isim ve model etiketli rack paneli, yatay SFP portları, UP/DOWN göstergeleri ve taşmayan sabit boyutlu IP topolojisi](docs/screenshots/device-detail.png)
+**Tam ekran inceleme:** Kasa yüzeyine veya **Tam ekran** düğmesine tıklamak, ön paneli uygulama alanını kaplayan ayrı bir inceleme görünümünde açar. Görünüm %125 yakınlaştırmayla başlar; %100–250 arasında ayarlanabilir. Portlar küçültülmeden yatay kaydırılır. Hem normal hem tam ekran görünümde porta tıklanınca durumu, arayüz eşlemesi ve mevcut ölçümleri portun yakınında açılan, ekran sınırlarına sığan bilgi kutusunda gösterilir. Kaydırma, yakınlaştırma ve ekran yönü değiştiğinde kutunun konumu güncellenir. Escape önce bilgi kutusunu, sonra tam ekranı kapatır; klavye odağı açan öğeye döner. Kaydedilmiş envanter/yerleşim değişmez ve açık SSH oturumu kesilmez.
+
+![NetStudio cihaz detayı: tam ekran inceleme düğmesi, isim ve model etiketli rack paneli, yatay SFP portları, UP/DOWN göstergeleri ve IP topolojisi](docs/screenshots/device-detail.png)
 
 ### Cihaz detayı — SSH açık
 
@@ -528,5 +530,14 @@ Hızlandırılmış 100 cihaz zamanlayıcı testi kapasite benchmark'ı sayılma
 Kalan sürücü/alan/kanal ayrımı işleri [açık kabul tablosunda](docs/collection-automation.md#kabul-durumu-ve-açık-işler)
 yer alır. Mevcut `stocc-netstudio-fresh` kurulumu, kullanıcıları, sırları, anahtarları
 ve volume'leri değiştirilmedi; migration ve imaj geçişi yalnız izole QA'ya uygulandı.
+
+### Tam ekran ön panel doğrulaması — 2026-10-20
+
+- `2df37b1` üzerindeki çalışma ağacında ESLint, TypeScript, **38 birim testi** ve Docker web production build geçti. Mevcut SVG/port kimlikleri, canlı gözlemler ve IP topolojisi seçimi korunur; yeni API veya migration yoktur.
+- İzole `stocc-automation-qa-20261020` ortamında (`http://127.0.0.1:13006`, `panel-inspector-qa-20261020` web imajı) **32 Playwright senaryosu geçti**. Browser eklentisi bulunmadığından repository Playwright akışı ve sistem Chrome kullanıldı.
+- Yeni dört senaryo: kasa/düğme/klavye ile açma, %125 başlangıç ve yakınlaştırma/sıfırlama, porta bağlı bilgi kutusu, ekran sınırları, yön değiştirme, Escape/kapatma ve odak iadesi, azaltılmış hareket, boş envanter ve modal kapanınca gerçek QA SSH oturumuyla komut göndermeye devam etme. Yeni yüzey 1536×1024, 390×844 ve 844×390 boyutlarında; mevcut genel regresyonlar 320–2560 px aralığında doğrulandı.
+- Sayfa kimliği, dolu içerik, framework hata katmanı ve ilgili uygulama konsol hatası kontrolleri geçti. İlk denemede mevcut navigasyonun `/topology` CSS ön yüklemesi için Chrome uyarısı görüldü; test yalnız HTTP 200 dönen ve topoloji CSS'i olduğu doğrulanan bu bildirimi ayrı advisory olarak kaydeder. Diğer uyarı/hatalar testte başarısızlık olmaya devam eder.
+- README'nin üç zorunlu görüntüsü son kodla 1536×1024 viewport üzerinden yeniden alındı, açılıp incelendi ve `docs/screenshots/` altına kopyalandı. Tam ekran masaüstü/mobil ek kanıtları `/tmp/stocc-netstudio-panel/inspector-*.png` altındadır. React/erişilebilir görselleştirme rehberleri doğrultusunda görünüm yalnız açılınca oluşturulur; kaydırma/resize dinleyicileri kapanışta temizlenir, geçici yakınlaştırma envantere yazılmaz.
+- Bu tur yalnız frontend değişikliğidir; backend testleri yeniden çalıştırılmadı. Firefox/Safari ve fiziksel dokunmatik cihaz doğrulaması yapılmadı. Mevcut `stocc-netstudio-fresh` kurulumu, cihazlar, anahtarlar ve volume'ler değiştirilmedi; çalışan kurulumda görünmesi için web imajı ayrıca güncellenmelidir.
 
 Önceki kapsam ve kararların tarihsel kaydı: [ilk uygulama raporu](stocc-netstudio-uygulama-raporu.md). Güncel çalışma sınırları bu README ve kaynak koddaki sözleşmelerdir.

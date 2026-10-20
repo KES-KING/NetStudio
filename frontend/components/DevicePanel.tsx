@@ -73,11 +73,13 @@ export function DevicePanel({
   compact = false,
   selectedId,
   onSelect,
+  onExpand,
 }: {
   row: Projection;
   compact?: boolean;
   selectedId?: string;
-  onSelect: (port: PhysicalPort) => void;
+  onSelect: (port: PhysicalPort, anchor: HTMLButtonElement) => void;
+  onExpand?: () => void;
 }) {
   const ports = useMemo(() => physicalPorts(row), [row]);
   const groups = useMemo(
@@ -95,9 +97,16 @@ export function DevicePanel({
       )}
       {ports.length ? (
         <div
-          className="chassis-scroll"
+          className={`chassis-scroll ${onExpand ? "expandable" : ""}`}
           tabIndex={0}
-          aria-label={`${row.device.name} ön paneli, yatay kaydırılabilir`}
+          aria-label={`${row.device.name} ön paneli, yatay kaydırılabilir${onExpand ? ", Enter ile tam ekran açılır" : ""}`}
+          onClick={onExpand}
+          onKeyDown={(event) => {
+            if (onExpand && event.target === event.currentTarget && ["Enter", " "].includes(event.key)) {
+              event.preventDefault();
+              onExpand();
+            }
+          }}
         >
           <div className={`chassis ${rack ? "rack-chassis" : ""}`}>
             {rack && <RackEar />}
@@ -137,7 +146,10 @@ export function DevicePanel({
                                 aria-pressed={selectedId === port.id}
                                 aria-label={`${port.label}, ${portLabels[status]}`}
                                 title={`${port.label} · ${port.connector.toUpperCase()} · ${portLabels[status]}`}
-                                onClick={() => onSelect(port)}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onSelect(port, event.currentTarget);
+                                }}
                               >
                                 <span className="port-face">
                                   <PortGeometry kind={port.connector} />
