@@ -15,6 +15,7 @@ from .contracts import StrictModel
 from .database import now
 from .security import Permission, has_permission
 from .telemetry import projection
+from .endpoint_resolution import latest_payloads, resolve_endpoints
 
 
 class Zone(StrictModel):
@@ -94,21 +95,14 @@ def visible_board(row, devices):
 
 
 def network_graph(store, devices):
-    ids = list(devices)
-    with store.engine.connect() as conn:
-        # One latest-row query; no traffic history or per-device network requests.
-        ranked = sa.select(store.telemetry.c.device_id, store.telemetry.c.payload,
-            sa.func.row_number().over(partition_by=store.telemetry.c.device_id, order_by=store.telemetry.c.observed_at.desc()).label("rank"))
-        ranked = ranked.where(store.telemetry.c.device_id.in_(ids)).subquery()
-        latest = dict(conn.execute(sa.select(ranked.c.device_id, ranked.c.payload).where(ranked.c.rank == 1)).all()) if ids else {}
+    latest = latest_payloads(store, devices)
+    resolved = resolve_endpoints(devices, latest)
     rows, links = [], []
     for device in sorted(devices.values(), key=lambda d: (d.name.casefold(), d.id)):
         data = latest.get(device.id)
-        view = projection(device, data)
+        view = projection(device, data, endpoints=resolved[device.id])
         interface_ids = {i.id for i in device.interfaces}
-        endpoint_collection = (data or {}).get("endpoints", {"status": "unknown", "entries": []})
-        entries = [e for e in endpoint_collection["entries"] if e["interface_id"] in interface_ids]
-        endpoint_collection = {"status": "partial" if len(entries) != len(endpoint_collection["entries"]) else endpoint_collection["status"], "entries": entries}
+        endpoint_collection = resolved[device.id]
         ports = [{"id": p.id, "label": p.label, "connector": p.connector, "parent_port_id": p.parent_port_id} for p in device.physical_ports if p.connector != "console"]
         interfaces = []
         for interface in device.interfaces:
@@ -131,7 +125,9 @@ def network_graph(store, devices):
                     "target_interface_id": remote_if, "relation": neighbor["relation"], "evidence": neighbor["evidence"],
                     "observed_at": data["observed_at"], "data_state": view["data_state"], "source": data["source"]})
             else:
-                unknown_neighbors.append({k: neighbor[k] for k in ("id", "interface_id", "label", "relation", "evidence")})
+                unknown_neighbors.append({**{k: neighbor[k] for k in ("id", "interface_id", "label", "relation", "evidence")},
+                    "addresses": neighbor.get("addresses", []),
+                    "observed_at": neighbor.get("observed_at") or data.get("groups", {}).get("network", {}).get("observed_at") or data["observed_at"]})
         rows.append({"id": device.id, "name": device.name, "management_address": device.management_address,
             "site": device.site, "device_type": device.device_type, "ports": ports, "interfaces": interfaces,
             "reachability": view["reachability"], "data_state": view["data_state"],

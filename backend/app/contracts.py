@@ -247,6 +247,15 @@ class Neighbor(StrictModel):
     # Explicit collector references only; labels and ARP addresses are not cables.
     remote_device_id: str | None = Field(default=None, min_length=1, max_length=64)
     remote_interface_id: str | None = Field(default=None, min_length=1, max_length=160)
+    addresses: list[str] = Field(default_factory=list, max_length=32)
+    observed_at: datetime | None = None
+    stale_after_seconds: int | None = Field(default=None, ge=10, le=259200)
+
+    @field_validator("addresses")
+    @classmethod
+    def management_addresses(cls, values):
+        addresses = [ip_address(value) for value in values]
+        return sorted({str(a) for a in addresses if not (a.is_multicast or a.is_unspecified or a.is_loopback)})
 
 
 class EndpointObservation(StrictModel):
@@ -255,6 +264,8 @@ class EndpointObservation(StrictModel):
     mac: str = Field(pattern=r"^(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$")
     addresses: list[str] = Field(default_factory=list, max_length=32)
     vlan: int | None = Field(default=None, ge=1, le=4094)
+    vrf: str | None = Field(default=None, max_length=160)
+    vrf_known: bool = False
     discovery: Literal["fdb", "arp", "ndp"]
     state: Literal["reachable", "stale", "static", "unknown"] = "unknown"
     evidence: str = Field(min_length=1, max_length=300)
@@ -280,6 +291,10 @@ class EndpointCollection(StrictModel):
     entries: list[EndpointObservation] = Field(default_factory=list, max_length=2048)
     truncated: bool = False
     total_count: int | None = Field(default=None, ge=0)
+    # A complete endpoint table can refresh independently of optional network commands.
+    observed_at: datetime | None = None
+    stale_after_seconds: int | None = Field(default=None, ge=10, le=259200)
+    source: Literal["ssh", "snmp", "netconf", "manual"] | None = None
 
     @model_validator(mode="after")
     def valid_entries(self):

@@ -641,6 +641,12 @@ h3 {
 .device-ip-edge .edge-hit { fill: none; stroke: transparent; stroke-width: 18; vector-effect: non-scaling-stroke; }
 .device-ip-edge.l3 .edge-line { stroke-dasharray: 2 4; }
 .device-ip-edge.l2 .edge-line { stroke-dasharray: 6 4; }
+.device-ip-edge.endpoint .edge-line { stroke-dasharray: 3 5; stroke: var(--muted); }
+.device-topology-legend .endpoint::before { border-top-style: dotted; }
+.port-endpoints { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 12px; }
+.endpoint-details { min-width: 0; border-bottom: 1px solid var(--border); padding: 10px 0; overflow-wrap: anywhere; }
+.endpoint-details details { margin-top: 8px; }
+.endpoint-details summary { cursor: pointer; }
 .device-ip-edge text { fill: var(--muted); font: 10px ui-monospace, monospace; paint-order: stroke; stroke: var(--ui-soft); stroke-width: 4px; stroke-linejoin: round; }
 .device-ip-edge.selected .edge-line, .device-ip-edge:hover .edge-line, .device-ip-edge:focus-visible .edge-line { stroke-width: 3; stroke: var(--text); }
 .device-ip-panel .device-topology-legend .l3::before { border-top-style: dotted; border-color: var(--accent); }

@@ -117,6 +117,17 @@ def test_2960x_inventory_uses_reported_ports_and_metrics(system):
     assert batch.endpoints.entries[0].vlan == 10
 
 
+def test_arp_only_rows_survive_without_fdb_and_local_address_is_not_an_endpoint(system):
+    outputs = {**OUTPUTS, "show mac address-table": "Mac Address Table\nVlan Mac Address Type Ports\n",
+        "show arp": OUTPUTS["show arp"] + "Internet  192.0.2.2  -  0200.0000.0010  ARPA  Vlan10\n"}
+    _, batch = snapshot(system, outputs)
+    assert batch.endpoints.status == "ok"
+    assert len(batch.endpoints.entries) == 1
+    entry = batch.endpoints.entries[0]
+    assert entry.discovery == "arp" and entry.vlan == 10 and entry.vrf_known
+    assert entry.addresses == ["192.0.2.11"]
+
+
 @pytest.mark.parametrize("media,expected", [
     ("10/100/1000BaseTX", "rj45"),
     ("1000BaseT", "rj45"),

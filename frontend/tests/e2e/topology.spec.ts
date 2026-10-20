@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { GRAPH_DEVICE_LIMIT } from "../../lib/topology";
 
 test.describe.configure({ mode: "serial" });
 test.skip(!process.env.STOCC_QA, "Only run against an isolated, explicitly seeded QA project.");
@@ -39,7 +40,8 @@ async function enter(page: Page) {
   await page.getByLabel("Parola", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Giriş yap", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Topoloji", exact: true })).toBeVisible();
-  await expect(page.locator(".network-device")).toHaveCount(deviceCount);
+  await expect(page.locator(".network-device")).toHaveCount(Math.min(deviceCount, GRAPH_DEVICE_LIMIT));
+  await expect(page.getByRole("combobox", { name: "Cihaza odaklan", exact: true }).locator("option")).toHaveCount(deviceCount + 1);
   await expect(page.locator("nextjs-portal")).toHaveCount(0);
 }
 function errors(page: Page) {
@@ -82,6 +84,10 @@ test("viewer creates personal zones, assigns and moves devices, connects real po
   await page.getByRole("button", { name: "Kaydet", exact: true }).click();
   await expect(page.getByText("Yerleşim kaydedildi.", { exact: true })).toBeVisible();
   await page.reload(); await expect(page.locator(".network-zone")).toHaveCount(2);
+  // Reused QA projects can exceed the canvas budget. Filter the two seeded
+  // devices by their known fixture MAC prefix without deleting other devices.
+  await page.getByLabel("Cihaz, MAC veya IP ara", { exact: true }).fill("02:00:00:");
+  await expect(page.locator(".network-device")).toHaveCount(2);
   await expect(page.locator(".network-canvas .topology-edge.manual")).toHaveCount(1);
   await page.getByRole("combobox", { name: "Cihaza odaklan", exact: true }).selectOption(coreId);
   await expect(page.getByLabel("Cihazın zone’u")).toHaveValue(zoneId!);
@@ -132,6 +138,7 @@ test("drag, zoom, search and version conflicts preserve unsaved edits", async ({
 test("mobile keeps the canvas readable and exposes details without horizontal page overflow", async ({ page }) => {
   const failures = errors(page);
   await page.setViewportSize({ width: 390, height: 844 }); await enter(page);
+  await page.getByLabel("Cihaz, MAC veya IP ara", { exact: true }).fill("02:00:00:");
   const canvasBounds = await page.locator(".network-canvas").boundingBox();
   expect(canvasBounds!.y).toBeLessThan(560);
   await page.getByRole("combobox", { name: "Cihaza odaklan", exact: true }).selectOption(coreId);
@@ -161,9 +168,11 @@ test("removing personal links and zones preserves the inventory", async ({ page 
   await page.getByRole("button", { name: "Zone’u kaldır", exact: true }).click();
   await page.getByRole("button", { name: "Kaldırmayı onayla", exact: true }).click();
   await expect(page.locator(".network-zone")).toHaveCount(1);
-  await expect(page.locator(".network-device")).toHaveCount(deviceCount);
+  await expect(page.locator(".network-device")).toHaveCount(Math.min(deviceCount, GRAPH_DEVICE_LIMIT));
+  await expect(page.getByRole("combobox", { name: "Cihaza odaklan", exact: true }).locator("option")).toHaveCount(deviceCount + 1);
   await page.getByRole("button", { name: "Kaydet", exact: true }).click();
   await expect(page.getByText("Yerleşim kaydedildi.", { exact: true })).toBeVisible();
-  await page.reload(); await expect(page.locator(".network-device")).toHaveCount(deviceCount);
+  await page.reload(); await expect(page.locator(".network-device")).toHaveCount(Math.min(deviceCount, GRAPH_DEVICE_LIMIT));
+  await expect(page.getByRole("combobox", { name: "Cihaza odaklan", exact: true }).locator("option")).toHaveCount(deviceCount + 1);
   await expect(page.locator(".network-zone")).toHaveCount(1);
 });

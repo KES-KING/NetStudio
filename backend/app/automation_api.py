@@ -137,9 +137,14 @@ def install(app, context, device_for):
 
     @app.get("/api/v1/devices/{device_id}/overview")
     def device_overview(device_id: str, request: Request):
-        _, device = device_for(request, device_id)
-        data = app.state.store.latest(device.id)
-        result = projection(device, data)
+        auth, device = device_for(request, device_id)
+        from .topology import authorized_devices
+        from .endpoint_resolution import latest_payloads, resolve_endpoints
+        devices = {key: value for key, value in authorized_devices(app.state.store, auth.user).items() if value.site == device.site}
+        payloads = latest_payloads(app.state.store, devices)
+        data = payloads.get(device.id)
+        resolved = resolve_endpoints(devices, payloads)[device.id]
+        result = projection(device, data, endpoints=resolved)
         points = history(app.state.store, device.id)["points"]
         last_good = (data or {}).get("groups", {}).get("fast", {}).get("observed_at")
         if data and not data.get("groups") and data.get("reachability") == "reachable" and not data.get("error"):
@@ -149,5 +154,7 @@ def install(app, context, device_for):
                       last_success_at=last_good, history_truncated=False)
         if not points:
             from .telemetry import overview
-            result = overview(app.state.store, [device], 60)["devices"][0]
+            history_result = overview(app.state.store, [device], 60)["devices"][0]
+            for key in ("traffic", "last_success_at", "history_truncated"):
+                result[key] = history_result[key]
         return result

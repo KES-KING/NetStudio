@@ -4,8 +4,8 @@ export type IPLink = Projection["topology"]["links"][number];
 export type IPPosition = TopologyNode & { x: number; y: number };
 export const IP_TOPOLOGY_ZOOM = { min: .7, max: 1.8, step: .15 };
 export const IP_NODE_LIMIT = 80;
-export const relationLabels = { l3: "L3 / IP", l2: "L2 komşuluk", physical: "Fiziksel bağlantı" };
-export const nodeKindLabels: Record<string, string> = { interface: "Arayüz", subnet: "Alt ağ", neighbor: "Komşu" };
+export const relationLabels = { l3: "L3 / IP", l2: "L2 komşuluk", physical: "Fiziksel bağlantı", endpoint: "MAC / IP gözlemi" };
+export const nodeKindLabels: Record<string, string> = { interface: "Arayüz", subnet: "Alt ağ", neighbor: "Komşu", endpoint: "MAC / IP gözlemi" };
 export const linkId = (link: IPLink) => JSON.stringify([link.source, link.target, link.relation, link.evidence]);
 
 /** A one-hop view, not a transitive connectivity inference. */

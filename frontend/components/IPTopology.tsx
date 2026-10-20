@@ -7,6 +7,7 @@ import { IP_NODE_LIMIT, linkId, nodeKindLabels, portTopologyIds, relationLabels,
 import { formatTime, stateLabels } from "../lib/metrics";
 import { IPTopologyCanvas } from "./IPTopologyCanvas";
 import { Empty } from "./OperationSummary";
+import { EndpointDetails } from "./EndpointDetails";
 
 export function IPTopology({ row, port }: { row: Projection; port?: PhysicalPort }) {
   const [selectedId, setSelectedId] = useState("");
@@ -34,6 +35,7 @@ export function IPTopology({ row, port }: { row: Projection; port?: PhysicalPort
     return [...new Map(row.topology.links.filter((l) => ids.has(l.source) && ids.has(l.target)).map((l) => [linkId(l), l])).values()];
   }, [nodes, row.topology.links]);
   const selected = nodes.find((n) => n.id === selectedId);
+  const endpoint = row.endpoints?.entries.find((e) => e.id === selected?.endpoint_id);
   const edge = links.find((l) => linkId(l) === edgeId);
   function selectNode(id: string, center = false) {
     setSelectedId(id); setEdgeId("");
@@ -47,7 +49,7 @@ export function IPTopology({ row, port }: { row: Projection; port?: PhysicalPort
       <Link href="/topology" className="button-link">Ağ topolojisini aç</Link>
     </div>
     {!!row.topology.nodes.length && <div className="topology-controls">
-      <label>Topolojide ara<input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Arayüz, IP, VRF veya VLAN" /></label>
+      <label>Topolojide ara<input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Arayüz, MAC, IP, VRF veya VLAN" /></label>
       <label>Düğüm seç<select value={selected?.id ?? ""} onChange={(e) => selectNode(e.target.value, true)}>
         <option value="">Bir düğüm seçin</option>
         {matches.map((n) => <option key={n.id} value={n.id}>{n.name} · {n.detail}</option>)}
@@ -62,7 +64,7 @@ export function IPTopology({ row, port }: { row: Projection; port?: PhysicalPort
           related={related} focus={focus} onNode={selectNode} onEdge={(id) => { setEdgeId(id); setSelectedId(""); }}
           onClear={() => { setSelectedId(""); setEdgeId(""); }} />
         <div className="device-topology-legend" aria-label="Topoloji ilişki türleri">
-          <span className="l3">L3 / IP</span><span className="l2">L2 komşuluk</span><span className="physical">Fiziksel bağlantı</span>
+          <span className="l3">L3 / IP</span><span className="l2">L2 komşuluk</span><span className="physical">Fiziksel bağlantı</span><span className="endpoint">MAC / IP gözlemi</span>
         </div>
         <p className="source-note">{nodes.length} / {matches.length} düğüm gösteriliyor{nodes.length < matches.length ? " · Diğer düğümler için arayın veya listeden seçin." : "."} Sürükleyerek veya odaklanıp ok tuşlarıyla kaydırın.</p>
       </div>
@@ -78,18 +80,21 @@ export function IPTopology({ row, port }: { row: Projection; port?: PhysicalPort
           <strong>{selected.name}</strong>
           <dl className="device-facts">
             <div><dt>Tür</dt><dd>{nodeKindLabels[selected.kind] ?? selected.kind}</dd></div>
-            <div><dt>Adres / açıklama</dt><dd className="mono">{selected.detail || "Veri yok"}</dd></div>
-            <div><dt>VRF</dt><dd>{selected.vrf || "Bildirilmedi"}</dd></div>
-            <div><dt>VLAN</dt><dd>{selected.vlan ?? "Bildirilmedi"}</dd></div>
+            {!endpoint && <>
+              <div><dt>Adres / açıklama</dt><dd className="mono">{selected.detail || "Veri yok"}</dd></div>
+              <div><dt>VRF</dt><dd>{selected.vrf || "Bildirilmedi"}</dd></div>
+              <div><dt>VLAN</dt><dd>{selected.vlan ?? "Bildirilmedi"}</dd></div>
+            </>}
           </dl>
+          {endpoint && <EndpointDetails endpoint={endpoint} />}
           <h4>İlişkiler</h4>
           <ul className="device-ip-relations">{links.filter((l) => l.source === selected.id || l.target === selected.id).map((l) =>
             <li key={linkId(l)}><button onClick={() => setEdgeId(linkId(l))}>{relationLabels[l.relation]} · {name(l.source === selected.id ? l.target : l.source)}</button></li>)}</ul>
         </> : <><strong>İlişkileri inceleyin</strong><p>Bir düğüm veya bağlantı çizgisi seçin. Adres, VLAN, VRF ve bağlantı kanıtı burada gösterilir.</p>
-          <dl className="device-facts">{["interface", "subnet", "neighbor"].map((kind) => <div key={kind}><dt>{nodeKindLabels[kind]}</dt><dd>{scoped.filter((n) => n.kind === kind).length}</dd></div>)}</dl></>}
-        <p className="source-note">Gözlem: {formatTime(row.topology.observed_at)}<br />{row.topology.source ?? "Kaynak yok"}</p>
+          <dl className="device-facts">{["interface", "subnet", "neighbor", "endpoint"].map((kind) => <div key={kind}><dt>{nodeKindLabels[kind]}</dt><dd>{scoped.filter((n) => n.kind === kind).length}</dd></div>)}</dl></>}
+        <p className="source-note">Gözlem: {formatTime(selected?.observed_at ?? row.topology.observed_at)}<br />{row.topology.source ?? "Kaynak yok"}</p>
       </aside>
     </div> : <Empty text={query ? "Aramanızla eşleşen düğüm yok. Aramayı temizleyerek tekrar deneyin." : "Bu kapsamda doğrulanmış IP veya komşuluk ilişkisi yok."} />}
-    <p className="source-note">L3: atanmış IP / alt ağ · L2 ve fiziksel: açık kanıtlı komşu kaydı. Yönetim IP’sinden bağlantı üretilmez. {row.data_state !== "current" && "Gösterilen ilişkiler son bilinen gözlemdir; güncellik doğrulanmıyor."}</p>
+    <p className="source-note">L3: atanmış IP / alt ağ · L2 ve fiziksel: açık kanıtlı komşu kaydı. MAC / IP gözlemi kablo kanıtı değildir. Yönetim IP’sinden bağlantı üretilmez. {row.data_state !== "current" && "Gösterilen ilişkiler son bilinen gözlemdir; güncellik doğrulanmıyor."}</p>
   </section>;
 }

@@ -8,6 +8,7 @@ import sqlalchemy as sa
 from .auth import fail
 from .contracts import Telemetry
 from .database import now
+from .endpoint_resolution import resolve_endpoints
 
 
 def timestamp(value):
@@ -114,7 +115,9 @@ def physical_summary(device, telemetry, stale):
         "traffic_scope": "Fiziksel portlara bağlı ethernet arayüzlerinin gözlenen toplamı; benzersiz ağ trafiği değildir."}
 
 
-def topology(device, data):
+def topology(device, data, endpoints=None):
+    if endpoints is None:
+        endpoints = resolve_endpoints({device.id: device}, {device.id: data})[device.id]
     nodes, links = {}, []
     for sample in (data or {}).get("interfaces", []):
         iface = next((i for i in device.interfaces if i.id == sample["interface_id"]), None)
@@ -137,14 +140,32 @@ def topology(device, data):
             continue
         node_id, peer_id = f"interface:{iface.id}", f"neighbor:{neighbor['id']}"
         nodes.setdefault(node_id, {"id": node_id, "name": iface.name, "kind": "interface", "interface_id": iface.id, "detail": ""})
-        nodes[peer_id] = {"id": peer_id, "name": neighbor["label"], "kind": "neighbor", "detail": neighbor["evidence"]}
+        addresses = neighbor.get("addresses", [])
+        nodes[peer_id] = {"id": peer_id, "name": addresses[0] if addresses else neighbor["label"], "kind": "neighbor",
+            "detail": " · ".join([neighbor["label"], *addresses, neighbor["evidence"]]),
+            "observed_at": neighbor.get("observed_at") or data.get("groups", {}).get("network", {}).get("observed_at") or data["observed_at"]}
         links.append({"source": node_id, "target": peer_id, "relation": neighbor["relation"], "evidence": neighbor["evidence"]})
+    interfaces = {i.id: i for i in device.interfaces}
+    for endpoint in endpoints["entries"]:
+        iface = interfaces.get(endpoint["interface_id"])
+        if not iface:
+            continue
+        node_id, peer_id = f"interface:{iface.id}", f"endpoint:{endpoint['id']}"
+        nodes.setdefault(node_id, {"id": node_id, "name": iface.name, "kind": "interface", "interface_id": iface.id, "detail": ""})
+        nodes[peer_id] = {"id": peer_id, "name": endpoint["addresses"][0] if endpoint["addresses"] else endpoint["mac"],
+            "kind": "endpoint", "interface_id": iface.id, "endpoint_id": endpoint["id"],
+            "detail": " · ".join([endpoint["mac"], *endpoint["addresses"]]), "vlan": endpoint.get("vlan"),
+            "vrf": endpoint.get("vrf"), "resolution_status": endpoint.get("resolution", {}).get("status"),
+            "observed_at": endpoint.get("resolution", {}).get("observed_at")}
+        links.append({"source": node_id, "target": peer_id, "relation": "endpoint", "evidence": endpoint["evidence"]})
     unique = {(e["source"], e["target"], e["relation"]): e for e in links}
     return {"nodes": list(nodes.values()), "links": list(unique.values()), "observed_at": (data or {}).get("observed_at"), "source": (data or {}).get("source")}
 
 
-def projection(device, data, at=None):
+def projection(device, data, at=None, endpoints=None):
     at = at or now()
+    if endpoints is None:
+        endpoints = resolve_endpoints({device.id: device}, {device.id: data}, at)[device.id]
     stale = bool(data and (at - timestamp(data["observed_at"])).total_seconds() > data["stale_after_seconds"])
     availability = "unknown" if stale or not data else data["reachability"]
     state = "no_data" if not data else "stale" if stale else "error" if data.get("error") else "unreachable" if availability == "unreachable" else "current"
@@ -153,7 +174,8 @@ def projection(device, data, at=None):
         (at - timestamp(health["observed_at"])).total_seconds() > health["stale_after_seconds"] or health["quality"] not in {"ok", "partial"}))
     return {"device": device.model_dump(mode="json"), "telemetry": data, "data_state": state,
         "reachability": availability, "health_status": "unknown" if state != "current" or health_stale else data["health"]["status"],
-        "ports": physical_summary(device, data, state != "current" or availability != "reachable"), "topology": topology(device, data)}
+        "ports": physical_summary(device, data, state != "current" or availability != "reachable"),
+        "endpoints": endpoints, "topology": topology(device, data, endpoints)}
 
 
 def overview(store, devices, minutes):
@@ -185,9 +207,10 @@ def overview(store, devices, minutes):
                 fast = payload.get("groups", {}).get("fast", {})
                 if fast.get("observed_at"):
                     successes[device_id] = timestamp(fast["observed_at"])
+    resolved = resolve_endpoints({d.id: d for d in devices}, latest)
     result = []
     for device in devices:
-        row = projection(device, latest.get(device.id))
+        row = projection(device, latest.get(device.id), endpoints=resolved[device.id])
         series = []
         history = histories[device.id]
         row["history_truncated"] = len(history) > 2880

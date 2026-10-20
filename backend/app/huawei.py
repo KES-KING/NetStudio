@@ -373,7 +373,7 @@ def parse_endpoints(interfaces, outputs, unavailable):
             identifier = sha256(f"fdb|{names[key]}|{mac}|{vlan}".encode()).hexdigest()[:32]
             try:
                 entries[identifier] = EndpointObservation(id=identifier, interface_id=names[key], mac=mac, vlan=vlan,
-                    addresses=addresses, discovery="fdb", state="static" if kind.lower() == "static" else "unknown",
+                    addresses=addresses, vrf_known=bool(addresses), discovery="fdb", state="static" if kind.lower() == "static" else "unknown",
                     evidence="display mac-address" + (" + display arp all (aynı arayüz/VLAN, varsayılan VRF)" if addresses else ""))
             except ValidationError:
                 partial = True
@@ -384,12 +384,16 @@ def parse_endpoints(interfaces, outputs, unavailable):
         if len(entries) >= 2048:
             partial = True
             break
-        if any(e.mac == mac and address in e.addresses for e in entries.values()):
+        vlan = re.fullmatch(r"vlanif(\d+)", key)
+        vlan_number = int(vlan[1]) if vlan else None
+        if vrf in {"", "-"} and any(e.mac == mac and e.vlan == vlan_number and address in e.addresses for e in entries.values()):
             continue
         identifier = sha256(f"arp|{names[key]}|{mac}|{address}|{vrf}".encode()).hexdigest()[:32]
         try:
             entries[identifier] = EndpointObservation(id=identifier, interface_id=names[key], mac=mac,
-                addresses=[address], discovery="arp", state=state, evidence="display arp all; L3 gözlemi, fiziksel kablo kanıtı değil")
+                addresses=[address], vlan=vlan_number, vrf=None if vrf in {"", "-"} else vrf,
+                vrf_known=arp_vrf_column, discovery="arp", state=state,
+                evidence="display arp all; L3 gözlemi, fiziksel kablo kanıtı değil")
         except ValidationError:
             partial = True
     return EndpointCollection(status="partial" if partial else "ok", entries=list(entries.values()),

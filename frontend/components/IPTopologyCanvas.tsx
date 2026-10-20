@@ -105,7 +105,7 @@ export function IPTopologyCanvas({ nodes, links, selectedId, selectedEdge, relat
               aria-label={`${a.name} ↔ ${b.name} · ${relationLabels[l.relation]} · bağlantı ayrıntıları`}
               onClick={() => onEdge(id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdge(id); } }}>
               <title>{l.evidence}</title><path className="edge-hit" d={route.path} /><path className="edge-line" d={route.path} />
-              <text x={route.x} y={route.y - 6} textAnchor="middle">{l.relation === "physical" ? "Fiz." : l.relation.toUpperCase()}</text>
+              <text x={route.x} y={route.y - 6} textAnchor="middle">{l.relation === "physical" ? "Fiz." : l.relation === "endpoint" ? "MAC/IP" : l.relation.toUpperCase()}</text>
             </g>;
           })}
           {layout.nodes.map((n) => <g key={n.id} data-selectable data-node-id={n.id}
@@ -114,7 +114,7 @@ export function IPTopologyCanvas({ nodes, links, selectedId, selectedEdge, relat
             onClick={() => onNode(n.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNode(n.id); } }}>
             <title>{n.name} · {n.detail}</title>
             <rect className="node-hit" x={-layout.nodeWidth / 2} y={-30} width={layout.nodeWidth} height={60} />
-            <text className="node-kind" y={-15} textAnchor="middle">{nodeKindLabels[n.kind] ?? n.kind}</text>
+            <text className="node-kind" y={-15} textAnchor="middle">{n.resolution_status === "stale" ? "Eski MAC / IP gözlemi" : n.resolution_status === "ambiguous" ? "IP belirsiz" : nodeKindLabels[n.kind] ?? n.kind}</text>
             <text className="node-title" y={2} textAnchor="middle">{short(n.name, Math.floor((layout.nodeWidth - 14) / 6.6))}</text>
             <text className="node-detail" y={19} textAnchor="middle">{short(n.detail || "Veri yok", Math.floor((layout.nodeWidth - 14) / 6))}</text>
           </g>)}

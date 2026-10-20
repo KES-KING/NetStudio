@@ -418,7 +418,7 @@ def merge_snapshot(device, snapshot):
     else:
         interface_ids = {interface.id for interface in interfaces}
         updates["bindings"] = [binding for binding in device.bindings if binding.interface_id in interface_ids]
-    endpoints = parse_endpoints(interfaces, snapshot["outputs"], snapshot["unavailable"])
+    endpoints = parse_endpoints(interfaces, snapshot["outputs"], snapshot["unavailable"], samples)
     if endpoints.status in {"partial", "error"}:
         snapshot["health"].alerts.append("MAC/ARP gözlemleri eksik; fiziksel bağlantı kanıtı değildir.")
     return device.model_copy(update=updates), Telemetry(
@@ -432,7 +432,7 @@ def normalize_mac(value):
     return ":".join(digits[index:index + 2] for index in range(0, 12, 2))
 
 
-def parse_endpoints(interfaces, outputs, unavailable):
+def parse_endpoints(interfaces, outputs, unavailable, samples=()):
     names = {canonical(interface.name): interface.id for interface in interfaces}
     fdb_raw, arp_raw = outputs.get("show mac address-table"), outputs.get("show arp")
     recognized_fdb = fdb_raw is not None and bool(re.search(r"Mac Address Table|Vlan\s+Mac Address\s+Type\s+Ports", fdb_raw, re.I))
@@ -442,6 +442,7 @@ def parse_endpoints(interfaces, outputs, unavailable):
                           for command in ("show mac address-table", "show arp"))
         return EndpointCollection(status="unsupported" if unsupported else "error")
     arp_by_scope, partial = {}, not (recognized_fdb and recognized_arp)
+    local_addresses = {str(ip_interface(address).ip) for sample in samples for address in sample.addresses}
     if recognized_arp:
         for row_number, line in enumerate(arp_raw.splitlines()):
             if row_number >= 16384:
@@ -453,6 +454,8 @@ def parse_endpoints(interfaces, outputs, unavailable):
                     partial = True
                 continue
             address, mac, interface = match.groups()
+            if address in local_addresses:
+                continue
             scope = arp_by_scope.setdefault((normalize_mac(mac), canonical(interface)), set())
             if len(scope) < 32:
                 scope.add(address)
@@ -469,18 +472,41 @@ def parse_endpoints(interfaces, outputs, unavailable):
             if key not in names or not 1 <= vlan_number <= 4094:
                 partial = True
                 continue
-            addresses = sorted(arp_by_scope.get((mac, canonical(f"Vlan{vlan_number}")), set()))
+            addresses = sorted(arp_by_scope.get((mac, canonical(f"Vlan{vlan_number}")), set())
+                               | arp_by_scope.get((mac, key), set()))[:32]
             identifier = sha256(f"{names[key]}|{mac}|{vlan_number}".encode()).hexdigest()[:32]
             try:
                 entries[identifier] = EndpointObservation(
                     id=identifier, interface_id=names[key], mac=mac, addresses=addresses,
                     vlan=vlan_number, discovery="fdb", state="static" if kind.upper() == "STATIC" else "unknown",
-                    evidence="show mac address-table + same-VLAN show arp correlation",
+                    vrf_known=bool(addresses),
+                    evidence="show mac address-table" + (" + same-interface/VLAN show arp correlation" if addresses else ""),
                 )
             except ValidationError:
+                partial = True
                 continue
             if len(entries) >= 2048:
                 partial = True
                 break
+    # Preserve ARP-only rows (e.g. a gateway with no local FDB entry). These
+    # observations can resolve an adjacent switch's FDB, but are not cables.
+    for (mac, key), addresses in arp_by_scope.items():
+        if key not in names:
+            partial = True
+            continue
+        vlan = re.fullmatch(r"vlan(\d+)", key)
+        vlan_number = int(vlan[1]) if vlan else None
+        if any(e.mac == mac and e.vlan == vlan_number and set(addresses) <= set(e.addresses) for e in entries.values()):
+            continue
+        if len(entries) >= 2048:
+            partial = True
+            break
+        identifier = sha256(f"arp|{names[key]}|{mac}".encode()).hexdigest()[:32]
+        try:
+            entries[identifier] = EndpointObservation(id=identifier, interface_id=names[key], mac=mac,
+                addresses=sorted(addresses), vlan=vlan_number, vrf_known=True, discovery="arp",
+                evidence="show arp; default VRF, L3 observation, not a physical cable")
+        except ValidationError:
+            partial = True
     return EndpointCollection(status="partial" if partial else "ok", entries=list(entries.values()),
                               truncated=len(entries) >= 2048, total_count=None if partial else len(entries))

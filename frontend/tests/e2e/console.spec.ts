@@ -151,6 +151,12 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
     page.getByRole("region", { name: "1 port detayları" }),
   ).toContainText("Ethernet1/1");
   await page.getByRole("button", { name: "Detayı kapat" }).click();
+  // Capture a real, filtered MAC/IP relation at readable size; the complete
+  // eleven-node graph and its pan/focus behavior are covered in device-detail.
+  const graph = page.getByRole("region", { name: "Cihaz IP topolojisi", exact: true });
+  await graph.getByLabel("Topolojide ara").fill("192.0.2.101");
+  await expect(graph.locator(".node-hit")).toHaveCount(2);
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: join(evidenceDir, "detail-desktop.png"),
     fullPage: true,
@@ -193,6 +199,7 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
   await expect(page.locator(".xterm-rows")).toContainText(
     "TEST ECHO: clipboard-browser",
   );
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: join(evidenceDir, "detail-ssh-desktop.png"),
     fullPage: true,
@@ -200,8 +207,11 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
   });
   await page.setViewportSize({ width: 1200, height: 950 });
   await expect(page.locator(".xterm-rows")).toContainText("PTY");
+  const terminalClosed = page.waitForResponse((response) =>
+    response.url().includes("/api/v1/ssh-sessions/") && response.request().method() === "DELETE");
   await page.getByRole("button", { name: "Oturumu kapat" }).click();
   await expect(page.locator(".ssh-workspace")).toHaveCount(0);
+  expect((await terminalClosed).ok()).toBe(true);
   await page.getByRole("button", { name: "SSH", exact: true }).click();
   await expect(page.getByText("Bağlandı", { exact: true })).toBeVisible({
     timeout: 20000,

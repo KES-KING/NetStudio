@@ -4,14 +4,21 @@ export type Endpoint = {
   id: string; interface_id: string; mac: string; addresses: string[];
   vlan: number | null; discovery: "fdb" | "arp" | "ndp";
   state: "reachable" | "stale" | "static" | "unknown"; evidence: string;
+  vrf?: string | null; vrf_known?: boolean;
+  resolution?: {
+    status: "observed" | "resolved" | "unresolved" | "stale" | "ambiguous";
+    reason: string | null; observed_at: string | null;
+    sources: { device_id: string; device_name: string; interface_id: string; discovery: string; observed_at: string; evidence: string }[];
+  };
 };
+export type EndpointCollection = { status: "ok" | "partial" | "unknown" | "unsupported" | "error"; entries: Endpoint[] };
 export type NetworkDevice = {
   id: string; name: string; management_address: string; site: string; device_type: string;
   reachability: Reachability; data_state: Projection["data_state"]; observed_at: string | null; source: string | null;
   ports: { id: string; label: string; connector: string; parent_port_id: string | null }[];
   interfaces: { id: string; name: string; kind: string; port_ids: string[] }[];
-  endpoints: { status: "ok" | "partial" | "unknown" | "unsupported" | "error"; entries: Endpoint[] };
-  neighbors: { id: string; interface_id: string; label: string; relation: "physical" | "l2"; evidence: string }[];
+  endpoints: EndpointCollection;
+  neighbors: { id: string; interface_id: string; label: string; relation: "physical" | "l2"; evidence: string; addresses?: string[]; observed_at?: string | null }[];
 };
 export type ObservedLink = {
   id: string; source_device_id: string; source_interface_id: string;
@@ -33,6 +40,13 @@ export type Selection = { kind: "device"; id: string } | { kind: "endpoint"; id:
 export const dataLabels = { current: "Güncel gözlem", no_data: "Veri yok", stale: "Son veri güncel değil", error: "Veri alma hatası", unreachable: "Cihaz erişilemiyor" };
 export const endpointLabels = { ok: "Tablo okundu", partial: "Kısmi tablo", unknown: "Henüz toplanmadı", unsupported: "Desteklenmiyor", error: "Tablo okunamadı" };
 export const neighborStateLabels = { reachable: "Komşuluk erişilebilir", stale: "Komşuluk yeniden doğrulanmalı", static: "Statik kayıt", unknown: "Komşuluk durumu bilinmiyor" };
+export function resolutionLabel(endpoint: Endpoint) {
+  const status = endpoint.resolution?.status;
+  return status ? {
+    observed: "IP doğrudan gözlendi", resolved: "IP eşleştirildi", unresolved: "IP bulunamadı · kapsamı doğrulanmış ARP/NDP kaydı yok",
+    stale: "Son bilinen gözlem · güncelliği doğrulanmıyor", ambiguous: "IP belirsiz · çelişkili adres veya VRF kayıtları",
+  }[status] : endpoint.addresses.length ? "IP gözlendi" : "IP bilinmiyor";
+}
 export const reachLabels = { reachable: "Erişilebilir", unreachable: "Erişilemiyor", unknown: "Durum bilinmiyor" };
 export const relationLabels = { physical: "Fiziksel kanıt", l2: "L2 komşuluk", manual: "Elle çizilen", endpoint: "MAC / IP gözlemi" };
 export const GRAPH_DEVICE_LIMIT = 24;

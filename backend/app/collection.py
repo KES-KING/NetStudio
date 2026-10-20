@@ -105,6 +105,21 @@ def persist(store, original, result, *, fence=lambda conn: None):
                     details[key] = prior["metadata"].get(key, details[key])
             if not result.payloads.get(name):
                 details["observed_at"] = prior.get("metadata", {}).get("observed_at")
+            if name == "network":
+                endpoints = result.payloads.get(name, {}).get("endpoints", {})
+                if endpoints.get("status") == "ok" and meta.quality in {"ok", "partial"} and meta.observed_at:
+                    # An unsupported optional LLDP/DOM command must not freeze a
+                    # complete, newly validated ARP/FDB table. Other last-good
+                    # network fields and their original group clock stay intact.
+                    payload = {**payload, "endpoints": {**endpoints,
+                        "observed_at": meta.observed_at.isoformat(),
+                        "stale_after_seconds": meta.stale_after_seconds, "source": meta.source}}
+                if meta.fields.get("lldp") == "ok" and meta.quality in {"ok", "partial"} and meta.observed_at:
+                    neighbors = result.payloads.get(name, {}).get("neighbors")
+                    if neighbors:
+                        payload = {**payload, "neighbors": [{**neighbor,
+                            "observed_at": meta.observed_at.isoformat(), "stale_after_seconds": meta.stale_after_seconds}
+                            for neighbor in neighbors]}
             digest = sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
             values = dict(device_id=device.id, group_name=name, payload=payload, metadata=details, content_hash=digest)
             upsert(conn, store.collection_groups,

@@ -4,7 +4,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import re
-from ipaddress import ip_interface
+from ipaddress import ip_address, ip_interface
 
 import ntc_templates
 import sqlalchemy as sa
@@ -420,8 +420,16 @@ def enrich_ios(device, batch, outputs, unavailable):
                     from .contracts import Neighbor
                     peer = row.get("neighbor_name") or row.get("chassis_id")
                     if peer:
+                        addresses = []
+                        for value in re.split(r"[\s,]+", row.get("mgmt_address", "")):
+                            try:
+                                address = ip_address(value)
+                                if not (address.is_unspecified or address.is_multicast or address.is_loopback):
+                                    addresses.append(str(address))
+                            except ValueError:
+                                pass  # An absent/non-IP management field is not an address.
                         batch.neighbors.append(Neighbor(id=sha256(f"{sample.interface_id}:{peer}:{row.get('neighbor_port_id')}".encode()).hexdigest(),
-                            interface_id=sample.interface_id, label=peer[:160], relation="l2",
+                            interface_id=sample.interface_id, label=peer[:160], relation="l2", addresses=addresses[:32],
                             evidence=("LLDP: " + row.get("neighbor_port_id", ""))[:300]))
         except (ValueError, KeyError, textfsm.TextFSMError):
             unavailable[command.text] = "collector_parse_failed"

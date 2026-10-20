@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { formatTime } from "../../lib/metrics";
+import { EndpointDetails } from "../EndpointDetails";
 import { dataLabels, deleteZone, endpointLabels, interfaceLabel, movePlacement, moveZone, neighborStateLabels, physicalLabels, portLabel, reachLabels,
   type NetworkDevice, type NetworkGraph, type Placement, type Selection, type TopologyBoard, type Zone } from "../../lib/topology";
 
@@ -34,13 +35,13 @@ export default function TopologyInspector({ selection, graph, board, positions, 
       <h3>{endpoint ? "Uç gözlemi" : neighbor ? neighbor.label : device.name}</h3>
       <p className={`topology-data-state ${device.data_state}`}>{dataLabels[device.data_state]} · {formatTime(device.observed_at)}</p>
       {endpoint ? <>
-        <Facts rows={[["IP adresleri", endpoint.addresses.length ? endpoint.addresses.map((ip) => <span className="mono" key={ip}>{ip}<br /></span>) : "IP bilinmiyor"],
-          ["MAC adresi", <span className="mono" key="mac">{endpoint.mac}</span>], ["Gözleyen cihaz", device.name], ["Arayüz", interfaceLabel(device, endpoint.interface_id)],
+        <EndpointDetails endpoint={endpoint} />
+        <Facts rows={[["Gözleyen cihaz", device.name], ["Arayüz", interfaceLabel(device, endpoint.interface_id)],
           ["Fiziksel port", physicalLabels(device, endpoint.interface_id)], ["VLAN", endpoint.vlan], ["Keşif", endpoint.discovery.toUpperCase()],
           ["Komşuluk durumu", neighborStateLabels[endpoint.state]], ["Toplama kaynağı", device.source], ["Kanıt", endpoint.evidence]]} />
         <p className="source-note">Bu kayıt arayüzden gözlenmiştir. Arada switch, telefon veya başka bir köprü olabilir. Sembol, bilgisayar türünü doğrulamaz.</p>
         <button onClick={() => select({ kind: "device", id: device.id })}>Cihaza dön</button>
-      </> : neighbor ? <><Facts rows={[["Arayüz", interfaceLabel(device, neighbor.interface_id)], ["İlişki", neighbor.relation === "l2" ? "L2 komşuluk" : "Fiziksel kanıt"], ["Kanıt", neighbor.evidence]]} /><p className="source-note">Uzak envanter kimliği verilmediği için başka bir cihazla otomatik birleştirilmedi.</p></> : <>
+      </> : neighbor ? <><Facts rows={[["Yönetim IP", neighbor.addresses?.join(", ") || "Bildirilmedi"], ["Adres gözlemi", formatTime(neighbor.observed_at)], ["Arayüz", interfaceLabel(device, neighbor.interface_id)], ["İlişki", neighbor.relation === "l2" ? "L2 komşuluk" : "Fiziksel kanıt"], ["Kanıt", neighbor.evidence]]} /><p className="source-note">Uzak envanter kimliği verilmediği için başka bir cihazla otomatik birleştirilmedi.</p></> : <>
         <Facts rows={[["Yönetim IP", device.management_address], ["Site", device.site], ["Tür", device.device_type], ["Erişilebilirlik", reachLabels[device.reachability]],
           ["MAC / IP tablosu", endpointLabels[device.endpoints.status]], ["Kayıt sayısı", ["ok", "partial"].includes(device.endpoints.status) ? device.endpoints.entries.length : null], ["Kaynak", device.source]]} />
         <DevicePlacement key={`${device.id}:${board.version}`} device={device} placement={positions.get(device.id)!} board={board} change={change} />

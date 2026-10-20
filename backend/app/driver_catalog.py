@@ -1,7 +1,7 @@
 """Versioned read-only command contracts, not a claim of universal model support."""
 from dataclasses import asdict, dataclass
 
-VERSION = "2026.10.20.2"
+VERSION = "2026.10.20.3"
 NTC_VERSION = "9.3.0"
 GROUPS = ("fast", "health", "network", "inventory")
 REFERENCES = {

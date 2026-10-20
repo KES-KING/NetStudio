@@ -88,6 +88,7 @@ export type Telemetry = {
   reachability: Reachability;
   error: string | null;
   interfaces: Sample[];
+  neighbors?: { id: string; interface_id: string; label: string; addresses?: string[]; evidence: string }[];
   health: {
     status: HealthState;
     evaluation: string | null;
@@ -106,6 +107,9 @@ export type TopologyNode = {
   name: string;
   kind: string;
   interface_id?: string;
+  endpoint_id?: string;
+  resolution_status?: string;
+  observed_at?: string | null;
   detail: string;
   vrf?: string;
   vlan?: number;
@@ -113,6 +117,7 @@ export type TopologyNode = {
 export type Projection = {
   device: Device;
   telemetry: Telemetry | null;
+  endpoints?: import("./topology").EndpointCollection;
   data_state: "no_data" | "current" | "stale" | "error" | "unreachable";
   reachability: Reachability;
   health_status: HealthState;
@@ -132,7 +137,7 @@ export type Projection = {
     links: {
       source: string;
       target: string;
-      relation: "l3" | "l2" | "physical";
+      relation: "l3" | "l2" | "physical" | "endpoint";
       evidence: string;
     }[];
     observed_at: string | null;

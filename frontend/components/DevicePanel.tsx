@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import type { PhysicalPort, PortState, Projection } from "../lib/contracts";
 import { groupPanelPorts, panelPortBanks } from "../lib/panel-layout";
+import { PortEndpoints } from "./PortEndpoints";
 import {
   formatRate,
   formatTime,
@@ -389,6 +390,9 @@ export function PortDetails({
             )}
           </div>
         ))}
+        <PortEndpoints key={port.id} collection={row.endpoints} interfaceIds={bindings.map((b) => b.interface_id)} />
+        {row.telemetry?.neighbors?.filter((n) => bindings.some((b) => b.interface_id === n.interface_id)).map((neighbor) =>
+          <p className="source-note" key={neighbor.id}>L2 komşu: {neighbor.label} · Yönetim IP: {neighbor.addresses?.join(", ") || "Bildirilmedi"} · {neighbor.evidence}</p>)}
         <p className="source-note">
           Gözlem: {formatTime(row.telemetry?.observed_at)} · Kaynak:{" "}
           {row.telemetry?.source ?? "Veri yok"}. Link up bilgisi fiziksel

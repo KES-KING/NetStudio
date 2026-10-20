@@ -139,6 +139,66 @@ def test_bad_health_does_not_discard_valid_ports(system):
     assert len(data["interfaces"]) == 4
 
 
+def test_lldp_management_ip_is_preserved_without_mac_or_name_guessing(system):
+    client, store, *_ = system
+    login(client)
+    device = store.get_device(add_device(client, collector="cisco_ios")["id"])
+    raw = """Local Intf: Gi1/0/1
+Chassis id: 0200.0000.0099
+Port id: eth0
+Management Addresses:
+    IP: 192.0.2.99
+Total entries displayed: 1
+"""
+    result = parse_text(device, "cisco_ios", {**OUTPUTS, "show lldp neighbors detail": raw}, {}, set(GROUPS))
+    neighbor = result.payloads["network"]["neighbors"][0]
+    assert neighbor["label"] == "0200.0000.0099"
+    assert neighbor["addresses"] == ["192.0.2.99"]
+    assert neighbor["remote_device_id"] is None  # IPs do not invent inventory identity/cables.
+
+
+def test_complete_endpoint_table_refreshes_despite_optional_network_failure(system):
+    client, store, *_ = system
+    login(client)
+    original = store.get_device(add_device(client, collector="cisco_ios")["id"])
+    parsed = parse_text(original, "cisco_ios", OUTPUTS, {}, set(GROUPS))
+    first = persist(store, original, parsed)
+    current = store.get_device(original.id)
+    changed = {**OUTPUTS, "show arp": OUTPUTS["show arp"].replace("192.0.2.11", "192.0.2.12")}
+    partial = parse_text(current, "cisco_ios", changed,
+        {"show lldp neighbors detail": "collector_command_unsupported"}, {"fast", "network"})
+    second = persist(store, current, partial)
+    assert second["groups"]["network"]["quality"] == "partial"
+    assert second["groups"]["network"]["observed_at"] == first["groups"]["network"]["observed_at"]
+    assert second["endpoints"]["entries"][0]["addresses"] == ["192.0.2.12"]
+    assert second["endpoints"]["observed_at"] > first["endpoints"]["observed_at"]
+    from app.telemetry import projection
+    assert projection(current, second)["endpoints"]["entries"][0]["resolution"]["status"] == "observed"
+    current = store.get_device(original.id)
+    broken = parse_text(current, "cisco_ios", {**changed, "show arp": "unrecognized table"}, {}, {"fast", "network"})
+    third = persist(store, current, broken)
+    assert third["endpoints"] == second["endpoints"]  # Partial table never erases last complete table.
+    assert projection(current, third)["endpoints"]["entries"][0]["resolution"]["status"] == "stale"
+
+
+def test_valid_lldp_management_ip_refreshes_when_an_unrelated_command_is_unsupported(system):
+    client, store, *_ = system
+    login(client)
+    original = store.get_device(add_device(client, collector="cisco_ios")["id"])
+    first = persist(store, original, parse_text(original, "cisco_ios", OUTPUTS, {}, set(GROUPS)))
+    current = store.get_device(original.id)
+    raw = "Local Intf: Gi1/0/1\nChassis id: 0200.0000.0099\nPort id: eth0\nManagement Addresses:\n    IP: 192.0.2.99\nTotal entries displayed: 1\n"
+    result = parse_text(current, "cisco_ios", {**OUTPUTS, "show lldp neighbors detail": raw},
+        {"show interfaces switchport": "collector_command_unsupported"}, {"network", "fast"})
+    second = persist(store, current, result)
+    assert second["groups"]["network"]["quality"] == "partial"
+    assert second["groups"]["network"]["observed_at"] == first["groups"]["network"]["observed_at"]
+    assert second["neighbors"][0]["addresses"] == ["192.0.2.99"]
+    assert second["neighbors"][0]["observed_at"] > first["groups"]["network"]["observed_at"]
+    from app.endpoint_resolution import network_clock
+    assert network_clock(second, now(), neighbor=second["neighbors"][0])[1]
+
+
 def test_status_parse_error_does_not_poison_other_command_capabilities(system):
     client, store, _, _ = system
     login(client)

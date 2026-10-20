@@ -170,7 +170,7 @@ export default function TopologyCanvas({ graph, devices, board, positions, selec
               const { x, y } = endpointPosition(p, index, compact);
               const selected = selection?.kind === "endpoint" && selection.deviceId === device.id && selection.id === e.id;
               return <g key={e.id}>
-                <g className={`topology-edge endpoint ${device.data_state !== "current" || e.state === "stale" ? "stale" : ""}`}>
+                <g className={`topology-edge endpoint ${device.data_state !== "current" || e.state === "stale" || e.resolution?.status === "stale" ? "stale" : ""}`}>
                   <path className="edge-line" d={elbowPath({ x: p.x, y: p.y + (y < p.y ? -17 : 84) }, { x, y: y < p.y ? y + 65 : y - 22 })} />
                   <text x={(p.x + x) / 2 + 7} y={(p.y + y) / 2 + (y < p.y ? 10 : 40)}>{short(interfaceLabel(device, e.interface_id), 20)}</text>
                 </g>
@@ -182,7 +182,7 @@ export default function TopologyCanvas({ graph, devices, board, positions, selec
                   <rect x={compact ? -76 : -95} y={-23} width={compact ? 152 : 190} height={101} className="node-hit" />
                   <NetworkSymbol computer /><text y={36} textAnchor="middle">{short(e.addresses[0] ?? "IP bilinmiyor", compact ? 20 : 27)}</text>
                   <text y={53} textAnchor="middle" className="node-mono">{e.mac}</text>
-                  <text y={70} textAnchor="middle" className="node-meta">{e.discovery.toUpperCase()} · {e.vlan ? `VLAN ${e.vlan}` : "VLAN bilinmiyor"}</text>
+                  <text y={70} textAnchor="middle" className="node-meta">{e.resolution?.status === "stale" ? "Eski gözlem" : e.resolution?.status === "ambiguous" ? "IP belirsiz" : e.discovery.toUpperCase()} · {e.vlan ? `VLAN ${e.vlan}` : "VLAN bilinmiyor"}</text>
                 </g>
               </g>;
             })}

@@ -22,7 +22,12 @@ for (const width of [1536, 390, 320]) {
     await login(page);
     await page.getByRole("link", { name: "QA-Core-01", exact: true }).click();
     const diagram = page.getByRole("region", { name: "Cihaz IP topolojisi", exact: true });
-    await expect(diagram.locator(".node-hit")).toHaveCount(7);
+    // The shared endpoint projection adds three MAC/IP nodes plus if3.
+    await expect(diagram.locator(".node-hit")).toHaveCount(11);
+    await expect(diagram.locator('[data-node-id^="endpoint:"]')).toHaveCount(3);
+    // Small, filtered graphs still fit wholly; the full graph is intentionally pannable.
+    await diagram.getByLabel("Topolojide ara").fill("QA upstream");
+    await expect(diagram.locator(".node-hit")).toHaveCount(2);
     const canvas = diagram.locator(".device-ip-canvas");
     const bounds = (await canvas.boundingBox())!;
     expect(bounds.height).toBe(340);
@@ -45,6 +50,7 @@ for (const width of [1536, 390, 320]) {
     await inspector.getByRole("button", { name: "Kaynak düğüme odaklan" }).click();
     await expect(diagram.getByLabel("Düğüm seç")).toHaveValue("interface:if25");
     await diagram.getByRole("button", { name: "Ortala ve sıfırla" }).click();
+    await diagram.getByLabel("Topolojide ara").fill("10.10.1.0/24");
     const edge = diagram.locator(".device-ip-edge").first();
     await edge.focus(); await page.keyboard.press("Enter");
     await expect(inspector).toContainText("Bağlantı kanıtı");
@@ -63,13 +69,17 @@ for (const width of [1536, 390, 320]) {
     await diagram.getByLabel("Topolojide ara").fill("no-such-network");
     await expect(diagram).toContainText("Aramanızla eşleşen düğüm yok");
     await diagram.getByLabel("Topolojide ara").fill("");
-    await expect(diagram.locator(".node-hit")).toHaveCount(7);
+    await expect(diagram.locator(".node-hit")).toHaveCount(11);
+    await diagram.getByLabel("Düğüm seç").selectOption("endpoint:qa-endpoint-3");
+    await expect.poll(async () => {
+      const area = (await canvas.boundingBox())!, selected = (await diagram.locator('[data-node-id="endpoint:qa-endpoint-3"] .node-hit').boundingBox())!;
+      return selected.y >= area.y && selected.y + selected.height <= area.y + area.height;
+    }).toBe(true);
     const restoredBounds = (await canvas.boundingBox())!;
-    for (const hit of await diagram.locator(".node-hit").all()) {
-      const r = (await hit.boundingBox())!;
-      expect(r.y).toBeGreaterThanOrEqual(restoredBounds.y);
-      expect(r.y + r.height).toBeLessThanOrEqual(restoredBounds.y + restoredBounds.height);
-    }
+    const selectedBounds = (await diagram.locator('[data-node-id="endpoint:qa-endpoint-3"] .node-hit').boundingBox())!;
+    expect(restoredBounds.height).toBe(340);
+    expect(selectedBounds.y).toBeGreaterThanOrEqual(restoredBounds.y);
+    expect(selectedBounds.y + selectedBounds.height).toBeLessThanOrEqual(restoredBounds.y + restoredBounds.height);
     const facts = page.getByRole("region", { name: "Teknik bilgiler ve sağlık" });
     await expect(facts).toContainText("QA-24RJ45-4SFP");
     await facts.getByText("Chassis / stack / modül envanteri", { exact: false }).click();
