@@ -47,9 +47,8 @@ async function expectTopologyFits(page: Page, width: number) {
   const chart = stage.locator(".topology-chart");
   await expect(chart.locator("svg")).toBeVisible();
   const bounds = await chart.boundingBox();
-  const nodes = await chart.locator("svg path").evaluateAll((paths) =>
+  const nodes = await chart.locator(".node-hit").evaluateAll((paths) =>
     paths
-      .filter((path) => path.getAttribute("fill") && path.getAttribute("fill") !== "none")
       .map((path) => {
         const box = path.getBoundingClientRect();
         return { left: box.left, right: box.right, width: box.width, height: box.height };
@@ -64,9 +63,8 @@ async function expectTopologyFits(page: Page, width: number) {
   const before = nodes.map(({ width: nodeWidth, height }) => ({ width: nodeWidth, height }));
   await stage.getByRole("button", { name: "Topolojiyi yakınlaştır" }).click();
   await expect(stage.getByLabel("Yakınlaştırma oranı")).toHaveText("115%");
-  const after = await chart.locator("svg path").evaluateAll((paths) =>
+  const after = await chart.locator(".node-hit").evaluateAll((paths) =>
     paths
-      .filter((path) => path.getAttribute("fill") && path.getAttribute("fill") !== "none")
       .map((path) => {
         const box = path.getBoundingClientRect();
         return { width: box.width, height: box.height };
@@ -75,8 +73,8 @@ async function expectTopologyFits(page: Page, width: number) {
   );
   expect(after).toHaveLength(before.length);
   after.forEach((box, index) => {
-    expect(Math.abs(box.width - before[index].width)).toBeLessThan(1);
-    expect(Math.abs(box.height - before[index].height)).toBeLessThan(1);
+    expect(Math.abs(box.width - before[index].width * 1.15)).toBeLessThan(1);
+    expect(Math.abs(box.height - before[index].height * 1.15)).toBeLessThan(1);
   });
   await stage.getByRole("button", { name: "Ortala ve sıfırla", exact: true }).click();
   await expect(stage.getByLabel("Yakınlaştırma oranı")).toHaveText("100%");

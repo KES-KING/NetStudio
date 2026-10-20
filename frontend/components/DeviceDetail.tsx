@@ -7,9 +7,7 @@ import { recordActivity } from "../lib/activity";
 import type { Job, PhysicalPort, Projection, SSHTicket } from "../lib/contracts";
 import {
   displayProjection,
-  formatRate,
   formatTime,
-  healthLabels,
   physicalPorts,
   portDescription,
   reachLabels,
@@ -24,6 +22,7 @@ import { IPTopology } from "./IPTopology";
 import { Empty } from "./OperationSummary";
 import { SSHWorkspace } from "./SSHWorkspace";
 import { CollectionControls } from "./CollectionControls";
+import { DeviceFacts, DeviceInterfaces, DeviceSummary } from "./DeviceFacts";
 
 export default function DeviceDetail({ id }: { id: string }) {
   const session = useSession();
@@ -252,7 +251,7 @@ export default function DeviceDetail({ id }: { id: string }) {
           gösterilir; güncel sağlık veya kapasite olarak değerlendirilmez.
         </p>
       )}
-      <CollectionControls device={device} />
+      <DeviceSummary row={row} />
       <div className={`device-workspace ${sshOpen ? "with-terminal" : ""}`}>
         <section className="panel front-panel">
           <div className="panel-heading">
@@ -307,9 +306,11 @@ export default function DeviceDetail({ id }: { id: string }) {
           onClose={() => { setPanelOpen(false); setPortAnchor(undefined); }}
         />
       )}
-      <div className="detail-lower">
+      <div className="device-detail-sections">
         <IPTopology row={row} port={selected} />
-        <TechnicalInfo row={row} />
+        <DeviceFacts row={row} />
+        <DeviceInterfaces row={row} />
+        <CollectionControls device={device} />
       </div>
       {settings && (
         <ConnectionSettings
@@ -330,156 +331,5 @@ export default function DeviceDetail({ id }: { id: string }) {
         />
       )}
     </>
-  );
-}
-
-function TechnicalInfo({ row }: { row: Projection }) {
-  const d = row.device,
-    h = row.telemetry?.health;
-  const number = (value: number | null | undefined, unit: string) =>
-    value == null
-      ? "Veri yok"
-      : `${value.toLocaleString("tr-TR", { maximumFractionDigits: 1 })} ${unit}`;
-  return (
-    <section className="panel technical-panel">
-      <div className="panel-heading">
-        <h2>Teknik bilgiler ve sağlık</h2>
-        <span className={`status ${row.health_status}`}>
-          {healthLabels[row.health_status]}
-        </span>
-      </div>
-      <div className="detail-body">
-        <dl className="technical-grid">
-          <div>
-            <dt>Üretici / model</dt>
-            <dd>
-              {[d.vendor, d.model].filter(Boolean).join(" / ") ||
-                "Belirtilmedi"}
-            </dd>
-          </div>
-          <div>
-            <dt>Hostname / tür</dt>
-            <dd>
-              {d.name} / {typeLabels[d.device_type]}
-            </dd>
-          </div>
-          <div>
-            <dt>Yönetim IP / SSH portu</dt>
-            <dd className="mono">
-              {d.management_address} / {d.ssh_port}
-            </dd>
-          </div>
-          <div>
-            <dt>Firmware / işletim sistemi</dt>
-            <dd>{d.os_version || "Veri yok"}</dd>
-          </div>
-          {d.serial && (
-            <div>
-              <dt>Seri numarası</dt>
-              <dd className="mono">{d.serial}</dd>
-            </div>
-          )}
-          <div>
-            <dt>Fiziksel portlar</dt>
-            <dd>{portDescription(row)}</dd>
-          </div>
-          <div>
-            <dt>Aktif / toplam port</dt>
-            <dd>
-              {row.ports.total
-                ? `${row.ports.counts.unknown === row.ports.total ? "Bilinmiyor" : row.ports.counts.up} / ${row.ports.total} · ${row.ports.counts.unknown} bilinmiyor`
-                : "Envanter yok"}
-            </dd>
-          </div>
-          <div>
-            <dt>Gözlenen RX / TX</dt>
-            <dd>
-              {formatRate(row.ports.rx_bps)} / {formatRate(row.ports.tx_bps)}
-            </dd>
-          </div>
-          <div>
-            <dt>Uptime</dt>
-            <dd>
-              {h?.uptime_seconds == null
-                ? "Veri yok"
-                : `${Math.floor(h.uptime_seconds / 86400)} gün ${Math.floor(h.uptime_seconds / 3600) % 24} sa ${Math.floor(h.uptime_seconds / 60) % 60} dk`}
-            </dd>
-          </div>
-          <div>
-            <dt>CPU / RAM</dt>
-            <dd>
-              {number(h?.cpu_percent, "%")} / {number(h?.memory_percent, "%")}
-            </dd>
-          </div>
-          <div>
-            <dt>Sıcaklık</dt>
-            <dd>{number(h?.temperature_c, "°C")}</dd>
-          </div>
-          {h?.fan && (
-            <div>
-              <dt>Fan</dt>
-              <dd>{h.fan}</dd>
-            </div>
-          )}
-          {h?.power_supply && (
-            <div>
-              <dt>Güç kaynağı</dt>
-              <dd>{h.power_supply}</dd>
-            </div>
-          )}
-          {h?.poe_watts != null && (
-            <div>
-              <dt>PoE tüketimi</dt>
-              <dd>{number(h.poe_watts, "W")}</dd>
-            </div>
-          )}
-          <div>
-            <dt>Kimlik bilgisi</dt>
-            <dd>
-              {d.credential_configured ? "Tanımlı · şifreli" : "Tanımlı değil"}
-            </dd>
-          </div>
-          <div>
-            <dt>Host anahtarı</dt>
-            <dd>
-              {d.host_key_fingerprint
-                ? "Doğrulanmış anahtar kayıtlı"
-                : "Güven kaydı gerekli"}
-            </dd>
-          </div>
-        </dl>
-        <div className="health-note">
-          <h3>Sağlık değerlendirmesi</h3>
-          <p>
-            {h?.evaluation ??
-              (h?.status === "unsupported"
-                ? "Toplayıcı bu sağlık metriğini desteklemiyor."
-                : "Sağlık değerlendirmesi alınmadı. Erişilebilirlik sağlıklı olmayı garanti etmez.")}
-          </p>
-          {h?.alerts.length ? (
-            <ul>
-              {h.alerts.map((alert, i) => (
-                <li key={i}>{alert}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="muted">
-              {h?.status === "ok" && row.data_state === "current"
-                ? "Kaynak aktif uyarı bildirmedi."
-                : "Aktif uyarı durumu doğrulanmadı."}
-            </p>
-          )}
-        </div>
-        <p className="source-note">
-          {row.data_state !== "current"
-            ? "Son bilinen sağlık değerleri · "
-            : ""}
-          {formatTime(row.telemetry?.observed_at)} ·{" "}
-          {row.telemetry?.source ?? "Veri kaynağı yok"}
-          <br />
-          {row.ports.traffic_scope}
-        </p>
-      </div>
-    </section>
   );
 }

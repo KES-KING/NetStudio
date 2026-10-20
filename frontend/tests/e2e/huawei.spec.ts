@@ -51,7 +51,7 @@ for (const width of [1536, 390]) {
       await dialog.getByRole("button", { name: "Kapat", exact: true }).click();
       await expect(page.getByRole("button", { name: "Veri topla", exact: true })).toBeVisible();
       await page.getByRole("button", { name: "Bağlantıyı test et", exact: true }).click();
-      await expect(page.getByRole("status")).toContainText("İş: Tamamlandı", { timeout: 20000 });
+      await expect(page.getByRole("status").filter({ hasText: /^İş:/ })).toContainText("İş: Tamamlandı", { timeout: 20000 });
       const updated = await (await page.request.get(base)).json();
       expect(updated.collector).toBe("huawei_vrp");
       expect(updated.ssh_profile).toBe("huawei_legacy");

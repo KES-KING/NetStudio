@@ -440,6 +440,107 @@ h3 {
   color: var(--muted);
 }
 .toolbar-actions,
+/* Device workspace: bounded diagram, independent inspector, evidence-first facts. */
+.device-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 16px 0;
+  border: 1px solid var(--border);
+}
+.device-summary > div { padding: 14px 18px; min-width: 0; border-right: 1px solid var(--border); }
+.device-summary > div:last-child { border-right: 0; }
+.device-summary dd { font-size: 20px; font-weight: 600; margin: 6px 0; }
+.device-summary dd.status { display: block; width: fit-content; font-size: 16px; }
+.device-summary small { color: var(--muted); font-size: 11px; }
+.device-detail-sections { display: grid; gap: 18px; margin-top: 18px; min-width: 0; }
+.device-detail-sections > * { min-width: 0; }
+.device-detail-sections .panel-heading p { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+.device-ip-panel .topology-controls { background: var(--ui-soft); padding: 12px; border-bottom: 1px solid var(--border); }
+.device-ip-panel .topology-controls input, .device-ip-panel .topology-controls select { width: 100%; margin-top: 4px; }
+.device-ip-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 270px; }
+.device-ip-drawing { min-width: 0; }
+.device-ip-panel .device-topology-stage { margin: 0; border: 0; }
+.device-ip-panel .topology-chart, .device-ip-canvas { height: 340px; }
+.device-ip-canvas { display: block; width: 100%; overflow: hidden; touch-action: pan-y; user-select: none; }
+.device-ip-canvas.move-mode { touch-action: none; cursor: grab; }
+.device-ip-canvas:active { cursor: grabbing; }
+.device-ip-canvas pattern path { stroke: var(--ui-line); stroke-width: .7; }
+.device-ip-node { cursor: pointer; color: var(--accent); }
+.device-ip-node .node-hit { fill: var(--surface); stroke: var(--node-border, #b6bdc6); stroke-width: 1; }
+.device-ip-node text { fill: var(--text); pointer-events: none; }
+.device-ip-node .node-title { font-size: 12px; font-weight: 600; }
+.device-ip-node .node-kind { font-size: 10px; fill: var(--accent); }
+.device-ip-node .node-detail { font-size: 10px; fill: var(--muted); font-family: ui-monospace, monospace; }
+.device-ip-node.related .node-hit { stroke: var(--accent); stroke-dasharray: 4 2; }
+.device-ip-node.selected .node-hit, .device-ip-node:hover .node-hit, .device-ip-node:focus-visible .node-hit { fill: var(--selected, #dee7ed); stroke: var(--accent); stroke-width: 2; }
+.device-ip-edge { cursor: pointer; }
+.device-ip-edge .edge-line { fill: none; stroke: var(--accent); stroke-width: 1.8; vector-effect: non-scaling-stroke; }
+.device-ip-edge .edge-hit { fill: none; stroke: transparent; stroke-width: 18; vector-effect: non-scaling-stroke; }
+.device-ip-edge.l3 .edge-line { stroke-dasharray: 2 4; }
+.device-ip-edge.l2 .edge-line { stroke-dasharray: 6 4; }
+.device-ip-edge text { fill: var(--muted); font: 10px ui-monospace, monospace; paint-order: stroke; stroke: var(--ui-soft); stroke-width: 4px; stroke-linejoin: round; }
+.device-ip-edge.selected .edge-line, .device-ip-edge:hover .edge-line, .device-ip-edge:focus-visible .edge-line { stroke-width: 3; stroke: var(--text); }
+.device-ip-panel .device-topology-legend .l3::before { border-top-style: dotted; border-color: var(--accent); }
+.device-ip-panel .device-topology-legend .physical::before { border-color: var(--accent); }
+.device-ip-inspector { padding: 14px; border-left: 1px solid var(--border); font-size: 12px; min-width: 0; max-height: 460px; overflow: auto; overflow-wrap: anywhere; }
+.device-ip-inspector h3 { margin: 0 0 16px; font-size: 13px; }
+.device-ip-inspector h4 { margin: 14px 0 8px; font-size: 12px; }
+.device-ip-inspector p { margin: 8px 0; }
+.device-ip-inspector button { font-size: 11px; min-height: 34px; margin-top: 6px; text-align: left; max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
+.device-ip-relations { padding: 0; list-style: none; }
+.device-ip-relations button { width: 100%; }
+.device-facts { margin: 0; }
+.device-facts > div { display: grid; grid-template-columns: minmax(90px, .9fr) minmax(0, 1.2fr); gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--ui-line); }
+.device-facts dt, .device-facts dd { font-size: 12px; margin: 0; overflow-wrap: anywhere; }
+.device-fact-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.device-fact-columns > section { min-width: 0; padding: 16px; border-right: 1px solid var(--border); }
+.device-fact-columns > section:last-child { border-right: 0; }
+.device-fact-columns h3 { font-size: 13px; margin: 0 0 12px; }
+.device-fact-columns p, .device-alerts { font-size: 12px; }
+.device-alerts { padding-left: 18px; }
+.device-facts-panel .source-note, .device-ip-inspector .source-note { padding: 12px 0 0; }
+.device-health-evaluation { padding-top: 12px; }
+.device-components { border-top: 1px solid var(--border); padding: 12px 16px; font-size: 12px; }
+.device-components summary { cursor: pointer; font-weight: 600; }
+.device-components ul { padding-left: 18px; max-height: 220px; overflow: auto; overflow-wrap: anywhere; }
+.device-components li { padding: 6px 0; }
+.device-interfaces .panel-heading label { width: 250px; max-width: 100%; }
+.device-interfaces input { margin-top: 4px; width: 100%; }
+.device-interface-scroll { max-width: 100%; overflow-x: auto; }
+.device-interface-scroll table { width: 100%; font-size: 12px; border-collapse: collapse; }
+.device-interface-scroll th, .device-interface-scroll td { min-width: 105px; max-width: 240px; padding: 10px 12px; text-align: left; vertical-align: top; border-top: 1px solid var(--ui-line); overflow-wrap: anywhere; }
+.device-interface-scroll th:first-child { min-width: 145px; }
+.device-interface-scroll thead { background: var(--ui-soft); }
+.device-interface-scroll tbody th { font-weight: 500; }
+.device-interface-scroll small { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+.device-interface-scroll tbody tr:hover { background: var(--ui-soft); }
+.device-table-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border-top: 1px solid var(--border); font-size: 12px; }
+.device-table-pagination span { margin-right: auto; }
+.device-table-pagination button { min-height: 34px; font-size: 12px; }
+@media (max-width: 1150px) {
+  .device-fact-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .device-fact-columns > section:last-child { grid-column: 1 / -1; border-top: 1px solid var(--border); }
+  .device-ip-workspace { grid-template-columns: minmax(0, 1fr) 240px; }
+}
+@media (max-width: 850px) {
+  .device-ip-workspace { grid-template-columns: minmax(0, 1fr); }
+  .device-ip-inspector { border-left: 0; border-top: 1px solid var(--border); max-height: 300px; }
+  .device-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .device-summary > div:nth-child(2) { border-right: 0; }
+  .device-summary > div:nth-child(n+3) { border-top: 1px solid var(--border); }
+}
+@media (max-width: 540px) {
+  .device-summary > div { padding: 12px; }
+  .device-summary dd { font-size: 17px; }
+  .device-fact-columns { grid-template-columns: minmax(0, 1fr); }
+  .device-fact-columns > section { border-right: 0; border-top: 1px solid var(--border); }
+  .device-fact-columns > section:first-child { border-top: 0; }
+  .device-ip-panel .panel-heading, .device-interfaces .panel-heading { align-items: stretch; flex-direction: column; gap: 10px; }
+  .device-ip-panel .topology-controls { flex-direction: column; gap: 8px; }
+  .device-ip-panel .device-topology-camera { flex-wrap: wrap; padding: 8px; gap: 4px; }
+  .device-ip-panel .device-topology-camera button { font-size: 11px; padding: 6px 8px; }
+  .device-interfaces .panel-heading label { width: 100%; }
+}
 .small-actions {
   display: flex;
   flex-wrap: wrap;

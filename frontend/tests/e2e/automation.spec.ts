@@ -34,7 +34,7 @@ test("automatic key discovery, explicit trust and polling settings on desktop an
   await expect(dialog.getByRole("status")).toContainText("Host anahtarı onaylandı");
   await dialog.getByRole("button", { name: "Kapat", exact: true }).click();
   await page.getByRole("button", { name: "Bağlantıyı test et", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("İş: Tamamlandı", { timeout: 20000 });
+  await expect(page.getByRole("status").filter({ hasText: /^İş:/ })).toContainText("İş: Tamamlandı", { timeout: 20000 });
   await page.getByText("Toplama politikasını düzenle", { exact: true }).click();
   await expect(page.getByLabel("Portlar ve trafik (saniye)")).toBeVisible();
   await page.getByLabel("Portlar ve trafik (saniye)").fill("45");
