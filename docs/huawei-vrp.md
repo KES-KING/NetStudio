@@ -8,7 +8,7 @@
 4. Kimlik bilgilerini tamamlayın; **Anahtarı bul ve bağlantıyı hazırla** ile host anahtarını alın. SHA256 fingerprint'i bağımsız güvenilir kaynaktan karşılaştırıp bir kez onaylayın. Sırlar geri okunmaz; boş sır alanı mevcut kaydı korur. Otomatik ilk güven yoktur.
 5. **Bağlantıyı test et**, ardından **Veri topla** kullanın. İş sonucu ve son gözlem zamanını kontrol edin. **SSH** aynı cihaz profilini kullanır.
 
-Cihazın yetkili envanter kaydı kendi yönetim IP/SSH portunun onayıdır; cihaz başına `.env` düzenlenmez. İsteğe bağlı `STOCC_SSH_ALLOWED_CIDRS` doluysa ek kurulum sınırı olarak uygulanır. Loopback açık CIDR izni ister; link-local (metadata servisleri dahil), multicast ve belirsiz hedefler reddedilir. Tarayıcı terminal API'si serbest hedef kabul etmez. Bu değişiklik mevcut global CIDR sınırını veya cihazın bağımsız host güven kaydını silmez.
+Cihazın yetkili envanter kaydı kendi yönetim IP/SSH portunun onayıdır; cihaz başına `.env` düzenlenmez. İsteğe bağlı `NETSTUDIO_SSH_ALLOWED_CIDRS` doluysa ek kurulum sınırı olarak uygulanır. Loopback açık CIDR izni ister; link-local (metadata servisleri dahil), multicast ve belirsiz hedefler reddedilir. Tarayıcı terminal API'si serbest hedef kabul etmez. Bu değişiklik mevcut global CIDR sınırını veya cihazın bağımsız host güven kaydını silmez.
 
 ## Uyumluluk profili
 
@@ -54,10 +54,10 @@ FDB ile ARP yalnız aynı açık arayüzde veya FDB VLAN'ına karşılık gelen 
 
 ## Dağıtım ve doğrulama sınırı
 
-Eski SSH profilleri ve cihaz JSON kayıtları korunur. Yeni otomasyon için `0006_collection_automation` ek tabloları ve ayrı `collector-worker` gerekir; [geçiş adımlarını](collection-automation.md#geçiş-ve-geri-dönüş) inceleyin. Backend, frontend ve worker imajlarını birlikte build edin. Örneğin doğrulanmış mevcut Desktop kurulumu `stocc-netstudio-fresh` ise aynı repository içinde:
+Eski SSH profilleri ve cihaz JSON kayıtları korunur. Yeni otomasyon için `0006_collection_automation` ek tabloları ve ayrı `collector-worker` gerekir; [geçiş adımlarını](collection-automation.md#geçiş-ve-geri-dönüş) inceleyin. Backend, frontend ve worker imajlarını birlikte build edin. Aşağıdaki yeni adla verilen örnekte `netstudio-fresh` yerine kendi **mevcut proje adınızı** kullanın; ad geçişinde önce [volume bağlarını koruyun](name-transition.md):
 
 ```bash
-docker --context desktop-linux compose -p stocc-netstudio-fresh up --build -d --wait
+docker --context desktop-linux compose -p netstudio-fresh up --build -d --wait
 ```
 
 Kendi kurulumunuzun context/proje adını ve varsa TLS compose dosyalarını koruyun. Yeni kurulum/volume veya admin sıfırlaması gerekmez. `.env` ve şifreleme anahtarları değiştirilmez.

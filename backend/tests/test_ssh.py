@@ -169,9 +169,9 @@ def test_target_allowlist_concurrency_and_ticket_expiry(system, ssh_server, monk
         with client.websocket_connect(ticket["websocket_path"], headers={"origin": ORIGIN}): pass
     app.state.ssh.expire_pending()
     assert ticket["id"] not in app.state.ssh.sessions
-    monkeypatch.setenv("STOCC_SSH_ALLOWED_CIDRS", "")
+    monkeypatch.setenv("NETSTUDIO_SSH_ALLOWED_CIDRS", "")
     assert client.post(f"/api/v1/devices/{device['id']}/ssh-sessions").json()["detail"]["code"] == "target_network_denied"
-    monkeypatch.setenv("STOCC_SSH_ALLOWED_CIDRS", "127.0.0.1/32")
+    monkeypatch.setenv("NETSTUDIO_SSH_ALLOWED_CIDRS", "127.0.0.1/32")
     for _ in range(3): create_terminal(client, ssh_server)
     assert client.post(f"/api/v1/devices/{device['id']}/ssh-sessions").status_code == 429
 

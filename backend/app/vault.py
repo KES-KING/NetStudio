@@ -8,12 +8,13 @@ import sqlalchemy as sa
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from .security import SecretStoreError
+from .legacy_compat import decrypt_credential, keyring_path
 
 
 class CredentialVault:
     def __init__(self, store, key_file=None):
         self.store = store
-        self.key_file = key_file or os.getenv("STOCC_KEYRING_FILE", "/run/secrets/stocc-keyring.json")
+        self.key_file = keyring_path(key_file)
 
     def keyring(self):
         try:
@@ -28,7 +29,7 @@ class CredentialVault:
     def encode(self, device_id, credentials, protocol=None):
         key_id, keys = self.keyring()
         nonce = os.urandom(12)
-        purpose = f"stocc:{device_id}:{key_id}" + (f":{protocol}" if protocol else "")
+        purpose = f"netstudio:{device_id}:{key_id}" + (f":{protocol}" if protocol else "")
         ciphertext = AESGCM(keys[key_id]).encrypt(nonce, json.dumps(credentials).encode(), purpose.encode())
         return {"device_id": device_id, "key_id": key_id, "nonce": nonce, "ciphertext": ciphertext}
 
@@ -44,7 +45,7 @@ class CredentialVault:
             raise SecretStoreError("credentials_missing")
         try:
             _, keys = self.keyring()
-            raw = AESGCM(keys[row["key_id"]]).decrypt(row["nonce"], row["ciphertext"], f"stocc:{device_id}:{row['key_id']}".encode())
+            raw = decrypt_credential(keys[row["key_id"]], row["nonce"], row["ciphertext"], device_id, row["key_id"])
             return json.loads(raw)
         except SecretStoreError:
             raise
@@ -68,8 +69,7 @@ class CredentialVault:
             raise SecretStoreError("snmp_credentials_missing")
         try:
             _, keys = self.keyring()
-            raw = AESGCM(keys[row["key_id"]]).decrypt(
-                row["nonce"], row["ciphertext"], f"stocc:{device_id}:{row['key_id']}:{protocol}".encode())
+            raw = decrypt_credential(keys[row["key_id"]], row["nonce"], row["ciphertext"], device_id, row["key_id"], protocol)
             return json.loads(raw)
         except SecretStoreError:
             raise

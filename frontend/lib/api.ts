@@ -19,7 +19,7 @@ export function hasSessionToken() {
 }
 
 export function requireLogin(message: string) {
-  window.dispatchEvent(new CustomEvent("stocc-session-expired", { detail: { message } }));
+  window.dispatchEvent(new CustomEvent("netstudio-session-expired", { detail: { message } }));
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -37,7 +37,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
     if (response.status === 401 && !path.endsWith("/login"))
-      window.dispatchEvent(new Event("stocc-session-expired"));
+      window.dispatchEvent(new Event("netstudio-session-expired"));
     throw new ApiError(
       payload?.detail?.code ?? "api_unavailable",
       response.status,

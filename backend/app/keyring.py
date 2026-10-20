@@ -8,12 +8,14 @@ import secrets
 import tempfile
 from uuid import uuid4
 
+from .legacy_compat import keyring_path
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["initialize", "add-key"])
     args = parser.parse_args()
-    path = Path(os.getenv("STOCC_KEYRING_FILE", "/run/secrets/stocc-keyring.json"))
+    path = Path(keyring_path())
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         ring = json.loads(path.read_text())

@@ -1,9 +1,9 @@
-# Stocc Network Intelligence Engine (SNIE)
+# NetStudio Network Intelligence Engine (NNIE)
 ## Structured Intent, Capability, Approval, Execution, Verification & Rollback — Teknik Tasarım v1.0
 
 **Durum:** Önerilen hedef mimari / ADR taslağı  
 **Tarih:** 19 Ekim 2026  
-**Proje:** `KES-KING/stocc-netstudio`  
+**Proje:** `KES-KING/NetStudio`  
 **Kapsam:** Yerel LLM ile salt okunur ağ analizi ve **yalnızca insan onayından sonra** kontrollü konfigürasyon değişikliği.
 
 > **Normatif temel:** LLM, cihaza uygulanacak CLI/RPC metninin otoritesi değildir. Yalnızca sürümlenmiş Structured Intent şemasını üretir. Yetkilendirme, onay ve cihaz üzerinde işlem yürütme modelden ayrı çalışan deterministik servislere aittir. Tanımsız, doğrulanamayan veya rollback hazırlığı olmayan işlem varsayılan olarak reddedilir.
@@ -234,7 +234,7 @@ Gerçek plan; **derlenmiş uygulanabilir işlem artefaktının** (ör. komut/RPC
 | Admin | ✓ | ✓ | Politika kapsamında | **Doğrudan yazma yok** |
 | Executor Service | Dar teknik kapsam | — | — | Yalnızca mühürlü onaylı plan |
 
-`config.plan`, `config.approve`, `config.apply.request`, `config.rollback.request`, `config.backup.read_sensitive`, `device.credentials.manage`, `audit.read` izinlerini ayrı tut. Her izin `site_id`, `device_id`, `interface_id`, cihaz rolü, bakım penceresi ve operation scope ile daraltılır. Gerçek kimliği backend IdP/oturumundan al; demo `X-Stocc-User` başlığı prod yetkilendirme için kabul edilmez.
+`config.plan`, `config.approve`, `config.apply.request`, `config.rollback.request`, `config.backup.read_sensitive`, `device.credentials.manage`, `audit.read` izinlerini ayrı tut. Her izin `site_id`, `device_id`, `interface_id`, cihaz rolü, bakım penceresi ve operation scope ile daraltılır. Gerçek kimliği backend IdP/oturumundan al; demo `X-NetStudio-User` başlığı prod yetkilendirme için kabul edilmez.
 
 ### 6.2. Risk seviyesi
 
@@ -498,15 +498,15 @@ Her sprintin çıktısı test edildiği platform ve operasyonla sınırlı olara
 
 ## 18. Mimari karar kayıtları (ADR)
 
-- **ADR-SNIE-001:** Structured Intent; LLM yalnızca allowlist niyet üretebilir.
-- **ADR-SNIE-002:** Yazma yetkisi sadece deterministic Change Executor'da.
-- **ADR-SNIE-003:** Capability unknown/default → deny; platform/OS kanıtı gerekli.
-- **ADR-SNIE-004:** Immutable plan hash + artifact binding + separation of duties.
-- **ADR-SNIE-005:** Apply öncesi fresh baseline / backup / precheck; drift → block.
-- **ADR-SNIE-006:** Native transactional/confirmed rollback preferred; aksi halde risk bazlı deny.
-- **ADR-SNIE-007:** Verify ve commit iki ayrı aşama; inconclusive → finalization yok.
-- **ADR-SNIE-008:** Single-device first; multi-device eventual saga/compensation.
-- **ADR-SNIE-009:** LLM, interactive SSH ve write service credential ayrımı.
+- **ADR-NNIE-001:** Structured Intent; LLM yalnızca allowlist niyet üretebilir.
+- **ADR-NNIE-002:** Yazma yetkisi sadece deterministic Change Executor'da.
+- **ADR-NNIE-003:** Capability unknown/default → deny; platform/OS kanıtı gerekli.
+- **ADR-NNIE-004:** Immutable plan hash + artifact binding + separation of duties.
+- **ADR-NNIE-005:** Apply öncesi fresh baseline / backup / precheck; drift → block.
+- **ADR-NNIE-006:** Native transactional/confirmed rollback preferred; aksi halde risk bazlı deny.
+- **ADR-NNIE-007:** Verify ve commit iki ayrı aşama; inconclusive → finalization yok.
+- **ADR-NNIE-008:** Single-device first; multi-device eventual saga/compensation.
+- **ADR-NNIE-009:** LLM, interactive SSH ve write service credential ayrımı.
 
 ## 19. Dış teknik referanslar
 
@@ -520,4 +520,4 @@ Her sprintin çıktısı test edildiği platform ve operasyonla sınırlı olara
 
 ---
 
-**Sonuç:** SNIE, "AI tarafından üretilmiş komutları çalıştıran terminal" değil, **kanıtlı capability + deterministik plan + risk politikası + tam plan onayı + kontrollü execution + doğrulanabilir rollback** üzerine kurulu bir ağ operasyonu kontrol düzlemi olacaktır.
+**Sonuç:** NNIE, "AI tarafından üretilmiş komutları çalıştıran terminal" değil, **kanıtlı capability + deterministik plan + risk politikası + tam plan onayı + kontrollü execution + doğrulanabilir rollback** üzerine kurulu bir ağ operasyonu kontrol düzlemi olacaktır.

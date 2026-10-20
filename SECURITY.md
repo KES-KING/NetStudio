@@ -3,7 +3,7 @@
 ## Özel bildirim
 
 Güvenlik açıklarını public issue veya pull request içinde paylaşmayın.
-[Özel güvenlik bildirimi](https://github.com/KES-KING/stocc-netstudio/security/advisories/new) kullanın.
+[Özel güvenlik bildirimi](https://github.com/KES-KING/NetStudio/security/advisories/new) kullanın.
 Etkilenen commit/sürümü, ön koşulları, beklenen etkiyi ve kendi izole ortamınızda tekrar üretim adımlarını belirtin.
 Parola, özel anahtar, oturum cookie'si, gerçek cihaz verisi veya ham terminal kaydı göndermeyin.
 
@@ -18,7 +18,7 @@ Cihaz sırları, şifreleme anahtarları, kullanıcı oturumları ve site bazlı
 - Cihaz erişimi ve terminal açma yetkisi backend'de doğrulanmalıdır.
 - HTTP mutasyonları ve WebSocket bağlantıları oturum/origin denetimlerini korumalıdır.
 - SSH hedefi yalnız yetkili kullanıcı tarafından eklenmiş cihazın güncel yönetim IP/port kaydından gelmelidir. Cihaz ekleme bu hedefin bağlantı onayıdır; tarayıcıdan serbest hedef kabul edilmez.
-- `STOCC_SSH_ALLOWED_CIDRS` isteğe bağlı kurulum geneli ek kısıttır: boşsa kayıtlı hedefler kabul edilir; doluysa bu sınır da uygulanır. Geçersiz kısıt güvenli biçimde reddedilmelidir. Geçersiz, multicast ve link-local hedefler reddedilir; loopback hedefler yalnız açık CIDR izniyle kabul edilir.
+- `NETSTUDIO_SSH_ALLOWED_CIDRS` isteğe bağlı kurulum geneli ek kısıttır: boşsa kayıtlı hedefler kabul edilir; doluysa bu sınır da uygulanır. Geçersiz kısıt güvenli biçimde reddedilmelidir. Geçersiz, multicast ve link-local hedefler reddedilir; loopback hedefler yalnız açık CIDR izniyle kabul edilir.
 - SSH host anahtarı bağımsız doğrulanıp kaydedilmelidir; ilk bağlantıda otomatik güven veya anahtar değişiminde sessiz kabul yapılmaz.
 - Eski SSH algoritmaları varsayılan olarak açılmaz. Cihaz bazlı açık izin audit edilir; otomatik profil yalnız bu izin kapsamında en fazla dört el sıkışması/30 saniye deneyebilir. Yanlış parola, host key değişimi veya yetki hatası algoritma deneme gerekçesi değildir. Uyumluluk seçimi host key, oturum veya rol/site kontrolünü kaldırmaz.
 - Host key keşfi kimlik bilgisi göndermez; keşif güven onayı değildir. Tek kullanımlık, 10 dakika geçerli aday kullanıcıya/cihaza/bağlantı sürümüne bağlanır. Değiştirme açık kullanıcı onayı gerektirir.

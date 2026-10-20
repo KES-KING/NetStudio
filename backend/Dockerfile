@@ -1,7 +1,7 @@
 FROM python:3.12-slim-bookworm AS runtime
-ARG STOCC_BUILD_REVISION=unknown
-ENV STOCC_BUILD_REVISION=${STOCC_BUILD_REVISION}
-LABEL org.opencontainers.image.revision=${STOCC_BUILD_REVISION}
+ARG NETSTUDIO_BUILD_REVISION=unknown
+ENV NETSTUDIO_BUILD_REVISION=${NETSTUDIO_BUILD_REVISION}
+LABEL org.opencontainers.image.revision=${NETSTUDIO_BUILD_REVISION}
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -9,8 +9,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:${PATH}"
 
 RUN python -m venv /opt/venv \
-    && addgroup --system --gid 101 stocc \
-    && adduser --system --uid 100 --ingroup stocc --home /app stocc
+    && addgroup --system --gid 101 netstudio \
+    && adduser --system --uid 100 --ingroup netstudio --home /app netstudio
 
 WORKDIR /app
 
@@ -19,10 +19,10 @@ COPY backend/pyproject.toml /app/backend/pyproject.toml
 COPY backend/app /app/backend/app
 RUN pip install --no-cache-dir /app/backend
 
-COPY --chown=stocc:stocc backend/alembic.ini /app/backend/alembic.ini
-COPY --chown=stocc:stocc backend/migrations /app/backend/migrations
+COPY --chown=netstudio:netstudio backend/alembic.ini /app/backend/alembic.ini
+COPY --chown=netstudio:netstudio backend/migrations /app/backend/migrations
 
-USER stocc
+USER netstudio
 
 EXPOSE 8000
 

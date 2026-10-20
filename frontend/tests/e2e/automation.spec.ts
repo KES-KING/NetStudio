@@ -3,7 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-test.skip(!process.env.STOCC_QA, "Requires the isolated QA application.");
+test.skip(!process.env.NETSTUDIO_QA, "Requires the isolated QA application.");
 
 test("automatic key discovery, explicit trust and polling settings on desktop and mobile", async ({ page }) => {
   const errors: string[] = [];
@@ -20,14 +20,14 @@ test("automatic key discovery, explicit trust and polling settings on desktop an
   await dialog.getByRole("button", { name: "Anahtarı bul ve bağlantıyı hazırla" }).click();
   await expect(dialog.getByText(/^Bulunan: SHA256:/)).toBeVisible({ timeout: 20000 });
   const found = (await dialog.getByText(/^Bulunan: SHA256:/).innerText()).replace("Bulunan: ", "");
-  const trustedLab = await (await page.request.get(process.env.STOCC_QA_SSH_KEY_URL ?? "http://127.0.0.1:12223")).json();
+  const trustedLab = await (await page.request.get(process.env.NETSTUDIO_QA_SSH_KEY_URL ?? "http://127.0.0.1:12223")).json();
   expect(found).toBe(trustedLab.fingerprint);
   await expect(dialog.getByText(/^Önceki: SHA256:/)).toBeVisible();
   const checkbox = dialog.getByRole("checkbox", { name: /Fingerprint’i güvenilir kaynaktan doğruladım/ });
   await dialog.getByRole("button", { name: "Anahtarı onayla", exact: true }).click();
   await expect(checkbox).toBeFocused();
   await checkbox.check();
-  const evidence = join(tmpdir(), "stocc-netstudio-automation");
+  const evidence = join(tmpdir(), "netstudio-automation");
   await mkdir(evidence, { recursive: true });
   await page.screenshot({ path: join(evidence, "key-approval-desktop.png"), fullPage: true });
   await dialog.getByRole("button", { name: "Anahtarı onayla", exact: true }).click();
@@ -83,7 +83,7 @@ test("independent worker continues scheduled reads after the browser is closed",
   } });
   expect(created.status()).toBe(201);
   const device = await created.json(), base = `/api/v1/devices/${device.id}`;
-  const keyUrl = process.env.STOCC_QA_SSH_KEY_URL ?? "http://127.0.0.1:12223";
+  const keyUrl = process.env.NETSTUDIO_QA_SSH_KEY_URL ?? "http://127.0.0.1:12223";
   expect(new URL(keyUrl).hostname).toBe("127.0.0.1");
   const knownKey = await (await page.request.get(keyUrl)).json();
   expect((await page.request.put(base + "/host-key", { headers, data: knownKey })).status()).toBe(200);

@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from ipaddress import ip_address, ip_network
 import json
-import os
 import time
 from uuid import uuid4
 
@@ -12,6 +11,7 @@ import asyncssh
 from fastapi import HTTPException, WebSocketDisconnect
 import sqlalchemy as sa
 
+from .legacy_compat import getenv
 from .auth import COOKIE, fail
 from .security import Permission, SecretStoreError, has_permission
 from .ssh_profiles import attempt_profiles, options_for, target_signature
@@ -37,7 +37,7 @@ def target_allowed(store, device):
     if address.is_unspecified or address.is_multicast or address.is_link_local or "%" in device.management_address:
         raise ConnectionPolicyError("invalid_management_address")
     try:
-        networks = [ip_network(s.strip()) for s in os.getenv("STOCC_SSH_ALLOWED_CIDRS", "").split(",") if s.strip()]
+        networks = [ip_network(s.strip()) for s in getenv("NETSTUDIO_SSH_ALLOWED_CIDRS", "").split(",") if s.strip()]
     except ValueError:
         raise ConnectionPolicyError("invalid_target_network_policy") from None
     # Optional installation-wide ceiling; loopback always requires explicit opt-in.
@@ -205,8 +205,8 @@ class SSHBroker:
     def __init__(self, store, vault, auth):
         self.store, self.vault, self.auth = store, vault, auth
         self.sessions = {}
-        self.max_seconds = int(os.getenv("STOCC_SSH_MAX_SECONDS", "3600"))
-        self.idle_seconds = int(os.getenv("STOCC_SSH_IDLE_SECONDS", "300"))
+        self.max_seconds = int(getenv("NETSTUDIO_SSH_MAX_SECONDS", "3600"))
+        self.idle_seconds = int(getenv("NETSTUDIO_SSH_IDLE_SECONDS", "300"))
 
     def create(self, context, device):
         self.expire_pending()

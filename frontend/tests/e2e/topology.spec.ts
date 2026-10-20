@@ -5,9 +5,9 @@ import { join } from "node:path";
 import { GRAPH_DEVICE_LIMIT } from "../../lib/topology";
 
 test.describe.configure({ mode: "serial" });
-test.skip(!process.env.STOCC_QA, "Only run against an isolated, explicitly seeded QA project.");
+test.skip(!process.env.NETSTUDIO_QA, "Only run against an isolated, explicitly seeded QA project.");
 const origin = process.env.PLAYWRIGHT_BASE_URL!;
-const evidence = join(tmpdir(), "stocc-netstudio-topology");
+const evidence = join(tmpdir(), "netstudio-topology");
 const username = `qa-topology-${Date.now()}`, password = "qa-topology-test-password-123";
 let userId = "", csrf = "", coreId = "", edgeId = "", deviceCount = 0;
 

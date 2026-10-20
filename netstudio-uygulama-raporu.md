@@ -1,10 +1,10 @@
-# Stocc NetStudio
+# NetStudio
 ## Teknik Mimari ve Uygulama Raporu
 
 | Belge alanı | Değer |
 |---|---|
-| Ürün | **Stocc NetStudio** |
-| Depo adı önerisi | `stocc-netstudio` |
+| Ürün | **NetStudio** |
+| Depo adı önerisi | `netstudio` |
 | Belge sürümü | `1.0.0 — geliştirme başlangıç tasarımı` |
 | Tarih | 26 Eylül 2026 |
 | Hedef kullanıcı | Ağ yöneticisi, sistem yöneticisi, operasyon ekibi |
@@ -14,7 +14,7 @@
 
 > **Kapsam notu:** Bu belge çalışan bir uygulama, cihaz üzerinde test edilmiş sürücü veya tamamlanmış kaynak kod teslimi değildir. Geliştirme ekibinin uygulayacağı teknik plandır. Gerçek cihaz modelleri, işletim sistemi sürümleri ve cihaz adedi henüz verilmediğinden destek ve kapasite başlıkları açıkça belirtilmiş başlangıç varsayımlarına dayanır. Örnek IP adresleri, cihazlar, sayılar ve ekran içerikleri temsildir.
 
-> **Ürün kararı:** Stocc NetStudio kendi arayüzüne, API'sine, envanterine, toplama süreçlerine, yedekleme sistemine ve değişiklik iş akışına sahip olacaktır. LibreNMS, Netdisco veya Oxidized kurulumu zorunlu değildir. SSH, SNMP, grafik çizimi ve veri saklama gibi temel işler için mevcut açık kaynak bileşenlerden yararlanılır. Başka bir ürünün bulutuna veya OpenSentra kurulumuna bağımlılık oluşturulmaz.
+> **Ürün kararı:** NetStudio kendi arayüzüne, API'sine, envanterine, toplama süreçlerine, yedekleme sistemine ve değişiklik iş akışına sahip olacaktır. LibreNMS, Netdisco veya Oxidized kurulumu zorunlu değildir. SSH, SNMP, grafik çizimi ve veri saklama gibi temel işler için mevcut açık kaynak bileşenlerden yararlanılır. Başka bir ürünün bulutuna veya OpenSentra kurulumuna bağımlılık oluşturulmaz.
 
 ---
 
@@ -55,7 +55,7 @@
 
 ### 1.1 Amaç
 
-Stocc NetStudio, ağ cihazlarının günlük yönetimini tek bir web arayüzünde birleştirecektir:
+NetStudio, ağ cihazlarının günlük yönetimini tek bir web arayüzünde birleştirecektir:
 
 - **Gör:** Cihazları, bağlantıları, switch ön panelini, port durumlarını ve zaman serisi grafiklerini incele.
 - **Yönet:** Yetkili kullanıcıların cihaz ayarlarını doğrulanabilir bir değişiklik planı üzerinden uygulamasını sağla.
@@ -157,7 +157,7 @@ Firmware yükseltme, otomatik fabrika ayarına döndürme, genel amaçlı web SS
 | Giriş katmanı | Nginx veya Caddy; tek seçimle standardizasyon | HTTPS, aynı origin `/api`, SSE geçişi |
 | Test | pytest, Vitest, Playwright | Sürücü, alan modeli, API ve görsel/etkileşim testleri |
 
-Bileşenlerin bu rapordaki rolleri tasarım tercihidir. Netmiko platform listesi farklı Cisco ailelerini ayrı ele alır; PySNMP SNMP ve asenkron I/O sağlar; NTC Templates CLI çıktısı ayrıştırmaya yöneliktir. Bunların varlığı Stocc NetStudio'nun ilgili cihazı doğruladığı anlamına gelmez. [S01], [S02][S03]
+Bileşenlerin bu rapordaki rolleri tasarım tercihidir. Netmiko platform listesi farklı Cisco ailelerini ayrı ele alır; PySNMP SNMP ve asenkron I/O sağlar; NTC Templates CLI çıktısı ayrıştırmaya yöneliktir. Bunların varlığı NetStudio'nun ilgili cihazı doğruladığı anlamına gelmez. [S01], [S02][S03]
 
 React Flow ile ELK.js birlikte kullanılabilir. Topoloji yerleşimi ve çizimi ayrı sorumluluklardır. ECharts zaman serisi ekranları için önerilmiştir. [S04], [S06]
 
@@ -422,12 +422,12 @@ Collector, süreklilik denetiminden geçmiş hız/gauge değerlerini zaman seris
 Örnek metrikler:
 
 ```text
-stocc_interface_rx_bits_per_second{device_id="dev-lab-01",interface_id="if-01"}
-stocc_interface_tx_bits_per_second{device_id="dev-lab-01",interface_id="if-01"}
-stocc_interface_rx_errors_per_second{device_id="dev-lab-01",interface_id="if-01"}
-stocc_interface_tx_errors_per_second{device_id="dev-lab-01",interface_id="if-01"}
-stocc_interface_poe_power_watts{device_id="dev-lab-01",interface_id="if-01"}
-stocc_device_cpu_usage_percent{device_id="dev-lab-01"}
+netstudio_interface_rx_bits_per_second{device_id="dev-lab-01",interface_id="if-01"}
+netstudio_interface_tx_bits_per_second{device_id="dev-lab-01",interface_id="if-01"}
+netstudio_interface_rx_errors_per_second{device_id="dev-lab-01",interface_id="if-01"}
+netstudio_interface_tx_errors_per_second{device_id="dev-lab-01",interface_id="if-01"}
+netstudio_interface_poe_power_watts{device_id="dev-lab-01",interface_id="if-01"}
+netstudio_device_cpu_usage_percent{device_id="dev-lab-01"}
 ```
 
 Metric label'larına parola, interface description, MAC listesi, config metni veya serbest kullanıcı girdisi konulmaz. Etiketler kararlı ID'lerle sınırlandırılır. Zaman damgalı gönderim ve query-range API'si için VictoriaMetrics'in belgelenmiş arayüzleri kullanılır. [S12]
@@ -624,7 +624,7 @@ Toplu port seçimi P1'dir. Çoklu seçimde yapılabilecek ortak işlemler ve her
 ### 8.6 Şematik ekran taslağı
 
 ```text
-Stocc NetStudio / Cihazlar / SW-ACCESS-A
+NetStudio / Cihazlar / SW-ACCESS-A
 Model: Pilot cihaz    Yönetim: 192.0.2.10    Son veri: 12 sn önce
 Görünüm: Şematik      Yazma: Kapalı        24 veri portu + 4 uplink
 
@@ -1195,7 +1195,7 @@ Topoloji tüm cihaz/port detayını node içine gömmez. Derin detay popup'a ta�
 
 ### 17.1 Tehdit sınırı
 
-Stocc NetStudio ağ cihazlarına yüksek yetkili erişim tutabilir. Uygulama ele geçirilirse yönetim ağı risk altına girebilir. Güvenlik, yalnızca giriş ekranına parola eklemek değildir: secret saklama, scope kontrolü, cihaz hedef doğrulaması, komut sınırlandırma, kayıt güvenliği ve uygulama izolasyonu birlikte ele alınır.
+NetStudio ağ cihazlarına yüksek yetkili erişim tutabilir. Uygulama ele geçirilirse yönetim ağı risk altına girebilir. Güvenlik, yalnızca giriş ekranına parola eklemek değildir: secret saklama, scope kontrolü, cihaz hedef doğrulaması, komut sınırlandırma, kayıt güvenliği ve uygulama izolasyonu birlikte ele alınır.
 
 ### 17.2 Rol ve izin modeli
 
@@ -1337,7 +1337,7 @@ Container'lar root olmayan kullanıcıyla, gereksiz capability'ler kaldırılmı
 
 ```toml
 [application]
-name = "Stocc NetStudio"
+name = "NetStudio"
 mode = "production"
 default_timezone = "Europe/Istanbul"
 
@@ -1461,12 +1461,12 @@ Uzak site collector'ı P1/P2'de mTLS, kayıt/onay akışı, çevrimdışı buffe
 ### 21.1 Önerilen monorepo
 
 ```text
-stocc-netstudio/
+netstudio/
 ├── README.md
 ├── SECURITY.md
 ├── LICENSE                         # Lisans kararı sonrasında
 ├── docs/
-│   ├── stocc-netstudio-uygulama-raporu.md
+│   ├── netstudio-uygulama-raporu.md
 │   ├── architecture/
 │   ├── adr/
 │   ├── device-support-matrix.md
@@ -1769,7 +1769,7 @@ Bir özellik ancak kod, tip/sözleşme testleri, hata senaryoları, yetki kontro
 | Anahtarın kaybı | Şifreli yedeklerin kullanılamaması | Ayrı kurtarma materyali ve restore tatbikatı |
 | Lisans/marka/model çizimi koşulları | Dağıtım kısıtları olabilir | Lisans kararı, SBOM ve özgün/izinli model şablonları |
 
-Ürün adı **Stocc NetStudio** olarak kararlaştırılmıştır. Marka/alan adı uygunluğu bu teknik raporun kapsamında doğrulanmamıştır. Cisco model görselleri yerine ilk aşamada özgün şematik SVG kullanılması önerilir; gerçek ürün görünümü iddiası yalnız doğrulanmış şablona dayanır.
+Ürün adı **NetStudio** olarak kararlaştırılmıştır. Marka/alan adı uygunluğu bu teknik raporun kapsamında doğrulanmamıştır. Cisco model görselleri yerine ilk aşamada özgün şematik SVG kullanılması önerilir; gerçek ürün görünümü iddiası yalnız doğrulanmış şablona dayanır.
 
 Açık kararlar geliştirmeyi bütünüyle durdurmaz: model bilinmediğinde demo ve salt okunur adaptör geliştirilir; ancak gerçek cihaz desteği ve üretim yazma yetkisi kanıt olmadan açılmaz. Lisans seçimi ve gerçek envanter testleri dağıtım kapısıdır.
 
@@ -1780,7 +1780,7 @@ Açık kararlar geliştirmeyi bütünüyle durdurmaz: model bilinmediğinde demo
 Aşağıdaki bölüm doğrudan geliştirme aracına veya ekibe başlangıç görev metni olarak verilebilir. Tek çalışmada bütün platformu bitirmiş gibi üretim etiketi basmak yerine aşamalı ve testli dikey dilimler hedeflenir.
 
 ```text
-PROJE: Stocc NetStudio
+PROJE: NetStudio
 
 Bu repoda bağımsız bir ağ cihazı izleme, görsel port yönetimi,
 konfigürasyon planlama ve yedekleme uygulaması geliştir.
@@ -1834,7 +1834,7 @@ HER TESLİMDE RAPORLA:
 
 ## 26. Teknik kaynaklar
 
-Kaynaklar 26 Eylül 2026 tarihinde incelenen birincil teknik dokümanlardır. Kaynakta yazan protokol/kütüphane davranışı ile bu raporun mimari tercihleri aynı şey değildir. Performans rakamları, polling süreleri, kapasite hedefleri, ürün modülleri ve sprint kapsamları Stocc NetStudio için önerilen tasarım değerleridir.
+Kaynaklar 26 Eylül 2026 tarihinde incelenen birincil teknik dokümanlardır. Kaynakta yazan protokol/kütüphane davranışı ile bu raporun mimari tercihleri aynı şey değildir. Performans rakamları, polling süreleri, kapasite hedefleri, ürün modülleri ve sprint kapsamları NetStudio için önerilen tasarım değerleridir.
 
 | Ref. | Kaynak | Raporda kullanıldığı konu |
 |---|---|---|
@@ -1878,4 +1878,4 @@ Kaynaklar 26 Eylül 2026 tarihinde incelenen birincil teknik dokümanlardır. Ka
 
 ---
 
-**Hedef ürün tanımı:** Stocc NetStudio; ağ cihazlarını gözlemleyen, fiziksel portlarını doğru kimlikle görselleştiren, konfigürasyonlarını yedekleyen ve yalnızca doğrulanmış değişiklikleri kontrollü biçimde uygulayan bağımsız bir yönetim platformudur.
+**Hedef ürün tanımı:** NetStudio; ağ cihazlarını gözlemleyen, fiziksel portlarını doğru kimlikle görselleştiren, konfigürasyonlarını yedekleyen ve yalnızca doğrulanmış değişiklikleri kontrollü biçimde uygulayan bağımsız bir yönetim platformudur.

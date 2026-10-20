@@ -2,18 +2,18 @@
 services:
   api:
     environment:
-      STOCC_ENV: production
-      STOCC_ALLOWED_ORIGINS: ${STOCC_ALLOWED_ORIGINS:?Set an exact https origin}
+      NETSTUDIO_ENV: production
+      NETSTUDIO_ALLOWED_ORIGINS: ${NETSTUDIO_ALLOWED_ORIGINS:?Set an exact https origin}
     ports: !reset []
   collector-worker:
     environment:
-      STOCC_ENV: production
-      STOCC_ALLOWED_ORIGINS: ${STOCC_ALLOWED_ORIGINS:?Set an exact https origin}
+      NETSTUDIO_ENV: production
+      NETSTUDIO_ALLOWED_ORIGINS: ${NETSTUDIO_ALLOWED_ORIGINS:?Set an exact https origin}
   postgres:
     ports: !reset []
   gateway:
     volumes:
       - ./deploy/nginx.tls.conf:/etc/nginx/nginx.conf:ro
-      - ${STOCC_TLS_DIRECTORY:?Provide certificate directory}:/run/tls:ro
+      - ${NETSTUDIO_TLS_DIRECTORY:?Provide certificate directory}:/run/tls:ro
     ports: !override
       - "${TLS_BIND_ADDRESS:-127.0.0.1}:${TLS_PORT:-8443}:8443"

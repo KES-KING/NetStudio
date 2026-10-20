@@ -245,8 +245,8 @@ class HostUpdater:
             if not dockerfile.resolve().is_relative_to(source) or not dockerfile.is_file():
                 raise UpdateFailure("invalid_release_layout")
             name = "api" if component == "backend" else "web"
-            self.command([*self.docker, "build", "--build-arg", f"STOCC_BUILD_REVISION={revision}",
-                "--tag", f"stocc-netstudio-{name}:update-{revision}", "--file", str(dockerfile), str(source)], timeout=3600)
+            self.command([*self.docker, "build", "--build-arg", f"NETSTUDIO_BUILD_REVISION={revision}",
+                "--tag", f"netstudio-{name}:update-{revision}", "--file", str(dockerfile), str(source)], timeout=3600)
         return directory
 
     def wait_quiet(self):
@@ -280,7 +280,7 @@ class HostUpdater:
         for name, args in (
             ("database.dump", [*self.docker, "exec", containers["postgres"]["Id"], "pg_dump", "-U", self.pg_user, "-d", self.pg_database, "--format=custom"]),
             ("keyring.json", [*self.docker, "exec", containers["api"]["Id"], "python", "-c",
-                "import sys; sys.stdout.buffer.write(open('/run/secrets/stocc-keyring.json','rb').read())"]),
+                "import sys; from app.legacy_compat import keyring_path; sys.stdout.buffer.write(open(keyring_path(),'rb').read())"]),
         ):
             path = directory / name
             with open(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as output:
@@ -333,7 +333,7 @@ class HostUpdater:
             fingerprint = self.compose_fingerprint()
             directory = self.stage(run, installed)
             old = self.override(directory, "previous-compose.json", {key: containers[key]["Image"] for key in ("api", "web", "collector-worker")})
-            images = {service: f"stocc-netstudio-{'web' if service == 'web' else 'api'}:update-{run['revision']}"
+            images = {service: f"netstudio-{'web' if service == 'web' else 'api'}:update-{run['revision']}"
                 for service in ("api", "collector-worker", "web", "migrate")}
             candidate = self.override(directory, "candidate-compose.json", images)
             self.phase(run, "draining")

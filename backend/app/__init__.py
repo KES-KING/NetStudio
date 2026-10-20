@@ -1,2 +1,2 @@
-"""Stocc NetStudio API package."""
+"""NetStudio API package."""
 

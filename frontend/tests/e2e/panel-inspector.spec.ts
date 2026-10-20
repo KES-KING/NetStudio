@@ -3,12 +3,12 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-test.skip(!process.env.STOCC_QA, "Requires an isolated seeded QA project.");
-const evidence = join(tmpdir(), "stocc-netstudio-panel");
+test.skip(!process.env.NETSTUDIO_QA, "Requires an isolated seeded QA project.");
+const evidence = join(tmpdir(), "netstudio-panel");
 
 async function login(page: Page) {
   await page.goto("/");
-  await expect(page).toHaveTitle("Stocc NetStudio");
+  await expect(page).toHaveTitle("NetStudio");
   await page.getByLabel("Kullanıcı adı", { exact: true }).fill("qa-admin");
   await page.getByLabel("Parola", { exact: true }).fill("test-only-password-1234");
   await page.getByRole("button", { name: "Giriş yap", exact: true }).click();

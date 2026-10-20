@@ -153,7 +153,7 @@ docker compose up -d api web collector-worker
 docker compose stop collector-worker
 ```
 
-API içinde worker varsayılan olarak çalışmaz. `STOCC_EMBEDDED_WORKER=1`
+API içinde worker varsayılan olarak çalışmaz. `NETSTUDIO_EMBEDDED_WORKER=1`
 yalnız açık geliştirme/izole test seçeneğidir. Backend testleri zamanlayıcıyı
 devre dışı bırakarak manuel iş semantiğini deterministik çalıştırır.
 Eski API'nin yalnız bellekte tuttuğu geçiş öncesi işlerde yeniden manuel tetikleme

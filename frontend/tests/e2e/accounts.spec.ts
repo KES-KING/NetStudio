@@ -4,11 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 test.describe.configure({ mode: "serial" });
-test.skip(!process.env.STOCC_QA, "Requires the isolated QA deployment, never production.");
+test.skip(!process.env.NETSTUDIO_QA, "Requires the isolated QA deployment, never production.");
 const origin = process.env.PLAYWRIGHT_BASE_URL!;
 const password = "qa-users-test-password-123";
 const prefix = `qa-users-${Date.now()}`;
-const evidence = join(tmpdir(), "stocc-netstudio-accounts");
+const evidence = join(tmpdir(), "netstudio-accounts");
 const created: { id: string; username: string }[] = [];
 const names = { superadmin: `${prefix}-admin`, engineer: `${prefix}-engineer`, viewer: `${prefix}-viewer` };
 
@@ -27,7 +27,7 @@ test.beforeAll(async ({ request }) => {
   // The disposable SSH container can rotate its key during an image rebuild.
   // Trust only the independently supplied key of this exact isolated fixture.
   const core = devices.find((device: { name: string }) => device.name === "QA-Core-01");
-  const keyUrl = process.env.STOCC_QA_SSH_KEY_URL;
+  const keyUrl = process.env.NETSTUDIO_QA_SSH_KEY_URL;
   if (keyUrl) {
     expect(new URL(keyUrl).hostname).toBe("127.0.0.1");
     const trustedLab = await (await request.get(keyUrl)).json();
@@ -59,7 +59,7 @@ test.afterAll(async ({ request }) => {
 
 async function login(page: Page, username: string, secret = password) {
   await page.goto("/");
-  await expect(page).toHaveTitle("Stocc NetStudio");
+  await expect(page).toHaveTitle("NetStudio");
   await page.getByLabel("Kullanıcı adı", { exact: true }).fill(username);
   await page.getByLabel("Parola", { exact: true }).fill(secret);
   await page.getByRole("button", { name: "Giriş yap", exact: true }).click();
@@ -76,7 +76,7 @@ function observeErrors(page: Page) {
   return errors;
 }
 async function healthy(page: Page, width: number) {
-  await expect(page).toHaveTitle("Stocc NetStudio");
+  await expect(page).toHaveTitle("NetStudio");
   await expect(page.locator("nextjs-portal")).toHaveCount(0);
   expect(await page.locator("main").innerText()).not.toBe("");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
@@ -201,12 +201,19 @@ test("superadmin role change revokes an engineer's live SSH connection", async (
   await page.setViewportSize({ width: 1536, height: 1080 });
   await login(page, names.engineer);
   await page.getByRole("link", { name: "QA-Core-01", exact: true }).click();
+  const opened = page.waitForEvent("websocket", { predicate: (socket) => /\/ssh-sessions\/[^/]+\/ws/.test(socket.url()) });
   await page.getByRole("button", { name: "SSH", exact: true }).click();
+  const terminal = await opened;
   await expect(page.getByText("Bağlandı", { exact: true })).toBeVisible({ timeout: 20000 });
+  expect(terminal.isClosed()).toBe(false);
   const headers = await admin(request);
   const engineer = created.find((user) => user.username === names.engineer)!;
   expect((await request.patch(`/api/v1/users/${engineer.id}`, { headers, data: { role: "viewer" } })).status()).toBe(200);
-  await expect(page.getByText("Oturum veya yetki geçersiz", { exact: true })).toBeVisible({ timeout: 5000 });
+  // Notification SSE may revoke the page before the terminal's transient message.
+  // Assert the security outcome, regardless of which revocation channel wins.
+  await expect.poll(() => terminal.isClosed(), { timeout: 5000 }).toBe(true);
+  await expect(page.getByText("Oturum veya yetki geçersiz", { exact: true })
+    .or(page.getByRole("heading", { name: "Yönetim oturumu", exact: true }))).toBeVisible({ timeout: 5000 });
   expect((await page.request.get(`${origin}/api/v1/session/me`)).status()).toBe(401);
   await page.reload();
   await expect(page.getByRole("heading", { name: "Yönetim oturumu", exact: true })).toBeVisible();

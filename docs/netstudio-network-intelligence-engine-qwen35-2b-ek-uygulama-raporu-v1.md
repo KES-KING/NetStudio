@@ -1,25 +1,25 @@
-# Stocc Network Intelligence Engine (SNIE)
+# NetStudio Network Intelligence Engine (NNIE)
 ## Qwen3.5-2B — Yerel AI Entegrasyonu ve Ek Uygulama Raporu v1.0
 
 | Belge bilgisi | Değer |
 |---|---|
 | Tarih | 19 Ekim 2026 |
-| Proje | `KES-KING/stocc-netstudio` |
-| Belge kimliği | `SNIE-IMPL-Q2-001` |
+| Proje | `KES-KING/NetStudio` |
+| Belge kimliği | `NNIE-IMPL-Q2-001` |
 | Durum | Uygulama tasarımı; kod implementasyonu ve donanım benchmark’ı henüz yapılmadı |
 | Kesinleşen kullanıcı kararı | **Qwen3.5-2B** |
-| Ana mimari | `stocc-network-intelligence-engine-architecture-v1.md` |
+| Ana mimari | `netstudio-network-intelligence-engine-architecture-v1.md` |
 | Bu raporun önerdiği dağıtım | Metin odaklı GGUF, başlangıç kuantizasyonu `Q4_K_M`, sabitlenmiş `llama.cpp` runtime |
 | Çalışma ilkesi | CPU zorunlu temel yol; GPU isteğe bağlı hızlandırma |
 | Operasyon sınırı | Salt okunur analiz + Structured Intent önerisi; yazma yalnızca ana mimarinin onaylı deterministik yürütücüsünde |
 
-> **Temel karar:** Stocc, Qwen3.5-2B olmadan da cihazlarını izleyebilen ve yetkili kullanıcıların manuel olarak başlattığı plan/onay akışını çalıştırabilen bir sistemdir. Model bir kullanıcı etkileşimi ve analiz bileşenidir; cihaz sürücüsü, politika otoritesi veya konfigürasyon yürütücüsü değildir.
+> **Temel karar:** NetStudio, Qwen3.5-2B olmadan da cihazlarını izleyebilen ve yetkili kullanıcıların manuel olarak başlattığı plan/onay akışını çalıştırabilen bir sistemdir. Model bir kullanıcı etkileşimi ve analiz bileşenidir; cihaz sürücüsü, politika otoritesi veya konfigürasyon yürütücüsü değildir.
 
 ---
 
 ## 1. Belgenin amacı, dayanağı ve değişiklik sınırı
 
-Bu ek rapor, seçilen **Qwen3.5-2B** modelinin mevcut SNIE mimarisine nasıl entegre edileceğini; düşük kaynaklı bilgisayarlarda nasıl işletileceğini; hangi sözleşmeler, modüller, testler ve teslimatlarla uygulanacağını tanımlar.
+Bu ek rapor, seçilen **Qwen3.5-2B** modelinin mevcut NNIE mimarisine nasıl entegre edileceğini; düşük kaynaklı bilgisayarlarda nasıl işletileceğini; hangi sözleşmeler, modüller, testler ve teslimatlarla uygulanacağını tanımlar.
 
 Ana mimari dosyasının yerine geçmez. Ana dosyadaki Operation Registry, Capability Engine, Change Planner, Policy Engine, Approval Center, JobStore, Change Executor, Verification ve Rollback Strategy Registry korunur. Bu belgede bunların Qwen entegrasyonuyla kesiştiği noktalar açıklanır; cihaz yazma prosedürleri ikinci kez ve farklı kurallarla tanımlanmaz.
 
@@ -30,13 +30,13 @@ Ana mimari dosyasının yerine geçmez. Ana dosyadaki Operation Registry, Capabi
 - **[T] Yeni uygulama tasarımı:** Runtime seçimi, profil değerleri, ek API’ler, dosya adları, iş sırası ve kabul hedefleri bu ek raporun önerileridir; mevcut repository’de uygulanmış oldukları anlamına gelmez.
 - **[R1–R4] Haricî teknik doğrulama:** Model ve runtime özellikleri için birincil kaynaklar, son bölümde verilmiştir. Donanım sonuçları bu kaynaklardan türetilmiş ürün garantileri değildir.
 
-İncelenen yerel ana dosyanın SHA-256 değeri:
+19 Ekim incelemesindeki, adlandırma güncellemesinden önceki ana dosyanın tarihsel SHA-256 değeri (güncel dosyanın hash'i değildir):
 
 ```text
 2719677a98f6407b9b876f258b8e42d28bef8a763dcf49f4ec657aab3d075389
 ```
 
-Ana belge değiştirilmemiştir. Repository’ye ait başlangıç bilgileri [A0] §1’den alınmıştır; bu ek rapor hazırlanırken güncel GitHub dalı yeniden denetlenmemiştir. Geliştirme başladığında güncel çalışma ağacı, `AGENTS.md`, migration zinciri ve API sözleşmeleri kontrol edilmelidir.
+İlk raporda ana belge değiştirilmemiştir; sonraki NetStudio adlandırma geçişinde iki belgenin adları, marka/repository atıfları ve NNIE kısaltması güncellenmiştir. Bu teknik tasarımın uygulanmış olduğu anlamına gelmez. Repository’ye ait başlangıç bilgileri [A0] §1’den alınmıştır; bu ek rapor hazırlanırken güncel GitHub dalı yeniden denetlenmemiştir. Geliştirme başladığında güncel çalışma ağacı, `AGENTS.md`, migration zinciri ve API sözleşmeleri kontrol edilmelidir.
 
 ### 1.2. Uygulama önceliği
 
@@ -69,9 +69,9 @@ Modelin JSON üretmesi `ValidatedChangeIntent` oluşturulduğu anlamına gelmez.
 
 ## 3. Model ve runtime için doğrulanmış teknik çerçeve
 
-Qwen’in model kartı Qwen3.5-2B’yi vision encoder içeren, 2B dil modeli parametreli ve Apache-2.0 lisans etiketli bir model olarak tanımlar. Kart, küçük parametre ölçeği için prototipleme, görev odaklı fine-tuning ve araştırma/geliştirme kullanımını özellikle belirtir. Bu nedenle modelin Stocc operasyonlarında üretime uygunluğu ayrıca değerlendirilmelidir. [R1]
+Qwen’in model kartı Qwen3.5-2B’yi vision encoder içeren, 2B dil modeli parametreli ve Apache-2.0 lisans etiketli bir model olarak tanımlar. Kart, küçük parametre ölçeği için prototipleme, görev odaklı fine-tuning ve araştırma/geliştirme kullanımını özellikle belirtir. Bu nedenle modelin NetStudio operasyonlarında üretime uygunluğu ayrıca değerlendirilmelidir. [R1]
 
-**Önemli ayrım:** Güncel Qwen3.5-2B kartında non-thinking varsayılandır. Önceki görüşmelerde aile geneli için kullanılan “varsayılan thinking” ifadesi bu modelin güncel kartına uygulanmaz. Stocc yine de bu davranışı modele bırakmayacak; sürümlü chat template ve adapter ayarıyla non-thinking modunu açıkça doğrulayacaktır. [R1]
+**Önemli ayrım:** Güncel Qwen3.5-2B kartında non-thinking varsayılandır. Önceki görüşmelerde aile geneli için kullanılan “varsayılan thinking” ifadesi bu modelin güncel kartına uygulanmaz. NetStudio yine de bu davranışı modele bırakmayacak; sürümlü chat template ve adapter ayarıyla non-thinking modunu açıkça doğrulayacaktır. [R1]
 
 `llama.cpp`; CPU ve çeşitli GPU backend’leri, GGUF/kuantize model çalıştırma ve HTTP sunucusu sunar. Sunucu dokümantasyonunda JSON Schema ile kısıtlı çıktı, GPU katmanı seçimi, slot sayısı ve chat-template parametreleri vardır. Bunlar Qwen artefaktı ve seçilen runtime sürümüyle birlikte smoke-test edilecektir. [R2, R3]
 
@@ -122,7 +122,7 @@ Aşağıdaki Mermaid çizimi bir uygulama bileşen görünümüdür; ayrıntıl�
 ```mermaid
 flowchart TD
     UI["Next.js: AI Panel ve Plan Merkezi"] --> API["FastAPI: Oturum ve kapsam denetimi"]
-    API --> ORCH["SNIE AI Orchestrator"]
+    API --> ORCH["NNIE AI Orchestrator"]
     ORCH --> CTX["Context Builder ve Evidence Registry"]
     CTX --> READ["Typed salt okunur araclar"]
     READ --> DRIVER["DeviceDriver / Collector / Observation"]
@@ -169,7 +169,7 @@ Aşağıdaki değerler **ilk geliştirme ve benchmark varsayılanlarıdır**. Ö
 | `cpu-constrained` | 2.048 token | Intent 256; analiz 384 | 1 | CPU; kısa bağlam, küçük okuma sonuçları |
 | `cpu-standard` | 4.096 token | Intent 384; analiz 768 | 1 | CPU; normal kısa teknik analiz |
 | `gpu-standard` | 4.096 token | Intent 384; analiz 768 | 1 | Test edilmiş backend ile GPU offload |
-| `manual-only` | — | — | 0 | AI kapalı; ana Stocc işlevleri açık |
+| `manual-only` | — | — | 0 | AI kapalı; ana NetStudio işlevleri açık |
 
 Context bütçesi; sistem mesajı, şema/operasyon açıklaması, chat-template tokenları, kullanıcı mesajı, kanıt ve üretilecek çıktının toplamıdır. “4K context” üzerine ayrıca 4K çıktı eklenmez.
 
@@ -186,7 +186,7 @@ GPU varlığı context’i otomatik olarak büyütmez. Daha uzun bağlam ayrı t
 | Ayrık GPU, 6–8 GB VRAM | Aynı profile aday; daha yüksek eşzamanlılık otomatik açılmaz |
 | Birleşik bellekli GPU | RAM ve GPU belleği aynı havuz olabilir; kapasiteler toplanarak iki kez sayılmaz |
 
-Bu tablo destek sözü değildir. İlk release matrisi: test edilmiş Linux x86-64 CPU dağıtımı ve isteğe bağlı test edilmiş NVIDIA GPU dağıtımı. Windows/WSL, macOS/Metal, AMD/HIP/Vulkan ve diğer backend’ler ayrı doğrulama satırlarıdır; runtime’ın genel desteği Stocc paketinin otomatik desteği sayılmaz. Backend seçenekleri için [R2, R4].
+Bu tablo destek sözü değildir. İlk release matrisi: test edilmiş Linux x86-64 CPU dağıtımı ve isteğe bağlı test edilmiş NVIDIA GPU dağıtımı. Windows/WSL, macOS/Metal, AMD/HIP/Vulkan ve diğer backend’ler ayrı doğrulama satırlarıdır; runtime’ın genel desteği NetStudio paketinin otomatik desteği sayılmaz. Backend seçenekleri için [R2, R4].
 
 ### 6.3. Bellek bütçesi
 
@@ -196,7 +196,7 @@ Bu tablo destek sözü değildir. İlk release matrisi: test edilmiş Linux x86-
 Model dosyasi boyutu
 != AI surecinin RSS/PSS degeri
 != GPU VRAM kullanimi
-!= tum Stocc servisleri + isletim sistemi bellek ihtiyaci
+!= tum NetStudio servisleri + isletim sistemi bellek ihtiyaci
 ```
 
 Model ağırlıkları yanında çalışma buffer’ları, context/attention state, backend tahsisleri ve süreç maliyeti ölçülür. Qwen’in hibrit mimarisi için başka bir modelden kopyalanmış basit KV-cache hesabı kapasite sertifikası yerine kullanılamaz.
@@ -293,7 +293,7 @@ Model durdurulurken yeni istek gelirse lifecycle kilidi altında tek karar veril
 ```text
 snie-ai-package/
 ├── model/
-│   └── stocc-qwen35-2b-q4_k_m.gguf
+│   └── netstudio-qwen35-2b-q4_k_m.gguf
 ├── runtime/
 │   └── <os-arch-backend>/llama-server
 ├── policies/
@@ -310,7 +310,7 @@ snie-ai-package/
     └── acceptance-results.json
 ```
 
-Dosya adı Stocc dağıtım takma adıdır; upstream’de bu isimle hazır dosya bulunduğu iddiası değildir. Model, uygulama imajının her güncellemesinde yeniden indirilmez; sürümlü read-only model dizini/volume kullanılır. Kurucu bütün gerekli dosyaları çevrimdışı paketle de alabilmelidir.
+Dosya adı NetStudio dağıtım takma adıdır; upstream’de bu isimle hazır dosya bulunduğu iddiası değildir. Model, uygulama imajının her güncellemesinde yeniden indirilmez; sürümlü read-only model dizini/volume kullanılır. Kurucu bütün gerekli dosyaları çevrimdışı paketle de alabilmelidir.
 
 ### 8.2. Build öncesi manifest şablonu
 
@@ -322,7 +322,7 @@ Aşağıdaki JSON bir **şablondur**. `null` alanlar veya `status=draft` bulundu
   "status": "draft",
   "model_id": "Qwen/Qwen3.5-2B",
   "upstream_revision": null,
-  "artifact_filename": "stocc-qwen35-2b-q4_k_m.gguf",
+  "artifact_filename": "netstudio-qwen35-2b-q4_k_m.gguf",
   "artifact_source": null,
   "quantization": "Q4_K_M",
   "artifact_bytes": null,
@@ -779,7 +779,7 @@ Runtime protokol ayrıntıları bu adapter içinde kalır. Structured output des
 
 ## 17. Runtime konfigürasyonu ve başlatma örnekleri
 
-Aşağıdaki konfigürasyon **önerilen SNIE ayar şemasıdır**; bugün repository’de mevcut bir dosya olarak sunulmamaktadır. Sırlar bu JSON’a yazılmaz.
+Aşağıdaki konfigürasyon **önerilen NNIE ayar şemasıdır**; bugün repository’de mevcut bir dosya olarak sunulmamaktadır. Sırlar bu JSON’a yazılmaz.
 
 ```json
 {
@@ -810,9 +810,9 @@ Aşağıdaki konfigürasyon **önerilen SNIE ayar şemasıdır**; bugün reposit
 Aşağıdaki komut, dosyaların önceden doğrulanıp ilgili yollara yerleştirildiği bir Linux laboratuvarı içindir. Servis anahtarı dosyası kullanıcıya özel okunabilir izinlerle oluşturulmalıdır. Üretim paketleyicisi binary sürümünü sabitler ve flag uyumluluğunu test eder. [R3]
 
 ```bash
-/opt/stocc/runtime/llama-server \
-  --model /var/lib/stocc/models/stocc-qwen35-2b-q4_k_m.gguf \
-  --alias stocc-qwen35-2b \
+/opt/netstudio/runtime/llama-server \
+  --model /var/lib/netstudio/models/netstudio-qwen35-2b-q4_k_m.gguf \
+  --alias netstudio-qwen35-2b \
   --ctx-size 4096 \
   --parallel 1 \
   --threads 4 \
@@ -836,7 +836,7 @@ GPU’nun “var” görünmesi yeterli değildir. Yükleme/short-inference smok
 
 Provider isteğe göre schema ve `max_tokens`/eşdeğer çıkış sınırını ekler; `chat_template_kwargs.enable_thinking=false` ayarını doğrular. Desteklenmeyen alanları sessizce yok sayan runtime kabul edilmez. JSON Schema’nın runtime’a aktarım biçimi `llama_cpp_provider.py` içinde sürüm testiyle sabitlenir. [R3]
 
-Başlangıç sampling adayı düşük sıcaklıktır; örneğin `temperature=0` bir deney profili olabilir. Bunun her CPU/GPU’da byte-byte deterministik çıktı veya en iyi doğruluk sağlayacağı iddia edilmez. Seçilecek sampling profili Stocc değerlendirme kümesinde karşılaştırılarak sürümlenir.
+Başlangıç sampling adayı düşük sıcaklıktır; örneğin `temperature=0` bir deney profili olabilir. Bunun her CPU/GPU’da byte-byte deterministik çıktı veya en iyi doğruluk sağlayacağı iddia edilmez. Seçilecek sampling profili NetStudio değerlendirme kümesinde karşılaştırılarak sürümlenir.
 
 ---
 
@@ -932,7 +932,7 @@ TTFT, model readiness sonrası request gönderiminden ilk tokena kadar; cold sta
 
 Bellek için süreç RSS/PSS, container toplamı, sistem kullanılabilir bellek, swap/major page fault ve GPU VRAM izlenir. mmap/page cache etkisi belirtilir; RSS’ler gelişigüzel toplanmaz. CPU modeli, RAM kanalı/hızı, güç profili, OS, sürücü, runtime build ve thread/batch ayarları rapora eklenir.
 
-En az üç tekrar, cold/warm ayrımı ve tüm Stocc servisleri çalışırken eşzamanlı collector/API yük testi yapılır. Prompt boyutları ve üretilen token sayısı belirtilmeden süre karşılaştırması yayımlanmaz.
+En az üç tekrar, cold/warm ayrımı ve tüm NetStudio servisleri çalışırken eşzamanlı collector/API yük testi yapılır. Prompt boyutları ve üretilen token sayısı belirtilmeden süre karşılaştırması yayımlanmaz.
 
 ### 20.3. Önerilen yayın kapıları
 
@@ -1032,16 +1032,16 @@ Audit; actor, scope, görev, artefakt digest’leri, doğrulama sonucu, proposal
 
 | ADR | Karar |
 |---|---|
-| `ADR-SNIE-010` | Seçilmiş model Qwen3.5-2B; otomatik model büyütme/küçültme yok |
-| `ADR-SNIE-011` | CPU-first, ayrı ve kaynak sınırlandırılmış inference süreci |
-| `ADR-SNIE-012` | Başlangıç GGUF/Q4_K_M; model-runtime-template birimi sürümlenir |
-| `ADR-SNIE-013` | Non-thinking, küçük context, tek inference slotu |
-| `ADR-SNIE-014` | Model yoksa manuel operasyon; cloud fallback yok |
-| `ADR-SNIE-015` | Cevap zarfı ana `AIIntentProposal` şemasını değiştirmez |
-| `ADR-SNIE-016` | Hedef çözümleme, kaynak hesapları ve güvenlik kararları backend’de |
-| `ADR-SNIE-017` | AI arızası verify/commit/rollback yürütmesini kesmez |
-| `ADR-SNIE-018` | Donanım desteği test matrisiyle ilan edilir; model boyutu RAM garantisi değildir |
-| `ADR-SNIE-019` | Model paketi rollback’i ve cihaz rollback’i ayrı yaşam döngüleridir |
+| `ADR-NNIE-010` | Seçilmiş model Qwen3.5-2B; otomatik model büyütme/küçültme yok |
+| `ADR-NNIE-011` | CPU-first, ayrı ve kaynak sınırlandırılmış inference süreci |
+| `ADR-NNIE-012` | Başlangıç GGUF/Q4_K_M; model-runtime-template birimi sürümlenir |
+| `ADR-NNIE-013` | Non-thinking, küçük context, tek inference slotu |
+| `ADR-NNIE-014` | Model yoksa manuel operasyon; cloud fallback yok |
+| `ADR-NNIE-015` | Cevap zarfı ana `AIIntentProposal` şemasını değiştirmez |
+| `ADR-NNIE-016` | Hedef çözümleme, kaynak hesapları ve güvenlik kararları backend’de |
+| `ADR-NNIE-017` | AI arızası verify/commit/rollback yürütmesini kesmez |
+| `ADR-NNIE-018` | Donanım desteği test matrisiyle ilan edilir; model boyutu RAM garantisi değildir |
+| `ADR-NNIE-019` | Model paketi rollback’i ve cihaz rollback’i ayrı yaşam döngüleridir |
 
 010 sonrası numaralar bu ekin önerisidir. Güncel repository’de bu numaralar kullanılmışsa yeniden numaralandırılır; mevcut ADR üzerine yazılmaz.
 
@@ -1052,9 +1052,9 @@ Audit; actor, scope, görev, artefakt digest’leri, doğrulama sonucu, proposal
 Aşağıdaki bölüm ana mimari ve bu dosya birlikte verilerek uygulama görevi olarak kullanılabilir:
 
 ```text
-Stocc NetStudio repository'sinde SNIE Qwen3.5-2B entegrasyonunu uygula.
+NetStudio repository'sinde NNIE Qwen3.5-2B entegrasyonunu uygula.
 
-Once stocc-network-intelligence-engine-architecture-v1.md dosyasini,
+Once netstudio-network-intelligence-engine-architecture-v1.md dosyasini,
 sonra bu ek uygulama raporunu oku. Ana belgedeki Structured Intent,
 capability, policy, immutable plan, approval, execution ve rollback
 sinirlarini koru. Qwen3.5-2B kullanici tarafindan secilmistir.
@@ -1108,7 +1108,7 @@ plan icerigine tasima. Model yoksa manuel guvenli yol calismalidir.
 
 ### [A0] Kullanıcı tarafından sağlanan ana belge
 
-`stocc-network-intelligence-engine-architecture-v1.md` — 19 Ekim 2026, Structured Intent / Capability / Approval / Execution / Verification / Rollback teknik mimarisi. Bu ekin normatif güvenlik dayanağıdır. Yerel dosyanın bütünlük değeri §1’de verilmiştir.
+`netstudio-network-intelligence-engine-architecture-v1.md` — 19 Ekim 2026, Structured Intent / Capability / Approval / Execution / Verification / Rollback teknik mimarisi. Bu ekin normatif güvenlik dayanağıdır. Yerel dosyanın bütünlük değeri §1’de verilmiştir.
 
 ### [K1] Görüşmede kesinleşen model kararı
 
@@ -1118,7 +1118,7 @@ Kullanıcının Qwen3.5-2B seçimi; düşük sistem gereksinimi, CPU’da çalı
 
 `https://huggingface.co/Qwen/Qwen3.5-2B`
 
-Başvuru: model kimliği, modelin ölçeği/türü, lisans etiketi, non-thinking varsayılanı ve belirtilen kullanım çerçevesi. Erişim: 19 Ekim 2026. Dokümandaki genel benchmark sonuçları Stocc iş yükü performansı olarak kullanılmamıştır.
+Başvuru: model kimliği, modelin ölçeği/türü, lisans etiketi, non-thinking varsayılanı ve belirtilen kullanım çerçevesi. Erişim: 19 Ekim 2026. Dokümandaki genel benchmark sonuçları NetStudio iş yükü performansı olarak kullanılmamıştır.
 
 ### [R2] llama.cpp resmî proje açıklaması
 
@@ -1136,7 +1136,7 @@ Başvuru: JSON Schema çıktısı, slot, GPU katmanı, API anahtarı ve chat-tem
 
 `https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md`
 
-Başvuru: CPU/CUDA/Metal/HIP/Vulkan gibi backend derleme seçenekleri ve platforma özgü gereksinimler. Erişim: 19 Ekim 2026. Genel backend desteği, Stocc’un bütün platformları sertifikalandırdığı anlamına gelmez.
+Başvuru: CPU/CUDA/Metal/HIP/Vulkan gibi backend derleme seçenekleri ve platforma özgü gereksinimler. Erişim: 19 Ekim 2026. Genel backend desteği, NetStudio’un bütün platformları sertifikalandırdığı anlamına gelmez.
 
 ---
 
@@ -1144,4 +1144,4 @@ Başvuru: CPU/CUDA/Metal/HIP/Vulkan gibi backend derleme seçenekleri ve platfor
 
 **Seçim Qwen3.5-2B’dir.** Uygulama; tek ve sürümlü model artefaktı, CPU-first çalışma, isteğe bağlı GPU, sınırlı context, tek inference slotu ve açık artefakt/kaynak bütçesi kayıtlarıyla hazırlanacaktır.
 
-Bu model Stocc’un ağ cihazlarına doğrudan hükmeden bileşeni olmayacaktır. Ürettiği öneri ana mimarinin **kanıt → typed intent → deterministik plan → ayrı onay → kontrollü execution → bağımsız verification → commit/rollback** zincirine girecektir. Model kapalı, yavaş veya hatalı olsa bile bu güvenlik zinciri ve manuel yönetim yolu korunacaktır.
+Bu model NetStudio’un ağ cihazlarına doğrudan hükmeden bileşeni olmayacaktır. Ürettiği öneri ana mimarinin **kanıt → typed intent → deterministik plan → ayrı onay → kontrollü execution → bağımsız verification → commit/rollback** zincirine girecektir. Model kapalı, yavaş veya hatalı olsa bile bu güvenlik zinciri ve manuel yönetim yolu korunacaktır.

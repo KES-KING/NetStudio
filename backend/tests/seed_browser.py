@@ -1,4 +1,4 @@
-"""Explicit isolated QA bootstrap. Synthetic data is confined to stocc_qa DB."""
+"""Explicit isolated QA bootstrap. Synthetic data is confined to netstudio_qa DB."""
 from datetime import timedelta
 import os
 import subprocess
@@ -13,12 +13,12 @@ from conftest import PASSWORD, inventory, observation
 
 
 def main():
-    url = os.environ["STOCC_TEST_DATABASE_URL"]
+    url = os.environ["NETSTUDIO_TEST_DATABASE_URL"]
     parsed = urlparse(url)
-    if parsed.hostname not in {"127.0.0.1", "localhost"} or parsed.path != "/stocc_qa":
-        raise SystemExit("This script only supports a loopback stocc_qa database.")
-    origin = os.getenv("STOCC_TEST_ORIGIN", "http://127.0.0.1:13000")
-    key_url = os.getenv("STOCC_TEST_SSH_KEY_URL", "http://127.0.0.1:12223")
+    if parsed.hostname not in {"127.0.0.1", "localhost"} or parsed.path != "/netstudio_qa":
+        raise SystemExit("This script only supports a loopback netstudio_qa database.")
+    origin = os.getenv("NETSTUDIO_TEST_ORIGIN", "http://127.0.0.1:13000")
+    key_url = os.getenv("NETSTUDIO_TEST_SSH_KEY_URL", "http://127.0.0.1:12223")
     for endpoint in (origin, key_url):
         target = urlparse(endpoint)
         if target.scheme != "http" or target.hostname not in {"127.0.0.1", "localhost"} or target.username or target.password or target.path not in {"", "/"} or target.query or target.fragment:
@@ -30,8 +30,8 @@ def main():
         if conn.execute(sa.select(store.users.c.id).limit(1)).first():
             raise SystemExit("QA database already contains users. No account overwritten; use a new isolated project.")
         conn.execute(store.users.insert().values(id="qa-admin", username="qa-admin", password_hash=hasher.hash(PASSWORD), roles=["superadmin"], sites=["*"], enabled=True))
-    container = os.getenv("STOCC_TEST_SSH_CONTAINER", "stocc-redesign-qa-ssh-lab-1")
-    docker_context = os.getenv("STOCC_TEST_DOCKER_CONTEXT") or subprocess.check_output(
+    container = os.getenv("NETSTUDIO_TEST_SSH_CONTAINER", "netstudio-redesign-qa-ssh-lab-1")
+    docker_context = os.getenv("NETSTUDIO_TEST_DOCKER_CONTEXT") or subprocess.check_output(
         ["docker", "context", "show"], text=True
     ).strip()
     address = subprocess.check_output(["docker", "--context", docker_context, "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", container], text=True).strip()

@@ -47,8 +47,8 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
     void mutate(null, { revalidate: false });
   }, [mutateAll, mutate]);
   useEffect(() => {
-    window.addEventListener("stocc-session-expired", clear);
-    return () => window.removeEventListener("stocc-session-expired", clear);
+    window.addEventListener("netstudio-session-expired", clear);
+    return () => window.removeEventListener("netstudio-session-expired", clear);
   }, [clear]);
   async function logout() {
     try {

@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import type { Projection } from "../../lib/contracts";
 
-test.skip(!process.env.STOCC_QA, "Requires the isolated QA fixtures.");
-const evidence = "/tmp/stocc-netstudio-detail";
+test.skip(!process.env.NETSTUDIO_QA, "Requires the isolated QA fixtures.");
+const evidence = "/tmp/netstudio-detail";
 async function login(page: Page) {
   await page.goto("/");
   await page.getByLabel("Kullanıcı adı", { exact: true }).fill("qa-admin");

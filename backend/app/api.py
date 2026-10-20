@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 import hmac
-import os
 import time
 import socket
 from uuid import UUID, uuid4
@@ -15,6 +14,7 @@ from fastapi.responses import JSONResponse
 from pydantic import Field, SecretStr
 import sqlalchemy as sa
 
+from .legacy_compat import getenv
 from .auth import Auth, COOKIE, fail, session_response
 from .account_api import install_account_routes
 from .auditing import AuditRequest, audit_request, safe_text
@@ -60,10 +60,10 @@ def create_app(store=None, key_file=None):
         # Production jobs belong to a separate durable worker. The embedded
         # mode exists for isolated tests and explicit single-process development.
         worker = worker_task = None
-        if os.getenv("STOCC_EMBEDDED_WORKER") == "1":
+        if getenv("NETSTUDIO_EMBEDDED_WORKER") == "1":
             from .worker import Worker
             worker = Worker(app.state.store, app.state.vault, app.state.auth,
-                scheduling=os.getenv("STOCC_SCHEDULER_ENABLED", "1") == "1")
+                scheduling=getenv("NETSTUDIO_SCHEDULER_ENABLED", "1") == "1")
             worker_task = asyncio.create_task(worker.run())
         async def cleanup():
             while True:
@@ -75,7 +75,7 @@ def create_app(store=None, key_file=None):
                 await asyncio.sleep(3)
         async def update_checks():
             while True:
-                if os.getenv("STOCC_UPDATES_CHECK_ENABLED", "1") == "1":
+                if getenv("NETSTUDIO_UPDATES_CHECK_ENABLED", "1") == "1":
                     try:
                         await run_in_threadpool(updates.check, app.state.store)
                     except Exception:
@@ -100,10 +100,10 @@ def create_app(store=None, key_file=None):
             with app.state.store.engine.begin() as conn:
                 conn.execute(app.state.store.runtime_presence.delete().where(app.state.store.runtime_presence.c.id == presence_id))
 
-    app = FastAPI(title="Stocc NetStudio API", version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title="NetStudio API", version="0.2.0", lifespan=lifespan)
 
     async def bounded_response(request, call_next):
-        if os.getenv("STOCC_ENV") == "production" and request.url.path.startswith("/api/") and request.url.scheme != "https":
+        if getenv("NETSTUDIO_ENV") == "production" and request.url.path.startswith("/api/") and request.url.scheme != "https":
             return JSONResponse({"detail": {"code": "https_required"}}, status_code=400)
         try:
             length = int(request.headers.get("content-length", "0") or "0")
@@ -225,7 +225,7 @@ def create_app(store=None, key_file=None):
 
     @app.get("/healthz")
     def healthz():
-        return {"status": "ok", "service": "stocc-netstudio-api"}
+        return {"status": "ok", "service": "netstudio-api"}
 
     @app.get("/readyz")
     def readyz():
@@ -239,7 +239,7 @@ def create_app(store=None, key_file=None):
                 conn.execute(sa.select(app.state.store.system_update.c.id).limit(1))
         except Exception:
             fail("persistence_unavailable", 503)
-        return {"status": "ready", "service": "stocc-netstudio-api", "revision": os.getenv("STOCC_BUILD_REVISION", "unknown")}
+        return {"status": "ready", "service": "netstudio-api", "revision": getenv("NETSTUDIO_BUILD_REVISION", "unknown")}
 
     @app.post("/api/v1/session/login")
     def login(value: Login, request: Request, response: Response):

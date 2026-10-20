@@ -1,15 +1,18 @@
-name: ${COMPOSE_PROJECT_NAME:-stocc-netstudio}
+name: ${COMPOSE_PROJECT_NAME:-netstudio}
+
+# Prevent an old .env from silently creating empty replacement data volumes.
+x-netstudio-config-version: ${NETSTUDIO_CONFIG_VERSION:?Use .env.example for a new installation; existing installations must follow docs/name-transition.md first}
 
 x-api-service: &api-service
-  image: stocc-netstudio-api:${IMAGE_TAG:-local}
+  image: netstudio-api:${IMAGE_TAG:-local}
   build:
     context: .
     dockerfile: backend/Dockerfile
     args:
-      STOCC_BUILD_REVISION: ${STOCC_BUILD_REVISION:-unknown}
+      NETSTUDIO_BUILD_REVISION: ${NETSTUDIO_BUILD_REVISION:-unknown}
   environment:
-    STOCC_ENV: ${STOCC_ENV:-development}
-    DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://stocc:stocc@postgres:5432/stocc}
+    NETSTUDIO_ENV: ${NETSTUDIO_ENV:-development}
+    DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://netstudio:netstudio@postgres:5432/netstudio}
   networks:
     - database
   security_opt:
@@ -24,20 +27,20 @@ services:
     command: ["python", "-m", "app.keyring", "initialize"]
     cap_add: [CHOWN, FOWNER, DAC_OVERRIDE]
     volumes:
-      - stocc-keyring:/run/secrets
+      - netstudio-keyring:/run/secrets
     restart: "no"
 
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-stocc}
-      POSTGRES_USER: ${POSTGRES_USER:-stocc}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stocc}
+      POSTGRES_DB: ${POSTGRES_DB:-netstudio}
+      POSTGRES_USER: ${POSTGRES_USER:-netstudio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-netstudio}
     ports:
       - "${DB_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - stocc-postgres:/var/lib/postgresql/data
+      - netstudio-postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -61,14 +64,13 @@ services:
     restart: unless-stopped
     init: true
     environment:
-      STOCC_ENV: ${STOCC_ENV:-development}
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://stocc:stocc@postgres:5432/stocc}
-      STOCC_ALLOWED_ORIGINS: ${STOCC_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
-      STOCC_SSH_ALLOWED_CIDRS: ${STOCC_SSH_ALLOWED_CIDRS:-}
-      STOCC_KEYRING_FILE: /run/secrets/stocc-keyring.json
-      STOCC_UPDATES_CHECK_ENABLED: ${STOCC_UPDATES_CHECK_ENABLED:-1}
+      NETSTUDIO_ENV: ${NETSTUDIO_ENV:-development}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://netstudio:netstudio@postgres:5432/netstudio}
+      NETSTUDIO_ALLOWED_ORIGINS: ${NETSTUDIO_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      NETSTUDIO_SSH_ALLOWED_CIDRS: ${NETSTUDIO_SSH_ALLOWED_CIDRS:-}
+      NETSTUDIO_UPDATES_CHECK_ENABLED: ${NETSTUDIO_UPDATES_CHECK_ENABLED:-1}
     volumes:
-      - stocc-keyring:/run/secrets:ro
+      - netstudio-keyring:/run/secrets:ro
     ports:
       - "${API_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-8000}:8000"
     depends_on:
@@ -93,13 +95,12 @@ services:
     restart: unless-stopped
     init: true
     environment:
-      STOCC_ENV: ${STOCC_ENV:-development}
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://stocc:stocc@postgres:5432/stocc}
-      STOCC_ALLOWED_ORIGINS: ${STOCC_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
-      STOCC_SSH_ALLOWED_CIDRS: ${STOCC_SSH_ALLOWED_CIDRS:-}
-      STOCC_KEYRING_FILE: /run/secrets/stocc-keyring.json
+      NETSTUDIO_ENV: ${NETSTUDIO_ENV:-development}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://netstudio:netstudio@postgres:5432/netstudio}
+      NETSTUDIO_ALLOWED_ORIGINS: ${NETSTUDIO_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      NETSTUDIO_SSH_ALLOWED_CIDRS: ${NETSTUDIO_SSH_ALLOWED_CIDRS:-}
     volumes:
-      - stocc-keyring:/run/secrets:ro
+      - netstudio-keyring:/run/secrets:ro
     healthcheck:
       test: ["CMD", "python", "-m", "app.worker", "--healthcheck"]
       interval: 15s
@@ -117,12 +118,12 @@ services:
     stop_grace_period: 20s
 
   web:
-    image: stocc-netstudio-web:${IMAGE_TAG:-local}
+    image: netstudio-web:${IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        STOCC_BUILD_REVISION: ${STOCC_BUILD_REVISION:-unknown}
+        NETSTUDIO_BUILD_REVISION: ${NETSTUDIO_BUILD_REVISION:-unknown}
     restart: unless-stopped
     init: true
     environment:
@@ -174,8 +175,12 @@ services:
     cap_drop: [ALL]
 
 volumes:
-  stocc-postgres:
-  stocc-keyring:
+  netstudio-postgres:
+    name: ${NETSTUDIO_POSTGRES_VOLUME:-${COMPOSE_PROJECT_NAME:-netstudio}_netstudio-postgres}
+    external: ${NETSTUDIO_EXTERNAL_VOLUMES:-false}
+  netstudio-keyring:
+    name: ${NETSTUDIO_KEYRING_VOLUME:-${COMPOSE_PROJECT_NAME:-netstudio}_netstudio-keyring}
+    external: ${NETSTUDIO_EXTERNAL_VOLUMES:-false}
 
 networks:
   database:

@@ -1,18 +1,18 @@
 {
-  "name": "stocc-netstudio-web",
+  "name": "netstudio-web",
   "private": true,
   "version": "0.1.0",
-  "description": "Stocc NetStudio network device management console",
+  "description": "NetStudio network device management console",
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/KES-KING/stocc-netstudio.git",
+    "url": "git+https://github.com/KES-KING/NetStudio.git",
     "directory": "frontend"
   },
   "bugs": {
-    "url": "https://github.com/KES-KING/stocc-netstudio/issues"
+    "url": "https://github.com/KES-KING/NetStudio/issues"
   },
-  "homepage": "https://github.com/KES-KING/stocc-netstudio#readme",
+  "homepage": "https://github.com/KES-KING/NetStudio#readme",
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",

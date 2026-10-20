@@ -3,7 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-test.skip(!process.env.STOCC_QA, "Only the isolated QA deployment may be changed.");
+test.skip(!process.env.NETSTUDIO_QA, "Only the isolated QA deployment may be changed.");
 
 for (const width of [1536, 390]) {
   test(`Huawei collector and explicit device-only SSH profile at ${width}px`, async ({ page }) => {
@@ -43,7 +43,7 @@ for (const width of [1536, 390]) {
       expect((await (await page.request.get(base)).json()).ssh_profile).toBe("standard");
       await confirmation.check();
       await dialog.getByRole("button", { name: "Bağlantı ayarlarını kaydet", exact: true }).focus();
-      const evidence = join(tmpdir(), "stocc-netstudio-huawei");
+      const evidence = join(tmpdir(), "netstudio-huawei");
       await mkdir(evidence, { recursive: true });
       await page.screenshot({ path: join(evidence, `connection-settings-${width}.png`) });
       await dialog.getByRole("button", { name: "Bağlantı ayarlarını kaydet", exact: true }).click();

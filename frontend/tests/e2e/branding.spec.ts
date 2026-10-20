@@ -3,7 +3,7 @@ import { mkdir, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-test.skip(!process.env.STOCC_QA, "Requires the isolated QA application.");
+test.skip(!process.env.NETSTUDIO_QA, "Requires the isolated QA application.");
 
 for (const [name, viewport] of [
   ["desktop", { width: 1280, height: 900 }],
@@ -24,11 +24,11 @@ for (const [name, viewport] of [
         return;
       errors.push(message.text());
     });
-    const evidence = join(tmpdir(), "stocc-netstudio-branding");
+    const evidence = join(tmpdir(), "netstudio-branding");
     await mkdir(evidence, { recursive: true });
     await page.setViewportSize(viewport);
     await page.goto("/");
-    await expect(page).toHaveTitle("Stocc NetStudio");
+    await expect(page).toHaveTitle("NetStudio");
     await expect(
       page.getByRole("heading", { name: "Yönetim oturumu" }),
     ).toBeVisible();

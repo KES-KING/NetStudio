@@ -41,12 +41,12 @@ def test_0006_preserves_existing_inventory_keys_and_ciphertext(tmp_path):
 
 
 def test_postgres_two_worker_claims_and_expiry():
-    url = os.getenv("STOCC_TEST_AUTOMATION_DATABASE_URL")
+    url = os.getenv("NETSTUDIO_TEST_AUTOMATION_DATABASE_URL")
     if not url:
-        pytest.skip("Requires a dedicated empty loopback stocc_automation_test_* database")
+        pytest.skip("Requires a dedicated empty loopback netstudio_automation_test_* database")
     target = sa.engine.make_url(url)
     assert target.get_backend_name() == "postgresql" and target.host in {"127.0.0.1", "localhost"}
-    assert target.database.startswith("stocc_automation_test_")
+    assert target.database.startswith("netstudio_automation_test_")
     store = Store(url)
     assert not sa.inspect(store.engine).get_table_names(), "Refusing to modify a non-empty database"
     store.meta.create_all(store.engine)

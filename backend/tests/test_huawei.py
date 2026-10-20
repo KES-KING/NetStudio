@@ -166,19 +166,19 @@ def test_registered_target_approval_optional_network_ceiling_and_bound_identity(
     client, store, _, _ = system
     login(client)
     device = store.get_device(add_device(client, management_address="192.0.2.17")["id"])
-    monkeypatch.setenv("STOCC_SSH_ALLOWED_CIDRS", "")
+    monkeypatch.setenv("NETSTUDIO_SSH_ALLOWED_CIDRS", "")
     target_allowed(store, device)
     assert client.post(f"/api/v1/devices/{device.id}/ssh-sessions").json()["detail"]["code"] == "host_key_required"
     for changed in ({"id": "not-registered"}, {"management_address": "192.0.2.18"}, {"ssh_port": 23}, {"ssh_profile": "huawei_legacy"}):
         with pytest.raises(ConnectionPolicyError, match="device_connection_changed"):
             target_allowed(store, device.model_copy(update=changed))
-    monkeypatch.setenv("STOCC_SSH_ALLOWED_CIDRS", "198.51.100.0/24")
+    monkeypatch.setenv("NETSTUDIO_SSH_ALLOWED_CIDRS", "198.51.100.0/24")
     with pytest.raises(ConnectionPolicyError, match="target_network_denied"):
         target_allowed(store, device)
-    monkeypatch.setenv("STOCC_SSH_ALLOWED_CIDRS", "not-a-cidr")
+    monkeypatch.setenv("NETSTUDIO_SSH_ALLOWED_CIDRS", "not-a-cidr")
     with pytest.raises(ConnectionPolicyError, match="invalid_target_network_policy"):
         target_allowed(store, device)
-    monkeypatch.setenv("STOCC_SSH_ALLOWED_CIDRS", "")
+    monkeypatch.setenv("NETSTUDIO_SSH_ALLOWED_CIDRS", "")
     mapped = store.get_device(add_device(client, management_address="::ffff:127.0.0.1")["id"])
     with pytest.raises(ConnectionPolicyError, match="target_network_denied"):
         target_allowed(store, mapped)

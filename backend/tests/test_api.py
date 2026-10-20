@@ -19,7 +19,7 @@ def test_authentication_csrf_and_empty_production_inventory(system):
     client, _, _, _ = system
     assert client.get("/healthz").status_code == 200
     assert client.get("/readyz").status_code == 200
-    assert client.get("/api/v1/devices", headers={"X-Stocc-User": "admin"}).status_code == 401
+    assert client.get("/api/v1/devices", headers={"X-NetStudio-User": "admin"}).status_code == 401
     assert client.post("/api/v1/session/login", json={"username": "admin", "password": PASSWORD}).status_code == 403
     session = login(client)
     assert "terminal.open" in session["permissions"]

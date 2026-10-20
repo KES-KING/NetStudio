@@ -1,6 +1,6 @@
 # Yapay zekâ ajanı çalışma yönergesi
 
-Bu dosya Stocc NetStudio üzerinde çalışan kodlama ajanları içindir. İnsanlar ve ajanlar için ortak kuralların esas kaynağı [rule.md](rule.md) dosyasıdır; bu yönerge onları uygulama sırasına dönüştürür. Kök [AGENTS.md](AGENTS.md), ajanların bu iki dosyayı bulabilmesi için giriş noktasıdır.
+Bu dosya NetStudio üzerinde çalışan kodlama ajanları içindir. İnsanlar ve ajanlar için ortak kuralların esas kaynağı [rule.md](rule.md) dosyasıdır; bu yönerge onları uygulama sırasına dönüştürür. Kök [AGENTS.md](AGENTS.md), ajanların bu iki dosyayı bulabilmesi için giriş noktasıdır.
 
 ## Başlamadan önce
 

@@ -1,14 +1,14 @@
 # Katkı rehberi
 
-Stocc NetStudio'ya kod, dokümantasyon, test ve erişilebilirlik katkıları yapabilirsiniz. Türkçe ve İngilizce issue/PR kabul edilir. Tartışmalarda kişileri değil teknik önerileri değerlendirin; saygılı, somut ve tekrar üretilebilir geri bildirim verin.
+NetStudio'ya kod, dokümantasyon, test ve erişilebilirlik katkıları yapabilirsiniz. Türkçe ve İngilizce issue/PR kabul edilir. Tartışmalarda kişileri değil teknik önerileri değerlendirin; saygılı, somut ve tekrar üretilebilir geri bildirim verin.
 
 Başlamadan önce insanlar ve yapay zekâ için ortak [proje kurallarını](rule.md) okuyun. Kodlama ajanları ayrıca [agent.md](agent.md) yönergesini izlemelidir; ajan giriş dosyası [AGENTS.md](AGENTS.md) bu belgelere yönlendirir.
 
 ## Doğru kanalı seçin
 
-- Hatalar ve özellik önerileri: [issue şablonları](https://github.com/KES-KING/stocc-netstudio/issues/new/choose).
-- Kurulum ve kullanım soruları: [Discussions](https://github.com/KES-KING/stocc-netstudio/discussions).
-- Güvenlik açıkları: [özel bildirim](https://github.com/KES-KING/stocc-netstudio/security/advisories/new); public issue/PR açmayın.
+- Hatalar ve özellik önerileri: [issue şablonları](https://github.com/KES-KING/NetStudio/issues/new/choose).
+- Kurulum ve kullanım soruları: [Discussions](https://github.com/KES-KING/NetStudio/discussions).
+- Güvenlik açıkları: [özel bildirim](https://github.com/KES-KING/NetStudio/security/advisories/new); public issue/PR açmayın.
 
 Parola, SSH private key, keyring, cookie/token, gerçek müşteri envanteri veya ham terminal kaydı paylaşmayın. Log ve ekran görüntülerini göndermeden önce hassas alanları temizleyin.
 
@@ -33,7 +33,7 @@ npm test -- --run
 npm run build
 ```
 
-Compose yapılandırma kontrolü repository kökünde `docker compose config --quiet` ile yapılır. WebSocket/SSH tarayıcı testleri için README'deki [izole QA ortamını](README.md#izole-tarayıcı-test-ortamı) kullanın; seed komutunu gerçek kurulumda çalıştırmayın.
+Yeni kurulum örneğinin Compose kontrolü repository kökünde `docker compose --env-file .env.example config --quiet` ile yapılır. Mevcut kurulumda önce [ad geçişini](docs/name-transition.md) tamamlayıp kendi `.env` ve override dosyalarınızla `docker compose config --quiet` kullanın. WebSocket/SSH tarayıcı testleri için README'deki [izole QA ortamını](README.md#izole-tarayıcı-test-ortamı) kullanın; seed komutunu gerçek kurulumda çalıştırmayın.
 
 ## Projeye özgü kurallar
 

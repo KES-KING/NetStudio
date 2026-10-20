@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { interfaceTokens, theme } from "../../lib/theme";
 
-test.skip(!process.env.STOCC_QA, "Requires the isolated QA application.");
-const evidence = join(tmpdir(), "stocc-netstudio-presentation");
+test.skip(!process.env.NETSTUDIO_QA, "Requires the isolated QA application.");
+const evidence = join(tmpdir(), "netstudio-presentation");
 
 async function login(page: Page) {
   await page.goto("/");

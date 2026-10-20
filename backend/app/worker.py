@@ -1,7 +1,6 @@
 """Run with python -m app.worker; independent of API lifetime and browser cookies."""
 import asyncio
 from contextlib import suppress
-import os
 import signal
 import socket
 import sys
@@ -12,6 +11,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 import sqlalchemy as sa
 
+from .legacy_compat import getenv
 from .auth import Auth
 from .collection import ReadResult, metadata, persist, upsert
 from .database import Store, now
@@ -204,7 +204,7 @@ class Worker:
 
 async def main():
     store = Store()
-    worker = Worker(store, CredentialVault(store, os.environ.get("STOCC_KEYRING_FILE")))
+    worker = Worker(store, CredentialVault(store, getenv("NETSTUDIO_KEYRING_FILE")))
     for signum in (signal.SIGINT, signal.SIGTERM):
         asyncio.get_running_loop().add_signal_handler(signum, worker.stopping.set)
     try:

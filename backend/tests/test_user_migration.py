@@ -19,12 +19,12 @@ def test_user_migration_preserves_accounts_sites_and_audit_history(tmp_path, mon
     root = Path(__file__).resolve().parents[1]
     url = f"sqlite+pysqlite:///{tmp_path / 'migration.db'}"
     if database == "postgresql":
-        url = os.getenv("STOCC_TEST_MIGRATION_DATABASE_URL")
+        url = os.getenv("NETSTUDIO_TEST_MIGRATION_DATABASE_URL")
         if not url:
             pytest.skip("Requires a dedicated empty loopback PostgreSQL test database")
         target = sa.engine.make_url(url)
         assert target.get_backend_name() == "postgresql" and target.host in {"127.0.0.1", "localhost"}
-        assert target.database and target.database.startswith("stocc_users_test_")
+        assert target.database and target.database.startswith("netstudio_users_test_")
     monkeypatch.setenv("DATABASE_URL", url)
     config = Config(str(root / "alembic.ini"))
     config.set_main_option("script_location", str(root / "migrations"))

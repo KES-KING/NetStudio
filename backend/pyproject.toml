@@ -3,9 +3,9 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "stocc-netstudio-api"
+name = "netstudio-api"
 version = "0.1.0"
-description = "Stocc NetStudio network inventory, telemetry and SSH management API"
+description = "NetStudio network inventory, telemetry and SSH management API"
 license = "AGPL-3.0-only"
 requires-python = ">=3.11"
 dependencies = [
@@ -27,9 +27,9 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/KES-KING/stocc-netstudio"
-Documentation = "https://github.com/KES-KING/stocc-netstudio#readme"
-Issues = "https://github.com/KES-KING/stocc-netstudio/issues"
+Repository = "https://github.com/KES-KING/NetStudio"
+Documentation = "https://github.com/KES-KING/NetStudio#readme"
+Issues = "https://github.com/KES-KING/NetStudio/issues"
 
 [project.optional-dependencies]
 test = ["pytest>=8.3,<9", "httpx>=0.27,<1"]

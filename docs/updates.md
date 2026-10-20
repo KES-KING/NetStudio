@@ -1,5 +1,7 @@
 # Ayarlar, canlı bildirimler ve güncelleme işletimi
 
+> NetStudio adlandırmasına geçen kurulumlarda önce [ad geçişi rehberini](name-transition.md) izleyin. Compose sözleşmesi değiştiğinden bu sürüme geçiş otomatik host güncellemesine bırakılmaz; mevcut volume/DB/anahtar bağları korunarak operatör tarafından yapılır.
+
 ## Kullanıcı akışı
 
 Yan menüde **Ayarlar** bulunur:
@@ -14,7 +16,7 @@ Bildirimler sunucu audit olaylarının izinli bir izdüşümüdür: yetkili site
 
 ## Güven sınırı ve varsayılanlar
 
-**Otomatik kurulum varsayılan kapalıdır.** `STOCC_UPDATES_CHECK_ENABLED=1` yalnız public commit metadata kontrolünü açar; kurulum yapmaz. Kapalıysa zamanlanmış kontrol yapılmaz, superadmin manuel kontrol yapabilir. Kontrol tüm API süreçleri için DB lease ile birleştirilir, 10 dakikadan sık yapılmaz. ETag/304 kullanılır; GitHub hız sınırında bekleme artırılır. Hata halinde son başarılı liste korunur. Sabit hedef `https://api.github.com/repos/KES-KING/NetStudio/commits?sha=main&per_page=30`; yönlendirmeler izlenmez, repository taşınırsa kod/operatör müdahalesi gerekir. [GitHub commits API](https://docs.github.com/en/rest/commits/commits#list-commits), [GitHub REST iyi uygulamalar](https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api).
+**Otomatik kurulum varsayılan kapalıdır.** `NETSTUDIO_UPDATES_CHECK_ENABLED=1` yalnız public commit metadata kontrolünü açar; kurulum yapmaz. Kapalıysa zamanlanmış kontrol yapılmaz, superadmin manuel kontrol yapabilir. Kontrol tüm API süreçleri için DB lease ile birleştirilir, 10 dakikadan sık yapılmaz. ETag/304 kullanılır; GitHub hız sınırında bekleme artırılır. Hata halinde son başarılı liste korunur. Sabit hedef `https://api.github.com/repos/KES-KING/NetStudio/commits?sha=main&per_page=30`; yönlendirmeler izlenmez, repository taşınırsa kod/operatör müdahalesi gerekir. [GitHub commits API](https://docs.github.com/en/rest/commits/commits#list-commits), [GitHub REST iyi uygulamalar](https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api).
 
 **main koduna otomatik güvenmek, o repository'ye yazabilen kişilere sunucuda uygulama/migration çalıştırma yetkisi vermektir.** Branch protection, inceleme ve CI politikasını ayrıca yönetin. Bu sürüm imza veya CI check sonucu doğrulamaz; main bir stabil sürüm kanalı olarak kabul edilmez. Arayüz bunun için açık risk onayı ister. Public repository olması kodun güvenli olduğunu kanıtlamaz.
 
@@ -24,7 +26,7 @@ API içinde `git pull`, Docker komutu veya shell çalışmaz; Docker socket API/
 
 Bu adımlar operatör içindir; geliştirme testi bunları mevcut kullanıcı kurulumunda otomatik çalıştırmaz. Önce mevcut Docker context/proje, volume'ler, portlar, gerçek veri tabanı ve anahtar deposunu doğrulayın. Üretimde `docker-compose.tls.yml` dahil kullanılan **bütün** override dosyalarını koruyun. Otomatik sistem yalnız mevcut tek API/web/worker/PostgreSQL kurulumunu kabul eder; uzaktaki Docker motoru ve harici PostgreSQL bu sürümde desteklenmez.
 
-1. Bu özelliği içeren, gözden geçirilmiş **temiz ve yayınlanmış** commit'i normal bakım prosedürünüzle kurun. Önce mevcut DB ve keyring yedeğini alın; additive `0007_settings_updates` migration'ını çalıştırın. API, collector-worker ve web aynı SHA'dan build edilmelidir. `.env` içinde `STOCC_BUILD_REVISION=<tam 40 karakter SHA>` kullanın. Bu değişken bir doğrulama imzası değildir: kirli çalışma ağacına HEAD etiketi vermeyin. `unknown` etiketli eski imajlar otomatik kuruluma kabul edilmez. Mevcut cihazları, kullanıcıları veya sırları yeniden oluşturmayın.
+1. Bu özelliği içeren, gözden geçirilmiş **temiz ve yayınlanmış** commit'i normal bakım prosedürünüzle kurun. Önce mevcut DB ve keyring yedeğini alın; additive `0007_settings_updates` migration'ını çalıştırın. API, collector-worker ve web aynı SHA'dan build edilmelidir. `.env` içinde `NETSTUDIO_BUILD_REVISION=<tam 40 karakter SHA>` kullanın. Bu değişken bir doğrulama imzası değildir: kirli çalışma ağacına HEAD etiketi vermeyin. `unknown` etiketli eski imajlar otomatik kuruluma kabul edilmez. Mevcut cihazları, kullanıcıları veya sırları yeniden oluşturmayın.
 2. Host üzerinde Python 3.11+, Git, Docker CLI/Compose ve bu release'in `backend` paketini ayrı bir virtualenv'e kurun. Agent container içinde değil host üzerinde çalışır. Örneğin operator-owned release dizininde `python3 -m venv .updater-venv`, ardından `.updater-venv/bin/pip install ./backend`. Mevcut uygulama virtualenv'ini veya çalışan container'ları değiştirmez.
 3. Operatöre ait, modu `0600` olan bir JSON yapılandırması oluşturun. Aşağıdaki yollar/değerler **örnektir**; mevcut kurulumu keşfetmeden kopyalayıp çalıştırmayın. DB parolasını kaynak depoya koymayın. State dizini `0700`, aynı kullanıcıya ait olmalı; yedekler için yeterli disk alanı ayırın.
 
@@ -36,7 +38,7 @@ Bu adımlar operatör içindir; geliştirme testi bunları mevcut kullanıcı ku
   "compose_files": ["/srv/netstudio/docker-compose.yml", "/srv/netstudio/docker-compose.tls.yml"],
   "env_file": "/srv/netstudio/.env",
   "state_dir": "/var/lib/netstudio-updater",
-  "database_url": "postgresql+psycopg://stocc:REPLACE_LOCALLY@127.0.0.1:5432/stocc",
+  "database_url": "postgresql+psycopg://netstudio:REPLACE_LOCALLY@127.0.0.1:5432/netstudio",
   "drain_timeout": 900
 }
 ```

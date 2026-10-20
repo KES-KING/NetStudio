@@ -1,6 +1,6 @@
 # Proje kuralları
 
-Bu dosya Stocc NetStudio üzerinde çalışan insanlar ve yapay zekâ araçları için ortak proje kurallarını tanımlar. Katkıya başlamadan önce bu dosyayı, [katkı rehberini](CONTRIBUTING.md) ve [güvenlik politikasını](SECURITY.md) okuyun. Ajanların çalışma ve teslim adımları [agent.md](agent.md) içindedir.
+Bu dosya NetStudio üzerinde çalışan insanlar ve yapay zekâ araçları için ortak proje kurallarını tanımlar. Katkıya başlamadan önce bu dosyayı, [katkı rehberini](CONTRIBUTING.md) ve [güvenlik politikasını](SECURITY.md) okuyun. Ajanların çalışma ve teslim adımları [agent.md](agent.md) içindedir.
 
 ## 1. Mevcut çalışmayı koru
 

@@ -3,7 +3,6 @@ from collections import OrderedDict
 from dataclasses import dataclass
 import hashlib
 import hmac
-import os
 import secrets
 import time
 
@@ -12,10 +11,11 @@ from argon2.exceptions import VerificationError
 from fastapi import HTTPException
 import sqlalchemy as sa
 
+from .legacy_compat import getenv
 from .security import SessionUser
 from .auditing import audit_request, identify, safe_text
 
-COOKIE = "stocc_session"
+COOKIE = "netstudio_session"
 hasher = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=2)
 _dummy_hash = hasher.hash(secrets.token_urlsafe(32))
 
@@ -39,8 +39,8 @@ class Auth:
     def __init__(self, store):
         self.store = store
         self.attempts = OrderedDict()
-        self.production = os.getenv("STOCC_ENV", "development") == "production"
-        self.origins = {s.strip().rstrip("/") for s in os.getenv("STOCC_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if s.strip()}
+        self.production = getenv("NETSTUDIO_ENV", "development") == "production"
+        self.origins = {s.strip().rstrip("/") for s in getenv("NETSTUDIO_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if s.strip()}
         if self.production and any(not s.startswith("https://") for s in self.origins):
             raise RuntimeError("Production origins must use HTTPS")
 

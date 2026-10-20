@@ -5,7 +5,7 @@ import { ConsoleShell } from "../components/ConsoleShell";
 import { cssTokens } from "../lib/theme";
 
 export const metadata: Metadata = {
-  title: "Stocc NetStudio",
+  title: "NetStudio",
   description:
     "Ağ cihazı envanteri, gerçek gözlemler ve güvenli SSH yönetim konsolu.",
 };

@@ -3,8 +3,8 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-test.skip(!process.env.STOCC_QA, "Only the isolated QA installation.");
-const evidence = join(tmpdir(), "stocc-netstudio-settings");
+test.skip(!process.env.NETSTUDIO_QA, "Only the isolated QA installation.");
+const evidence = join(tmpdir(), "netstudio-settings");
 
 async function login(page: Page) {
   expect(new URL(process.env.PLAYWRIGHT_BASE_URL!).hostname).toBe("127.0.0.1");
@@ -16,7 +16,7 @@ async function login(page: Page) {
     errors.push(message.text());
   });
   await page.goto("/");
-  await expect(page).toHaveTitle("Stocc NetStudio");
+  await expect(page).toHaveTitle("NetStudio");
   await page.getByLabel("Kullanıcı adı", { exact: true }).fill("qa-admin");
   await page.getByLabel("Parola", { exact: true }).fill("test-only-password-1234");
   await page.getByRole("button", { name: "Giriş yap", exact: true }).click();
@@ -26,7 +26,7 @@ async function login(page: Page) {
 }
 
 async function healthy(page: Page, width: number) {
-  await expect(page).toHaveTitle("Stocc NetStudio");
+  await expect(page).toHaveTitle("NetStudio");
   await expect(page.locator("nextjs-portal")).toHaveCount(0);
   expect((await page.locator("main").innerText()).length).toBeGreaterThan(40);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
@@ -128,7 +128,7 @@ test("commit UI fixture exposes safe GitHub links, descriptions and left update 
 });
 
 test("opt-in public GitHub check renders real commits without starting installation", async ({ page }) => {
-  test.skip(process.env.STOCC_LIVE_GITHUB !== "1", "Requires explicit read-only public GitHub access.");
+  test.skip(process.env.NETSTUDIO_LIVE_GITHUB !== "1", "Requires explicit read-only public GitHub access.");
   await page.setViewportSize({ width: 1536, height: 1024 });
   const errors = await login(page);
   await page.goto("/settings/updates");

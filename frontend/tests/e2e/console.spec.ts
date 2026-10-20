@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const evidenceDir = join(tmpdir(), "stocc-netstudio-qa");
+const evidenceDir = join(tmpdir(), "netstudio-qa");
 
 function observeClientErrors(page: Page) {
   const errors: string[] = [];
@@ -25,7 +25,7 @@ function observeClientErrors(page: Page) {
 
 test.describe.configure({ mode: "serial" });
 test.skip(
-  !process.env.STOCC_QA,
+  !process.env.NETSTUDIO_QA,
   "Requires isolated seeded QA Docker project, never production.",
 );
 test.beforeAll(async ({ request }) => {
@@ -60,7 +60,7 @@ test.beforeAll(async ({ request }) => {
 });
 async function login(page: Page) {
   await page.goto("/");
-  await expect(page).toHaveTitle("Stocc NetStudio");
+  await expect(page).toHaveTitle("NetStudio");
   await expect(page).toHaveURL(
     new URL("/", process.env.PLAYWRIGHT_BASE_URL!).toString(),
   );
@@ -77,7 +77,7 @@ async function login(page: Page) {
   ).toBeVisible();
   await expect(page.locator("nextjs-portal")).toHaveCount(0);
   const cookie = (await page.context().cookies()).find(
-    (c) => c.name === "stocc_session",
+    (c) => c.name === "netstudio_session",
   );
   expect({
     httpOnly: cookie?.httpOnly,
@@ -85,7 +85,7 @@ async function login(page: Page) {
     sameSite: cookie?.sameSite,
   }).toEqual({
     httpOnly: true,
-    secure: process.env.STOCC_QA_TLS === "1",
+    secure: process.env.NETSTUDIO_QA_TLS === "1",
     sameSite: "Strict",
   });
 }

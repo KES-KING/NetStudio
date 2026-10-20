@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 
-test.skip(!process.env.STOCC_QA, "Only the isolated QA API; no real device/network scanning.");
+test.skip(!process.env.NETSTUDIO_QA, "Only the isolated QA API; no real device/network scanning.");
 test.describe.configure({ mode: "serial" });
 const origin = process.env.PLAYWRIGHT_BASE_URL!;
 const tag = Date.now(), site = `TEST FIXTURE / MAC-IP ${tag}`;
@@ -47,7 +47,7 @@ test.beforeAll(async ({ request }) => {
       { ...fdb, id: "ndp", interface_id: "if5", discovery: "ndp", addresses: ["2001:db8::101"], vrf_known: true, evidence: "Isolated QA NDP fixture" },
     ] },
   } })).status()).toBe(201);
-  await mkdir("/tmp/stocc-netstudio-mac-ip", { recursive: true });
+  await mkdir("/tmp/netstudio-mac-ip", { recursive: true });
 });
 
 for (const width of [1536, 390]) test(`MAC resolves consistently in port and both topologies at ${width}px`, async ({ page }) => {
@@ -61,7 +61,7 @@ for (const width of [1536, 390]) test(`MAC resolves consistently in port and bot
   await page.getByLabel("Kullanıcı adı", { exact: true }).fill("qa-admin");
   await page.getByLabel("Parola", { exact: true }).fill("test-only-password-1234");
   await page.getByRole("button", { name: "Giriş yap", exact: true }).click();
-  await expect(page).toHaveTitle("Stocc NetStudio");
+  await expect(page).toHaveTitle("NetStudio");
   await expect(page).toHaveURL(`${origin}/devices/${switchId}`);
   await expect(page.getByRole("heading", { name: `QA-MAC-switch-${tag}`, exact: true })).toBeVisible();
   await page.locator('.physical-port[data-port-id="p1"]').click();
@@ -71,7 +71,7 @@ for (const width of [1536, 390]) test(`MAC resolves consistently in port and bot
   await expect(port).toContainText("IP eşleştirildi");
   await expect(port).toContainText("IP bulunamadı");
   await port.locator(".endpoint-details").first().scrollIntoViewIfNeeded();
-  await page.screenshot({ path: `/tmp/stocc-netstudio-mac-ip/port-${width}.png`, animations: "disabled" });
+  await page.screenshot({ path: `/tmp/netstudio-mac-ip/port-${width}.png`, animations: "disabled" });
   await port.getByText("Adres kanıtı", { exact: true }).first().click();
   await expect(port).toContainText(`QA-MAC-gateway-${tag}`);
   await port.getByRole("button", { name: "Detayı kapat", exact: true }).click();
@@ -88,7 +88,7 @@ for (const width of [1536, 390]) test(`MAC resolves consistently in port and bot
   await expect(detail).toContainText("IP bulunamadı");
   await graph.getByRole("combobox", { name: "Düğüm seç", exact: true }).selectOption("endpoint:resolved");
   await graph.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: `/tmp/stocc-netstudio-mac-ip/device-topology-${width}.png`, animations: "disabled" });
+  await page.screenshot({ path: `/tmp/netstudio-mac-ip/device-topology-${width}.png`, animations: "disabled" });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   await page.goto("/topology");
@@ -101,7 +101,7 @@ for (const width of [1536, 390]) test(`MAC resolves consistently in port and bot
   await inspector.getByText("Adres kanıtı", { exact: true }).click();
   await expect(inspector).toContainText(`QA-MAC-gateway-${tag}`);
   await inspector.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: `/tmp/stocc-netstudio-mac-ip/network-topology-${width}.png`, animations: "disabled" });
+  await page.screenshot({ path: `/tmp/netstudio-mac-ip/network-topology-${width}.png`, animations: "disabled" });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await expect(page.locator("nextjs-portal")).toHaveCount(0);
   expect(errors).toEqual([]);

@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Güvenlik açıklarını bu public formda paylaşmayın; [özel bildirim](https://github.com/KES-KING/stocc-netstudio/security/advisories/new) kullanın.
+        Güvenlik açıklarını bu public formda paylaşmayın; [özel bildirim](https://github.com/KES-KING/NetStudio/security/advisories/new) kullanın.
         Parola, token/cookie, SSH anahtarı, gerçek cihaz envanteri ve ham terminal içeriği eklemeyin. Türkçe veya İngilizce yazabilirsiniz.
   - type: input
     id: version

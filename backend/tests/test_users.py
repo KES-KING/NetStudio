@@ -88,7 +88,7 @@ def test_duplicates_invalid_roles_csrf_and_last_superadmin(system):
 def test_security_changes_revoke_sessions_and_ssh_tickets(system, update):
     client, store, app, _ = system
     login(client, "operator")
-    cookie = client.cookies.get("stocc_session")
+    cookie = client.cookies.get("netstudio_session")
     from app.ssh import TerminalSession
     from app.auth import digest
     ticket = TerminalSession("test-ticket", "operator", "test-device", digest(cookie))
@@ -104,7 +104,7 @@ def test_security_changes_revoke_sessions_and_ssh_tickets(system, update):
 def test_current_password_required_and_all_sessions_revoked(system):
     client, store, app, _ = system
     login(client, "viewer")
-    first = client.cookies.get("stocc_session")
+    first = client.cookies.get("netstudio_session")
     login(client, "viewer")
     assert client.put("/api/v1/profile/password", json={"current_password": "wrong-password", "new_password": "replacement-password"}).status_code == 403
     response = client.put("/api/v1/profile/password", json={"current_password": PASSWORD, "new_password": "replacement-password"})
@@ -200,10 +200,10 @@ def test_user_pagination_and_client_activity_is_explicitly_untrusted(system):
 def test_concurrent_admin_changes_cannot_remove_all_administrators(system):
     client, store, app, _ = system
     login(client)
-    first = app.state.auth.validate(client.cookies.get("stocc_session"))
+    first = app.state.auth.validate(client.cookies.get("netstudio_session"))
     second = create_user(client, username="second", role="superadmin", password=PASSWORD)
     login(client, "second")
-    other = app.state.auth.validate(client.cookies.get("stocc_session"))
+    other = app.state.auth.validate(client.cookies.get("netstudio_session"))
     # Independent connections are necessary to model competing transactions.
     url = str(store.engine.url)
     store.engine.dispose()

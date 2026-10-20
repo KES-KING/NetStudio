@@ -1,17 +1,19 @@
 <p align="center">
-  <img src="frontend/public/branding/netstudio-logo.png" alt="Stocc NetStudio ana logosu" width="300" />
+  <img src="frontend/public/branding/netstudio-logo.png" alt="NetStudio ana logosu" width="300" />
 </p>
 
-# Stocc NetStudio
+# NetStudio
 
-[![CI](https://github.com/KES-KING/stocc-netstudio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/KES-KING/stocc-netstudio/actions/workflows/ci.yml)
+[![CI](https://github.com/KES-KING/NetStudio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/KES-KING/NetStudio/actions/workflows/ci.yml)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-365A73)](LICENSE)
 
-[Ekran görüntüleri](#ekran-görüntüleri) · [Kurulum](#docker-ile-kurulum) · [Cihaz bağlantısı](#gerçek-cihazı-bağlama) · [Kullanıcı ve audit](#kullanıcı-yönetimi-ve-audit) · [Geliştirme](#geliştirme-ve-doğrulama) · [Proje kuralları](rule.md) · [Katkı rehberi](CONTRIBUTING.md) · [Tartışmalar](https://github.com/KES-KING/stocc-netstudio/discussions) · [Lisans](#lisans)
+[Ekran görüntüleri](#ekran-görüntüleri) · [Kurulum](#docker-ile-kurulum) · [Cihaz bağlantısı](#gerçek-cihazı-bağlama) · [Kullanıcı ve audit](#kullanıcı-yönetimi-ve-audit) · [Geliştirme](#geliştirme-ve-doğrulama) · [Proje kuralları](rule.md) · [Katkı rehberi](CONTRIBUTING.md) · [Tartışmalar](https://github.com/KES-KING/NetStudio/discussions) · [Lisans](#lisans)
 
 Ağ cihazlarının envanterini, erişilebilirliğini, fiziksel portlarını, trafik gözlemlerini ve IP ilişkilerini aynı konsolda yönetin. Cihaz detayında açılan SSH terminali, backend üzerinden doğrulanmış cihaz kaydına bağlanır.
 
 Arayüz: Next.js 16 / React 19 / TypeScript, Apache ECharts, xterm.js ve SWR. Backend: FastAPI, SQLAlchemy, PostgreSQL, AsyncSSH, Argon2id ve AES-256-GCM. Varsayılan kurulumda cihaz, kullanıcı veya örnek telemetri **oluşturulmaz**.
+
+**Ad değişikliği:** Projenin ve deponun adı yalnız **NetStudio**: [KES-KING/NetStudio](https://github.com/KES-KING/NetStudio). Paket/imaj adları `netstudio-api` / `netstudio-web`, yeni ayarlar `NETSTUDIO_*` önekini kullanır. Mevcut kurulumda yeniden başlatmadan önce [veri koruyan ad geçişini](docs/name-transition.md) uygulayın; `.env` dosyasını örnekle değiştirmeyin. Eski ortam değişkenleri ve şifreli kayıtlar için dar bir okuma uyumluluğu korunur.
 
 ## Neler sunar?
 
@@ -38,7 +40,7 @@ Aşağıdaki üç görüntü çalışan uygulamanın izole QA ortamından alınm
 
 **Güncellik kuralı:** Her görsel arayüz güncellemesinde aşağıdaki üç görüntünün tamamı güncel koddan yeniden alınır ve aynı değişiklik/PR içinde teslim edilir. İnsanlar ve yapay zekâ için ayrıntılar [rule.md](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile), ajanların uygulama adımları [agent.md](agent.md) içindedir.
 
-Son set: **20 Ekim 2026**, `stocc-automation-qa-20261020` izole Docker ortamı, sistem Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `48b1ec4` üzerine Ayarlar sayfasını, üst barda canlı bildirimleri ve güncelleme arayüzünü içerir; imaj etiketi `settings-updates-qa-20261020`dir. Üç kare son imajlardan yeniden alınıp görsel olarak incelendi. Detay görüntülerinde `192.0.2.101` filtresiyle arayüz–uç gözlemi ilişkisi gösterilir; mevcut `stocc-netstudio-fresh` kurulumu değiştirilmemiştir.
+Son set: **20 Ekim 2026, 23:44 TRT**, `netstudio-rename-qa-20261020` izole Docker ortamı (`http://127.0.0.1:13007`), sistem Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `f880a8d` üzerine NetStudio adlandırma geçişini içerir; imajlar `netstudio-api:rename-qa-20261020` ve `netstudio-web:rename-qa-20261020`dir. Üç kare son imajlardan yeniden alınıp görsel olarak incelendi. Detay görüntülerinde `192.0.2.101` filtresiyle arayüz–uç gözlemi ilişkisi ve gerçek QA SSH bağlantısı gösterilir; mevcut kullanıcı kurulumu değiştirilmemiştir.
 
 ### Ana sayfa
 
@@ -68,13 +70,13 @@ Aynı cihazın ön paneli ve bağlı SSH terminali yan yana; topoloji ve teknik 
 
 ## Katkı ve iletişim
 
-Türkçe veya İngilizce katkı kabul edilir. Başlangıç için [katkı rehberini](CONTRIBUTING.md) okuyun; hata ve özellik talepleri için [issue şablonlarını](https://github.com/KES-KING/stocc-netstudio/issues/new/choose), kullanım soruları için [Discussions](https://github.com/KES-KING/stocc-netstudio/discussions) alanını kullanın. Güvenlik açıklarını public issue yerine [özel güvenlik bildirimi](https://github.com/KES-KING/stocc-netstudio/security/advisories/new) üzerinden iletin; kapsam ve ilkeler [güvenlik politikasında](SECURITY.md) açıklanır.
+Türkçe veya İngilizce katkı kabul edilir. Başlangıç için [katkı rehberini](CONTRIBUTING.md) okuyun; hata ve özellik talepleri için [issue şablonlarını](https://github.com/KES-KING/NetStudio/issues/new/choose), kullanım soruları için [Discussions](https://github.com/KES-KING/NetStudio/discussions) alanını kullanın. Güvenlik açıklarını public issue yerine [özel güvenlik bildirimi](https://github.com/KES-KING/NetStudio/security/advisories/new) üzerinden iletin; kapsam ve ilkeler [güvenlik politikasında](SECURITY.md) açıklanır.
 
 Tüm katkılarda [ortak proje kuralları](rule.md) geçerlidir. Yapay zekâ ajanları ayrıca [ajan yönergesini](agent.md) izler; [AGENTS.md](AGENTS.md) bu yönergelere giriş noktasıdır.
 
 ## Lisans
 
-Copyright (C) 2026 KES-KING ve Stocc NetStudio katkıda bulunanları.
+Copyright (C) 2026 KES-KING ve NetStudio katkıda bulunanları.
 
 Projenin lisansı **GNU Affero General Public License v3.0 only** (`AGPL-3.0-only`); bağlayıcı tam metin [LICENSE](LICENSE) dosyasındadır. Ticari kullanıma izin verir; değiştirilmiş sürümü ağ üzerinden kullananlara ilgili sürümün kaynak koduna erişim sunma yükümlülüğü dahil lisans koşulları geçerlidir. [AGPLv3 özeti](https://choosealicense.com/licenses/agpl-3.0/).
 
@@ -112,7 +114,7 @@ docker compose up --build -d --wait
 docker compose exec api python -m app.admin create-user --username admin --role superadmin --site '*'
 ```
 
-Son komut ilk yönetici hesabını oluşturur ve parolayı etkileşimli olarak iki kez ister; en az 12 karakter gerekir. Sonraki başlatmalarda hesabı tekrar oluşturmayın. Varsayılan yönetici parolası yoktur. Web: <http://127.0.0.1:3000>. Desktop motoru seçiliyken servisler Docker Desktop'ın Containers ekranında `stocc-netstudio` grubu altında görünür (`COMPOSE_PROJECT_NAME` değiştirilmişse o ad kullanılır).
+Son komut ilk yönetici hesabını oluşturur ve parolayı etkileşimli olarak iki kez ister; en az 12 karakter gerekir. Sonraki başlatmalarda hesabı tekrar oluşturmayın. Varsayılan yönetici parolası yoktur. Web: <http://127.0.0.1:3000>. Desktop motoru seçiliyken servisler Docker Desktop'ın Containers ekranında `netstudio` grubu altında görünür (`COMPOSE_PROJECT_NAME` değiştirilmişse o ad kullanılır).
 
 ### İlk yönetici hesabı ve giriş bilgileri
 
@@ -182,17 +184,17 @@ Mevcut verileri korumak için normal işletimde volume silme komutları kullanma
 Eski verileri silmeden gerçekten boş bir kurulum istiyorsanız, repository'nin varsayılan PostgreSQL/volume düzeninde **daha önce kullanılmamış** ayrı bir Compose proje adı seçin. Örneğin aşağıdaki adı yalnız henüz kullanılmadıysa kullanın; önce eski kurulumun aynı host portlarını serbest bıraktığını doğrulayın:
 
 ```bash
-docker compose -p stocc-netstudio-fresh config --quiet
-docker compose -p stocc-netstudio-fresh up --build -d --wait
-docker compose -p stocc-netstudio-fresh exec api python -m app.admin create-user --username admin --role superadmin --site '*'
+docker compose -p netstudio-fresh config --quiet
+docker compose -p netstudio-fresh up --build -d --wait
+docker compose -p netstudio-fresh exec api python -m app.admin create-user --username admin --role superadmin --site '*'
 ```
 
-Sonraki `ps`, `stop`, `up` ve `exec` işlemlerinde de aynı `-p stocc-netstudio-fresh` değerini ve Docker context'ini kullanın. Bu örnek yeni PostgreSQL ve anahtar volume'leri oluşturur; eski kurulumu silmez veya taşımaz. Harici `DATABASE_URL` ya da özel/shared volume override'ı kullanıyorsanız yalnız proje adını değiştirmek veriyi izole etmez; önce hedefleri doğrulayın. TLS kurulumunda mevcut `-f docker-compose.yml -f docker-compose.tls.yml` seçeneklerini de koruyun. `down -v` veya volume silme işlemi bu kurulum adımlarının parçası değildir.
+Sonraki `ps`, `stop`, `up` ve `exec` işlemlerinde de aynı `-p netstudio-fresh` değerini ve Docker context'ini kullanın. Bu örnek yeni PostgreSQL ve anahtar volume'leri oluşturur; eski kurulumu silmez veya taşımaz. Harici `DATABASE_URL` ya da özel/shared volume override'ı kullanıyorsanız yalnız proje adını değiştirmek veriyi izole etmez; önce hedefleri doğrulayın. TLS kurulumunda mevcut `-f docker-compose.yml -f docker-compose.tls.yml` seçeneklerini de koruyun. `down -v` veya volume silme işlemi bu kurulum adımlarının parçası değildir.
 
 ## Gerçek cihazı bağlama
 
 1. **Cihaz Ekle** ile yönetim IP'sini, siteyi, SSH portunu ve cihaz türünü kaydedin. İsteğe bağlı olarak SSH kullanıcı adı ve parola ya da özel anahtar/passphrase tanımlayın. Eksik kimlik bilgilerini daha sonra **Bağlantı bilgileri** üzerinden tamamlayabilirsiniz.
-2. **Yetkili kullanıcı tarafından cihaz eklenmesi, kayıtlı yönetim IP/SSH portu için bağlantı onayıdır.** Cihaz başına `.env` izni eklenmez. `STOCC_SSH_ALLOWED_CIDRS` yalnız isteğe bağlı kurulum geneli ek sınırdır: boşsa kayıtlı hedefler kabul edilir, doluysa bu CIDR sınırı da uygulanır; geçersiz CIDR bağlantıyı reddeder. Loopback adresler ayrıca açık CIDR izni ister; belirsiz, multicast ve link-local hedefler reddedilir. Mevcut kurulumda tanımlı ek sınırlar otomatik kaldırılmaz.
+2. **Yetkili kullanıcı tarafından cihaz eklenmesi, kayıtlı yönetim IP/SSH portu için bağlantı onayıdır.** Cihaz başına `.env` izni eklenmez. `NETSTUDIO_SSH_ALLOWED_CIDRS` yalnız isteğe bağlı kurulum geneli ek sınırdır: boşsa kayıtlı hedefler kabul edilir, doluysa bu CIDR sınırı da uygulanır; geçersiz CIDR bağlantıyı reddeder. Loopback adresler ayrıca açık CIDR izni ister; belirsiz, multicast ve link-local hedefler reddedilir. Mevcut kurulumda tanımlı ek sınırlar otomatik kaldırılmaz.
 3. **Bağlantı bilgileri → Anahtarı bul ve bağlantıyı hazırla** ile public host anahtarını ve SHA256 fingerprint'i getirin. Fingerprint'i bağımsız güvenilir kaynaktan karşılaştırıp bir kez onaylayın. Elle giriş gelişmiş seçenek olarak korunur. Bu anahtar cihazın kimliğidir; kullanıcının oturum açma public anahtarı değildir. Ağdan keşif tek başına güven sağlamaz; onaysız kimlik doğrulama yapılmaz.
 4. **Bağlantıyı test et** ile gerçek SSH el sıkışmasını kontrol edin. **SSH** üst paneli böler; cihaz solda, terminal sağda kalır. Dar ekranda iki alan alt alta geçer. Terminal açıkken yeniden tıklamak ikinci oturum oluşturmaz.
 5. Veri toplama yöntemini seçin:
@@ -215,8 +217,8 @@ Gerçek cihaz kimlik bilgilerini paylaşılan ağ üzerinden HTTP ile göndermey
 
 ```dotenv
 # .env içinde kendi değerlerinizi kullanın.
-STOCC_ALLOWED_ORIGINS=https://netstudio.example.org
-STOCC_TLS_DIRECTORY=/absolute/protected/tls-directory
+NETSTUDIO_ALLOWED_ORIGINS=https://netstudio.example.org
+NETSTUDIO_TLS_DIRECTORY=/absolute/protected/tls-directory
 TLS_BIND_ADDRESS=0.0.0.0
 TLS_PORT=443
 ```
@@ -246,7 +248,7 @@ docker compose exec api python -m app.admin create-user --username engineer --ro
 docker compose exec api python -m app.admin disable-user --username engineer
 ```
 
-Terminal ticket'ı 30 saniye geçerli, tek kullanımlı ve oluşturan oturuma bağlıdır; tek başına bearer token değildir. Hedef host/port tarayıcıdan alınmaz. Kullanıcı başına 3, süreç başına 20 terminal; aynı kullanıcı/cihaz için 1 oturum sınırı vardır. Ortak SSH bağlantı politikası en fazla 30 sn / dört uyumluluk denemesiyle sınırlıdır; varsayılan boşta kalma 300 sn, toplam oturum 3600 sn; giriş mesajı 16 KiB ve 64 KiB/sn ile sınırlıdır. Süreler `STOCC_SSH_IDLE_SECONDS` / `STOCC_SSH_MAX_SECONDS` backend ortam değişkenleriyle ayarlanabilir. Yetki/oturum iptali en geç izleme döngüsünün yaklaşık 1 saniyelik kontrolünde uygulanır. Bağlantı kurulma aşamasında tekrar doğrulama PTY açılmadan yapılır.
+Terminal ticket'ı 30 saniye geçerli, tek kullanımlı ve oluşturan oturuma bağlıdır; tek başına bearer token değildir. Hedef host/port tarayıcıdan alınmaz. Kullanıcı başına 3, süreç başına 20 terminal; aynı kullanıcı/cihaz için 1 oturum sınırı vardır. Ortak SSH bağlantı politikası en fazla 30 sn / dört uyumluluk denemesiyle sınırlıdır; varsayılan boşta kalma 300 sn, toplam oturum 3600 sn; giriş mesajı 16 KiB ve 64 KiB/sn ile sınırlıdır. Süreler `NETSTUDIO_SSH_IDLE_SECONDS` / `NETSTUDIO_SSH_MAX_SECONDS` backend ortam değişkenleriyle ayarlanabilir. Yetki/oturum iptali en geç izleme döngüsünün yaklaşık 1 saniyelik kontrolünde uygulanır. Bağlantı kurulma aşamasında tekrar doğrulama PTY açılmadan yapılır.
 
 Panel kapanması, sayfadan çıkış, çıkış yapma, kimlik bilgisi değişimi/silinmesi ve host anahtarı değişimi terminali sonlandırır. Uzak PTY boyutu tarayıcı terminaliyle birlikte güncellenir. Terminal çıktısı xterm'e metin olarak iletilir; HTML olarak işlenmez. SSH denetimi kullanıcı, cihaz, oturum kimliği, başlangıç/bitiş, süre ve sonucu kapsar; ham terminal, parola, private key veya cookie loglanmaz.
 
@@ -275,6 +277,8 @@ Audit'e yalnız işlem bazında seçilmiş ve merkezi izin listesinde bulunan al
 Bu sürümde audit düzenleme/silme API'si, otomatik silme politikası veya kriptografik değişmezlik/WORM iddiası yoktur. Veritabanı yöneticisi kayıtları değiştirebilir. Saklama süresi, korumalı yedekler ve gerekirse bağımsız denetim deposu işletmecinin sorumluluğundadır; ayrıntılı loglama disk kapasitesiyle birlikte izlenmelidir.
 
 ### Mevcut kurulumun güncellenmesi
+
+NetStudio adlandırmasına ilk geçişte **önce [ad geçişi rehberini](docs/name-transition.md)** tamamlayın. Mevcut proje/DB/volume kimlikleri korunmalıdır; yeni `.env.example` ile eski `.env` dosyasını ezmeyin.
 
 Önce veritabanı ve ayrı anahtar deposunun korumalı yedeğini alın; uygun bir bakım aralığında mevcut Compose projesini güncelleyin:
 
@@ -423,21 +427,24 @@ veri/volume silmeden kapatılabilir.
 Mevcut kurulumun project/volume'lerini kullanmayın. Aşağıdaki ortam ayrı test veritabanı ve anahtar deposu oluşturur. QA CIDR izni yalnız bu test ağı içindir; gerçek `.env` dosyasına taşımayın.
 
 ```bash
-export COMPOSE_PROJECT_NAME=stocc-redesign-qa IMAGE_TAG=redesign-qa
-export POSTGRES_DB=stocc_qa POSTGRES_PORT=18432 API_PORT=18000 WEB_PORT=13000
-export DATABASE_URL=postgresql+psycopg://stocc:stocc@postgres:5432/stocc_qa
-export STOCC_ALLOWED_ORIGINS=http://127.0.0.1:13000 STOCC_SSH_ALLOWED_CIDRS=172.16.0.0/12
-docker compose -f docker-compose.yml -f deploy/compose.qa.yml up --build -d --wait
-STOCC_TEST_DATABASE_URL=postgresql+psycopg://stocc:stocc@127.0.0.1:18432/stocc_qa .venv/bin/python backend/tests/seed_browser.py
+export COMPOSE_PROJECT_NAME=netstudio-redesign-qa IMAGE_TAG=redesign-qa
+export POSTGRES_DB=netstudio_qa POSTGRES_PORT=18432 API_PORT=18000 WEB_PORT=13000
+export POSTGRES_USER=netstudio POSTGRES_PASSWORD=netstudio
+export DATABASE_URL=postgresql+psycopg://netstudio:netstudio@postgres:5432/netstudio_qa
+export NETSTUDIO_ALLOWED_ORIGINS=http://127.0.0.1:13000 NETSTUDIO_SSH_ALLOWED_CIDRS=172.16.0.0/12
+docker compose --env-file .env.example -f docker-compose.yml -f deploy/compose.qa.yml up --build -d --wait
+NETSTUDIO_TEST_DATABASE_URL=postgresql+psycopg://netstudio:netstudio@127.0.0.1:18432/netstudio_qa .venv/bin/python backend/tests/seed_browser.py
 cd frontend
-STOCC_QA=1 STOCC_QA_SSH_KEY_URL=http://127.0.0.1:12223 PLAYWRIGHT_BASE_URL=http://127.0.0.1:13000 npm run test:e2e -- --workers=1
+NETSTUDIO_QA=1 NETSTUDIO_QA_SSH_KEY_URL=http://127.0.0.1:12223 PLAYWRIGHT_BASE_URL=http://127.0.0.1:13000 npm run test:e2e -- --workers=1
 ```
 
-Playwright Chromium kurulu değilse `npx playwright install chromium` çalıştırın; mevcut Chrome için `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome` kullanılabilir. Seed yalnız loopback `stocc_qa` veritabanını kabul eder; mevcut envanter veya kullanıcı varsa durur, hiçbir hesabın üzerine yazmaz. QA kullanıcı/parolası yalnız `backend/tests/conftest.py` içindeki test fixture'ıdır; üretimde kullanılmaz. SSH test sunucusu üretim imajına kopyalanmaz.
+Playwright Chromium kurulu değilse `npx playwright install chromium` çalıştırın; mevcut Chrome için `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome` kullanılabilir. Seed yalnız loopback `netstudio_qa` veritabanını kabul eder; mevcut envanter veya kullanıcı varsa durur, hiçbir hesabın üzerine yazmaz. QA kullanıcı/parolası yalnız `backend/tests/conftest.py` içindeki test fixture'ıdır; üretimde kullanılmaz. SSH test sunucusu üretim imajına kopyalanmaz.
 
-Mevcut QA projesi kullanılıyorsa veya test hesabı değiştirilmişse hesabı sıfırlamayın. Yeni `COMPOSE_PROJECT_NAME` ve boşta olan PostgreSQL/API/web portlarıyla ayrı proje açın. QA SSH anahtar servisinin portu `STOCC_TEST_SSH_KEY_PORT` ile ayrılabilir. Seed sırasında `STOCC_TEST_ORIGIN`, `STOCC_TEST_SSH_KEY_URL`, `STOCC_TEST_SSH_CONTAINER` ve `STOCC_TEST_DATABASE_URL` değerlerini **aynı yeni projeyi** gösterecek şekilde verin; testlerde de `PLAYWRIGHT_BASE_URL` bu origin olmalıdır. Seed varsayılanları sırasıyla `http://127.0.0.1:13000`, `http://127.0.0.1:12223`, `stocc-redesign-qa-ssh-lab-1` adresleridir. Seed seçili Docker context'i kullanır; gerekirse `STOCC_TEST_DOCKER_CONTEXT` ile aynı QA projesinin context'ini açıkça belirtin. Seed HTTP endpoint'leri yalnız loopback olabilir.
+Mevcut QA projesi kullanılıyorsa veya test hesabı değiştirilmişse hesabı sıfırlamayın. Yeni `COMPOSE_PROJECT_NAME` ve boşta olan PostgreSQL/API/web portlarıyla ayrı proje açın. QA SSH anahtar servisinin portu `NETSTUDIO_TEST_SSH_KEY_PORT` ile ayrılabilir. Seed sırasında `NETSTUDIO_TEST_ORIGIN`, `NETSTUDIO_TEST_SSH_KEY_URL`, `NETSTUDIO_TEST_SSH_CONTAINER` ve `NETSTUDIO_TEST_DATABASE_URL` değerlerini **aynı yeni projeyi** gösterecek şekilde verin; testlerde de `PLAYWRIGHT_BASE_URL` bu origin olmalıdır. Seed varsayılanları sırasıyla `http://127.0.0.1:13000`, `http://127.0.0.1:12223`, `netstudio-redesign-qa-ssh-lab-1` adresleridir. Seed seçili Docker context'i kullanır; gerekirse `NETSTUDIO_TEST_DOCKER_CONTEXT` ile aynı QA projesinin context'ini açıkça belirtin. Seed HTTP endpoint'leri yalnız loopback olabilir.
 
-Tarayıcı testleri masaüstü/mobil yerleşim, filtre kapsamı, ECharts, klavye ile port seçimi, form akışı, boş sır alanı, inline SSH giriş/kopyalama/yapıştırma/resize/kapanış ve logout senaryolarını gerçek API/gateway üzerinden denetler. Ayrıca sayfa kimliği, framework hata katmanı, konsol ve cookie güvenlik nitelikleri kontrol edilir. Girişten önceki `/session/me` 401 yanıtı beklenen davranıştır. Ekran görüntüleri işletim sisteminin geçici dizinindeki `stocc-netstudio-qa/` altına, başarısız test izleri `stocc-netstudio-playwright/` altına yazılır; otomatik olarak repository'ye eklenmez. Görsel değişikliklerde [görüntü yenileme kuralına](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile) göre incelenmiş üç README görüntüsü ayrıca `docs/screenshots/` altına alınır ve aynı değişiklikle teslim edilir; diğer geçici test kanıtları repository dışında kalır. Bunlar **sentetik QA envanteridir; fiziksel cihaz kanıtı değildir**.
+Tarayıcı testleri masaüstü/mobil yerleşim, filtre kapsamı, ECharts, klavye ile port seçimi, form akışı, boş sır alanı, inline SSH giriş/kopyalama/yapıştırma/resize/kapanış ve logout senaryolarını gerçek API/gateway üzerinden denetler. Ayrıca sayfa kimliği, framework hata katmanı, konsol ve cookie güvenlik nitelikleri kontrol edilir. Girişten önceki `/session/me` 401 yanıtı beklenen davranıştır. Ekran görüntüleri işletim sisteminin geçici dizinindeki `netstudio-qa/` altına, başarısız test izleri `netstudio-playwright/` altına yazılır; otomatik olarak repository'ye eklenmez. Görsel değişikliklerde [görüntü yenileme kuralına](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile) göre incelenmiş üç README görüntüsü ayrıca `docs/screenshots/` altına alınır ve aynı değişiklikle teslim edilir; diğer geçici test kanıtları repository dışında kalır. Bunlar **sentetik QA envanteridir; fiziksel cihaz kanıtı değildir**.
+
+**Tarihsel kayıt notu:** Aşağıdaki önceki QA bölümlerinde marka, ortam değişkeni ve proje/dizin yazımları yeni NetStudio terminolojisine uyarlanmıştır; bunlar eski runtime kaynaklarının yeniden adlandırıldığı veya testlerin tekrar çalıştırıldığı anlamına gelmez. Bu ad geçişinin güncel test sonuçları ayrıca en sonda raporlanır.
 
 2026-10-19 — kullanıcı yönetimi eklenmeden önceki tasarım/SSH kapsamının tarihsel doğrulama sonuçları:
 
@@ -453,7 +460,7 @@ Tarayıcı testleri masaüstü/mobil yerleşim, filtre kapsamı, ECharts, klavye
 | Kalıcılık / dağıtım | Migration `0003`; PostgreSQL/API/gateway yeniden oluşturulunca cihaz kayıtları ve şifreli kimlik bilgileri korundu; anahtar izinleri `0600`, UID/GID `100:101` |
 | Bağımlılık audit'i | `npm audit --omit=dev`: 0; geliştirme araçları dahil: 5 yüksek düzey kayıt |
 
-Browser eklentisi bulunmadığı için repository'nin Playwright akışı ve yerel Chrome kullanıldı. HTTPS testi geçici, kendinden imzalı **QA** sertifikasıyla yapıldı; `STOCC_QA_TLS=1` yalnız bu testte tarayıcının sertifika güven hatasını atlar. Sertifika ayrıca `curl --cacert` ile doğrulandı. Gerçek sertifika otoritesi/kurum ağı için üretim kabulü yapılmadı. Giriş öncesi beklenen 401 dışında test edilen ana ekran/terminal akışlarında konsol hatası veya framework hata katmanı kalmadı.
+Browser eklentisi bulunmadığı için repository'nin Playwright akışı ve yerel Chrome kullanıldı. HTTPS testi geçici, kendinden imzalı **QA** sertifikasıyla yapıldı; `NETSTUDIO_QA_TLS=1` yalnız bu testte tarayıcının sertifika güven hatasını atlar. Sertifika ayrıca `curl --cacert` ile doğrulandı. Gerçek sertifika otoritesi/kurum ağı için üretim kabulü yapılmadı. Giriş öncesi beklenen 401 dışında test edilen ana ekran/terminal akışlarında konsol hatası veya framework hata katmanı kalmadı.
 
 Geliştirme audit'indeki 5 kayıt, ESLint'in `braces` bağımlılık zincirine aittir; üretim frontend bağımlılıklarında bildirilmiş açık yoktur. Test araçları Starlette/httpx ve Vite yapılandırmasına ilişkin geçiş uyarıları üretir; testler başarılıdır. Bu sonuç genel bir güvenlik veya üretim kabul sertifikası değildir. Fiziksel switch üretici uyumluluğu, kurumsal SSO, gerçek sertifika/ağ erişimi, yüksek yük ve yedekten geri dönüş kabulü bu yerel testin dışındadır.
 
@@ -465,13 +472,13 @@ Geliştirme audit'indeki 5 kayıt, ESLint'in `braces` bağımlılık zincirine a
 | Migration / eşzamanlılık | PostgreSQL 16 üzerinde `0001 → 0004`; eski rol/hash/lokasyon/audit korunması, tanınmayan rolün reddi ve eşzamanlı iki admin değişikliğinde son superadmin'in korunması doğrulandı |
 | Mevcut QA güncellemesi | `0003 → 0004` geçişinde 1 kullanıcı, 16 cihaz, 149 telemetri örneği ve 524 audit kaydı korundu; sonra mevcut hesaptaki kullanıcı değişikliklerine müdahale edilmedi |
 | Frontend | 18 birim testi, ESLint, TypeScript ve Docker web/API production build geçti |
-| Tarayıcı | Ayrı `stocc-users-qa-20261019` projesinde, `http://127.0.0.1:13001` üzerinden 17 HTTP/WS senaryosu geçti |
+| Tarayıcı | Ayrı `netstudio-users-qa-20261019` projesinde, `http://127.0.0.1:13001` üzerinden 17 HTTP/WS senaryosu geçti |
 | Yeni kullanıcı akışları | Üst/alt hesap bağlantısı; kullanıcı oluştur/düzenle/sil; audit filtresi ve önce/sonra detayı; avatar yükle/yenile/kaldır; parola değişiminde çıkış; viewer/engineer reddi; rol düşürülünce canlı SSH'nin kapanması |
 | Görsel / regresyon | Hesap ekranı 1536×1080 ve 390×844; mevcut ekranlar 320–2560 px genişliklerde denetlendi. Sayfa kimliği, dolu içerik, konsol, hata katmanı, taşma, ECharts ve mevcut terminal etkileşimleri geçti |
 
-Kullanıcı/avatar/audit ekranları mevcut ortak panel dili ve SWR oturum/cache akışıyla bütünleştirildi; ECharts değiştirilmedi. Browser eklentisi yoktu; repository Playwright akışı ve `/usr/bin/google-chrome` kullanıldı. Yeni akışların görüntüleri geçici `stocc-netstudio-accounts/` dizinindedir. Testler kendi oluşturdukları geçici kullanıcıları siler; onların audit geçmişini korur. Mevcut QA hesabının adı değiştiğinde ilk toplu regresyon giriş adımında durdu; hesabı değiştirmek yerine ayrı proje/volume'lerde yeniden çalıştırıldı ve 17 senaryo geçti.
+Kullanıcı/avatar/audit ekranları mevcut ortak panel dili ve SWR oturum/cache akışıyla bütünleştirildi; ECharts değiştirilmedi. Browser eklentisi yoktu; repository Playwright akışı ve `/usr/bin/google-chrome` kullanıldı. Yeni akışların görüntüleri geçici `netstudio-accounts/` dizinindedir. Testler kendi oluşturdukları geçici kullanıcıları siler; onların audit geçmişini korur. Mevcut QA hesabının adı değiştiğinde ilk toplu regresyon giriş adımında durdu; hesabı değiştirmek yerine ayrı proje/volume'lerde yeniden çalıştırıldı ve 17 senaryo geçti.
 
-PostgreSQL testi için `backend/` altında `STOCC_TEST_MIGRATION_DATABASE_URL` değişkenini yalnız bu test için oluşturulmuş, boş, loopback üzerinde ve adı `stocc_users_test_` ile başlayan bir veritabanına ayarlayıp `../.venv/bin/python -m pytest -q tests/test_user_migration.py` çalıştırın. Test boş olmayan veritabanını reddeder; mevcut QA veya üretim veritabanını kullanmayın. SQLite testi `0003` sonrasından güncel migration'a ilerler; eski `0002` PostgreSQL'e özgü ALTER COLUMN kullanır.
+PostgreSQL testi için `backend/` altında `NETSTUDIO_TEST_MIGRATION_DATABASE_URL` değişkenini yalnız bu test için oluşturulmuş, boş, loopback üzerinde ve adı `netstudio_users_test_` ile başlayan bir veritabanına ayarlayıp `../.venv/bin/python -m pytest -q tests/test_user_migration.py` çalıştırın. Test boş olmayan veritabanını reddeder; mevcut QA veya üretim veritabanını kullanmayın. SQLite testi `0003` sonrasından güncel migration'a ilerler; eski `0002` PostgreSQL'e özgü ALTER COLUMN kullanır.
 
 Yeni kullanıcı akışları için HTTPS/WSS, Safari/Firefox, yük testi, yedekten geri dönüş ve üretim kabulü bu koşuda yapılmadı. Önceki TLS sonucu yeni akışların TLS doğrulaması sayılmaz. Starlette/httpx, Alembic yapılandırması ve Vite geçiş uyarıları sürmektedir; başarısız test değildir. Audit değişmezliği ve otomatik retention bu kapsamda uygulanmadı.
 
@@ -480,32 +487,32 @@ Yeni kullanıcı akışları için HTTPS/WSS, Safari/Firefox, yük testi, yedekt
 - Backend: 66 test geçti; varsayılan koşuda isteğe bağlı PostgreSQL testi atlandı. Ayrı boş PostgreSQL 16 veritabanında migration/koruma testleri ayrıca geçti (`0001 → 0005`).
 - Frontend: 23 birim testi, ESLint, TypeScript ve Docker web/API production build geçti.
 - Gerçek Nginx/API/PostgreSQL/SSH fixture zincirinde 21 Playwright senaryosu geçti. Yeni dört senaryo kişisel zone/atama, klavye ve fare taşıması, port bağlantısı, MAC/IP seçimi, kaydetme/yeniden açma, sürüm çakışması, zoom/arama, mobile yerleşim ve zone/çizim silerken cihazların korunmasını kapsar. Mevcut hesap, SSH ve ECharts regresyonları da geçti.
-- Test ortamı ayrı `stocc-topology-qa-20261019` Compose projesidir; mevcut kullanıcı kurulumu veya verileri değiştirilmedi. Önceki test koşuları giriş limitine ulaştığında yalnız izole API yeniden başlatıldı; uygulamanın güvenlik limitleri gevşetilmedi. Geçici test kullanıcıları ve onlara ait board’lar test temizliğinde kaldırıldı; audit korundu.
-- Browser eklentisi bulunmadığı için mevcut Playwright ve sistem Chromium’u kullanıldı. Yeni sayfa 1536×1000, 1920×1080, 390×844 ve 844×390 boyutlarında incelendi; ekran kanıtları `/tmp/stocc-netstudio-topology/` altındadır, üretim varlığı değildir.
+- Test ortamı ayrı `netstudio-topology-qa-20261019` Compose projesidir; mevcut kullanıcı kurulumu veya verileri değiştirilmedi. Önceki test koşuları giriş limitine ulaştığında yalnız izole API yeniden başlatıldı; uygulamanın güvenlik limitleri gevşetilmedi. Geçici test kullanıcıları ve onlara ait board’lar test temizliğinde kaldırıldı; audit korundu.
+- Browser eklentisi bulunmadığı için mevcut Playwright ve sistem Chromium’u kullanıldı. Yeni sayfa 1536×1000, 1920×1080, 390×844 ve 844×390 boyutlarında incelendi; ekran kanıtları `/tmp/netstudio-topology/` altındadır, üretim varlığı değildir.
 - Testler sentetik envanterle yapıldı. Fiziksel switch FDB/LLDP entegrasyonu, yeni sayfanın HTTPS üzerinde tarayıcı akışı, gerçek dokunmatik cihaz, Firefox/Safari ve büyük filo yük testi bu koşuda doğrulanmadı.
 
 ### Huawei VRP ve kayıtlı hedef onayı doğrulaması — 2026-10-19
 
 - Backend: `.venv/bin/pytest -q backend/tests` ile **79 test geçti, 1 isteğe bağlı PostgreSQL migration testi atlandı**. Huawei testleri VRP 5.120 biçimi, iki eski SHA-1 KEX seçeneği, RSA host key, aes128-cbc, gerçek yerel SSH/PTY, sayfalama, rol/site, kayıtlı IP/port onayı, opsiyonel CIDR sınırı, host key reddi, profil değişince oturum kapanması ve başarısız okumada envanter korumasını kapsar. Test sırasında görülen SQLite eşzamanlı bağlantı paylaşımı da giderildi; PostgreSQL pool davranışı değişmedi.
 - Frontend: **23 birim testi**, ESLint, TypeScript ve Docker API/web production build geçti. ECharts renderer/seri hesapları korunur; port ölçüm penceresi, PVID ve yönlü sayaçlar gerçek API alanlarından gösterilir.
-- `http://127.0.0.1:13003` üzerindeki izole `stocc-huawei-qa-20261019` projesinde **23 Playwright senaryosu geçti**. Huawei/legacy form akışı 1536×1024 ve 390×844 boyutlarında; genel regresyonlar 320–2560 px genişliklerde doğrulandı. Browser eklentisi bulunmadığından mevcut Playwright ve sistem Chrome kullanıldı. Sayfa kimliği/içerik, framework hata katmanı, konsol, klavye/SSH etkileşimi ve görüntüler kontrol edildi; beklenen giriş öncesi 401 dışında ilgili konsol hatası yoktu.
-- README'nin üç görüntüsü aynı güncel çalışma ağacından yenilendi. QA'da ek CIDR sınırı boş bırakılarak kayıtlı hedef onayı gerçek SSH zincirinde denendi. Çalışan `stocc-netstudio-fresh` kurulumu, `.env`, kullanıcı kayıtları ve anahtarları değiştirilmedi; yeni özellikler için mevcut kurulumun imajları ayrıca yeniden build edilmelidir. Yeni DB migration gerekmez.
+- `http://127.0.0.1:13003` üzerindeki izole `netstudio-huawei-qa-20261019` projesinde **23 Playwright senaryosu geçti**. Huawei/legacy form akışı 1536×1024 ve 390×844 boyutlarında; genel regresyonlar 320–2560 px genişliklerde doğrulandı. Browser eklentisi bulunmadığından mevcut Playwright ve sistem Chrome kullanıldı. Sayfa kimliği/içerik, framework hata katmanı, konsol, klavye/SSH etkileşimi ve görüntüler kontrol edildi; beklenen giriş öncesi 401 dışında ilgili konsol hatası yoktu.
+- README'nin üç görüntüsü aynı güncel çalışma ağacından yenilendi. QA'da ek CIDR sınırı boş bırakılarak kayıtlı hedef onayı gerçek SSH zincirinde denendi. Çalışan `netstudio-fresh` kurulumu, `.env`, kullanıcı kayıtları ve anahtarları değiştirilmedi; yeni özellikler için mevcut kurulumun imajları ayrıca yeniden build edilmelidir. Yeni DB migration gerekmez.
 - Fiziksel Huawei switch'e canlı bağlantı, yeni akışta HTTPS/WSS, Firefox/Safari ve yük testi bu koşuda yapılmadı. Gerçek cihazın bağımsız host anahtarı doğrulaması hâlâ gereklidir. Starlette/httpx, Alembic, Vite ve legacy FFDH deprecation uyarıları başarısız test değildir. Kullanım ve ölçüm sınırları [Huawei VRP rehberinde](docs/huawei-vrp.md) açıklanır.
 
 ### SFP sınıflandırması ve cihaz detay topolojisi doğrulaması — 2026-10-20
 
 - Backend: **88 test geçti, 1 isteğe bağlı PostgreSQL migration testi atlandı**. Huawei VRP sınıflandırma testleri açık bakır/fiber port modu, GE/XGE/10GE/25GE SFP ailesi, açık QSFP belirteçleri, belirsiz 40GE/100GE ve 24 RJ45 + 4 SFP envanterini kapsar. Model adından port üretilmez; modül takılı kabul edilmez.
 - Frontend: ESLint, TypeScript, **30 birim testi** ve Docker production build geçti. Apache ECharts korunur; cihaz detay topolojisi geniş panelde üç kolon, dar panelde iki kolon kullanır. Düğüm boyutu yakınlaştırmadan bağımsızdır; kaydırma, kontrollü yakınlaştırma ve sıfırlama sağlanır.
-- İzole `stocc-sfp-topology-qa-20261020` Docker projesinde sistem Chrome ile **26 Playwright senaryosu geçti**. Cihaz detay topolojisi 1536 px ve 390 px genişlikte düğüm sınırları, yatay taşma, yakınlaştırma ve sıfırlama açısından doğrulandı; genel regresyon 320–2560 px aralığını ve gerçek izole SSH oturumunu kapsadı.
-- README'nin ana sayfa, SSH kapalı detay ve SSH açık detay görüntülerinin üçü de aynı güncel çalışma ağacından yenilendi. Kullanıcının çalışan `stocc-netstudio-fresh` kurulumu, verileri, anahtarları ve volume'leri değiştirilmedi; QA volume'leri ayrı tutuldu. Yeni DB migration gerekmez.
+- İzole `netstudio-sfp-topology-qa-20261020` Docker projesinde sistem Chrome ile **26 Playwright senaryosu geçti**. Cihaz detay topolojisi 1536 px ve 390 px genişlikte düğüm sınırları, yatay taşma, yakınlaştırma ve sıfırlama açısından doğrulandı; genel regresyon 320–2560 px aralığını ve gerçek izole SSH oturumunu kapsadı.
+- README'nin ana sayfa, SSH kapalı detay ve SSH açık detay görüntülerinin üçü de aynı güncel çalışma ağacından yenilendi. Kullanıcının çalışan `netstudio-fresh` kurulumu, verileri, anahtarları ve volume'leri değiştirilmedi; QA volume'leri ayrı tutuldu. Yeni DB migration gerekmez.
 - Bu koşuda fiziksel Huawei switch'e bağlanılmadı. Otomatik üretilmiş VRP envanteri bir sonraki başarılı veri toplamada yeni kuralla güncellenir; elle aktarılmış cihaz geometrisi korunur. HTTPS/WSS, Firefox/Safari ve büyük filo yük testi bu değişiklik için ayrıca doğrulanmadı. Starlette/httpx, Alembic, Vite ve legacy FFDH deprecation uyarıları başarısız test değildir.
 
 ### Cisco Catalyst 2960-X collector doğrulaması — 2026-10-20
 
 - Backend: **102 test geçti, 1 isteğe bağlı PostgreSQL migration testi atlandı**. Yeni testler temizlenmiş `WS-C2960X-48FPD-L` IOS çıktısını, cihazın raporladığı portları model kapasitesinden ayırmayı, bakır/SFP/QSFP sınıflandırmasını, sayaç/VLAN/IP/MAC–ARP ayrıştırmasını, opsiyonel komut eksikliğini, elle aktarılmış geometrinin korunmasını ve gerçek yerel legacy SSH/PTY sayfalamasını kapsar.
 - Frontend: ESLint, TypeScript, **30 birim testi** ve production build geçti. Bağlantı formunda `Cisco IOS · Catalyst 2960-X salt okunur SSH` veri kaynağı ile `Eski VRP` etiketi doğrulandı.
-- Browser eklentisi bulunmadığından repository Playwright akışı ve sistem Chrome kullanıldı. İzole `stocc-cisco-qa-20261020` Docker projesinde **26/26 Playwright senaryosu geçti**; hedef form akışı 1536×1024 ve 390×844, genel responsive regresyon 320–2560 px aralığında kontrol edildi. Sayfa kimliği, dolu içerik, framework hata katmanı, konsol, gerçek QA SSH oturumu ve yatay taşma kontrolleri geçti.
-- README'nin ana sayfa, SSH kapalı detay ve SSH açık detay görüntüleri aynı çalışma ağacından yenilendi ve görsel olarak incelendi. Test verileri sentetiktir; mevcut `stocc-netstudio-fresh` veritabanı, kullanıcıları, anahtarları ve volume'leri değiştirilmedi. Yeni DB migration gerekmez.
+- Browser eklentisi bulunmadığından repository Playwright akışı ve sistem Chrome kullanıldı. İzole `netstudio-cisco-qa-20261020` Docker projesinde **26/26 Playwright senaryosu geçti**; hedef form akışı 1536×1024 ve 390×844, genel responsive regresyon 320–2560 px aralığında kontrol edildi. Sayfa kimliği, dolu içerik, framework hata katmanı, konsol, gerçek QA SSH oturumu ve yatay taşma kontrolleri geçti.
+- README'nin ana sayfa, SSH kapalı detay ve SSH açık detay görüntüleri aynı çalışma ağacından yenilendi ve görsel olarak incelendi. Test verileri sentetiktir; mevcut `netstudio-fresh` veritabanı, kullanıcıları, anahtarları ve volume'leri değiştirilmedi. Yeni DB migration gerekmez.
 - Fiziksel `192.168.1.150` cihazında kullanıcı kimlik doğrulaması ve gerçek `show` çıktılarıyla tam veri toplama bu koşuda yapılmadı. Yerel entegrasyon fiziksel cihaz kabulü değildir; ilk canlı toplamada iş sonucu, model/sürüm, port sayısı ve uyarılar ayrıca kontrol edilmelidir.
 
 ### Çok markalı toplama ve SSH otomasyonu doğrulaması — 2026-10-20
@@ -513,9 +520,9 @@ Yeni kullanıcı akışları için HTTPS/WSS, Safari/Firefox, yük testi, yedekt
 | Kontrol | Sonuç |
 | --- | --- |
 | Backend | `.venv/bin/pytest -q backend/tests`: **127 geçti, 2 isteğe bağlı PostgreSQL testi atlandı** |
-| PostgreSQL kuyruk / migration sözleşmesi | Ayrı boş `stocc_automation_test_*` veritabanıyla `test_automation_migration.py`: **2 geçti**; eşzamanlı sahiplenme, sekiz slot, lease kaybında eski sahibi engelleme ve eski kayıtların korunması |
+| PostgreSQL kuyruk / migration sözleşmesi | Ayrı boş `netstudio_automation_test_*` veritabanıyla `test_automation_migration.py`: **2 geçti**; eşzamanlı sahiplenme, sekiz slot, lease kaybında eski sahibi engelleme ve eski kayıtların korunması |
 | Frontend | **30 birim testi**, ESLint, TypeScript ve Docker production build geçti |
-| Tarayıcı | İzole `stocc-automation-qa-20261020`, `http://127.0.0.1:13006`: **28 senaryolu tam tur geçti**; son backend/Compose değişikliğinden sonra otomasyon/console kapsamındaki **6 senaryo tekrar geçti** |
+| Tarayıcı | İzole `netstudio-automation-qa-20261020`, `http://127.0.0.1:13006`: **28 senaryolu tam tur geçti**; son backend/Compose değişikliğinden sonra otomasyon/console kapsamındaki **6 senaryo tekrar geçti** |
 | SSH / SNMP | Geçici gerçek SSH sunucularıyla legacy profil, yanlış parolada tek giriş, değişen anahtarda durma; yerel UDP SNMPv3 SHA-256/AES-128 GET/GETBULK ve bilinmeyen kullanıcı reddi geçti |
 | Dağıtım | QA'da `0006_collection_automation`, sağlıklı ayrı worker ve API; TLS Compose birleştirmesinde API/worker üretim ve HTTPS origin eşliği doğrulandı |
 
@@ -535,7 +542,7 @@ görüntünün yüklenmesini bekleyen assertion ile düzeltildi; host key/CIDR
 kontrolleri test için gevşetilmedi.
 
 README'nin üç görüntüsü son QA uygulamasından yeniden alınıp görsel olarak
-incelendi. Ek anahtar/mobil kanıtları `/tmp/stocc-netstudio-automation/`
+incelendi. Ek anahtar/mobil kanıtları `/tmp/netstudio-automation/`
 dizinindedir. React/PostgreSQL rehberleri doğrultusunda mevcut SWR/tasarım
 korundu, hafif özet ve geçmiş istekleri ayrıldı, kuyruk kilitleri kısa
 transaction'larla sınırlandı.
@@ -544,58 +551,68 @@ Bu kanıtlar fiziksel switch, gerçek 100 cihaz ×24 saat yük, yeni akışları
 HTTPS/WSS tarayıcı kabulü, Firefox/Safari veya üretim kabulü değildir.
 Hızlandırılmış 100 cihaz zamanlayıcı testi kapasite benchmark'ı sayılmaz.
 Kalan sürücü/alan/kanal ayrımı işleri [açık kabul tablosunda](docs/collection-automation.md#kabul-durumu-ve-açık-işler)
-yer alır. Mevcut `stocc-netstudio-fresh` kurulumu, kullanıcıları, sırları, anahtarları
+yer alır. Mevcut `netstudio-fresh` kurulumu, kullanıcıları, sırları, anahtarları
 ve volume'leri değiştirilmedi; migration ve imaj geçişi yalnız izole QA'ya uygulandı.
 
 ### Tam ekran ön panel doğrulaması — 2026-10-20
 
 - `2df37b1` üzerindeki çalışma ağacında ESLint, TypeScript, **38 birim testi** ve Docker web production build geçti. Mevcut SVG/port kimlikleri, canlı gözlemler ve IP topolojisi seçimi korunur; yeni API veya migration yoktur.
-- İzole `stocc-automation-qa-20261020` ortamında (`http://127.0.0.1:13006`, `panel-inspector-qa-20261020` web imajı) **32 Playwright senaryosu geçti**. Browser eklentisi bulunmadığından repository Playwright akışı ve sistem Chrome kullanıldı.
+- İzole `netstudio-automation-qa-20261020` ortamında (`http://127.0.0.1:13006`, `panel-inspector-qa-20261020` web imajı) **32 Playwright senaryosu geçti**. Browser eklentisi bulunmadığından repository Playwright akışı ve sistem Chrome kullanıldı.
 - Yeni dört senaryo: kasa/düğme/klavye ile açma, %125 başlangıç ve yakınlaştırma/sıfırlama, porta bağlı bilgi kutusu, ekran sınırları, yön değiştirme, Escape/kapatma ve odak iadesi, azaltılmış hareket, boş envanter ve modal kapanınca gerçek QA SSH oturumuyla komut göndermeye devam etme. Yeni yüzey 1536×1024, 390×844 ve 844×390 boyutlarında; mevcut genel regresyonlar 320–2560 px aralığında doğrulandı.
 - Sayfa kimliği, dolu içerik, framework hata katmanı ve ilgili uygulama konsol hatası kontrolleri geçti. İlk denemede mevcut navigasyonun `/topology` CSS ön yüklemesi için Chrome uyarısı görüldü; test yalnız HTTP 200 dönen ve topoloji CSS'i olduğu doğrulanan bu bildirimi ayrı advisory olarak kaydeder. Diğer uyarı/hatalar testte başarısızlık olmaya devam eder.
-- README'nin üç zorunlu görüntüsü son kodla 1536×1024 viewport üzerinden yeniden alındı, açılıp incelendi ve `docs/screenshots/` altına kopyalandı. Tam ekran masaüstü/mobil ek kanıtları `/tmp/stocc-netstudio-panel/inspector-*.png` altındadır. React/erişilebilir görselleştirme rehberleri doğrultusunda görünüm yalnız açılınca oluşturulur; kaydırma/resize dinleyicileri kapanışta temizlenir, geçici yakınlaştırma envantere yazılmaz.
+- README'nin üç zorunlu görüntüsü son kodla 1536×1024 viewport üzerinden yeniden alındı, açılıp incelendi ve `docs/screenshots/` altına kopyalandı. Tam ekran masaüstü/mobil ek kanıtları `/tmp/netstudio-panel/inspector-*.png` altındadır. React/erişilebilir görselleştirme rehberleri doğrultusunda görünüm yalnız açılınca oluşturulur; kaydırma/resize dinleyicileri kapanışta temizlenir, geçici yakınlaştırma envantere yazılmaz.
 
 ### Cihaz detay çalışma alanı doğrulaması — 2026-10-20
 
 - `591bcbb` üzerindeki çalışma ağacında ESLint, TypeScript, **46 birim testi** ve Docker web production build geçti. Yeni API, bağımlılık veya migration yoktur. Teknik bilgiler mevcut overview sözleşmesini kullanır; yeni cihaz ölçümü veya destek yeteneği varsayılmaz. Değişiklik frontend imajının güncellenmesini gerektirir; bu çalışmada kullanıcı kurulumu dağıtılmadı.
-- İzole `stocc-automation-qa-20261020` projesinde `stocc-netstudio-web:detail-workspace-qa-20261020` imajı, sistem Chrome ve Playwright kullanıldı. Browser eklentisi mevcut olmadığından projenin mevcut Playwright akışı izlendi. **36 farklı tarayıcı senaryosu**, toplu tur ve hedefli tekrarlarla doğrulandı: ilk turda 30 geçti; üç testin genel `status` seçicisi yeni canlı alanlarla çakıştı, son topoloji testleri QA giriş hız sınırına takıldı. Seçiciler yalnız iş sonucuna daraltıldı; hız sınırı süresi doğal olarak dolduktan sonraki 11 testlik tekrarın tamamı geçti. Güvenlik sınırları gevşetilmedi; toplu turları arka arkaya çalıştırırken giriş sınırı için bekleme gerekebilir.
+- İzole `netstudio-automation-qa-20261020` projesinde `netstudio-web:detail-workspace-qa-20261020` imajı, sistem Chrome ve Playwright kullanıldı. Browser eklentisi mevcut olmadığından projenin mevcut Playwright akışı izlendi. **36 farklı tarayıcı senaryosu**, toplu tur ve hedefli tekrarlarla doğrulandı: ilk turda 30 geçti; üç testin genel `status` seçicisi yeni canlı alanlarla çakıştı, son topoloji testleri QA giriş hız sınırına takıldı. Seçiciler yalnız iş sonucuna daraltıldı; hız sınırı süresi doğal olarak dolduktan sonraki 11 testlik tekrarın tamamı geçti. Güvenlik sınırları gevşetilmedi; toplu turları arka arkaya çalıştırırken giriş sınırı için bekleme gerekebilir.
 - Yeni akış 1536, 390 ve 320 px genişliklerde test edildi: sabit 340 px çizim alanı, görünür düğüm sınırları, arama/boş sonuç, düğüm ve çizgi için klavye seçimi, bağlantı kanıtı, odaklanma/sıfırlama, kaydırma modu, arayüz araması/sayfalaması ve bileşen ayrıntıları. 250 düğümlü sentetik cevapta 80 düğümlük çizim sınırı ve listenin sonundaki düğüme erişim; uzun model metni, eski veri, tamamen boş telemetri ve `0`/eksik ölçüm ayrımı ayrıca sınandı.
 - Tasarım referansı mevcut `/topology` sayfasıdır: açık taramalı zemin, köşeli bağlantılar, kontrollü yakınlaştırma/taşıma, kanıt içeren ayrı bilgi alanı ve mobilde alta geçen ayrıntılar karşılaştırıldı. Cihaz detayında farklı olarak 340 px yükseklik ve arayüz/alt ağ anlamına uygun küçük metin düğümleri kullanılır; kalıcı yerleşim düzenleme eklenmez. React ve görselleştirme rehberleri doğrultusunda geometri ile seçim durumu ayrıldı, çizim sınırlandırıldı, klavye erişimi ve kaynak/güncellik açıklamaları korundu.
-- README'nin üç görüntüsü son çalışan koddan, aynı QA cihazı ve 1536×1024 viewport ile yeniden alındı ve görsel olarak incelendi. SSH açık görüntüsü gerçek izole SSH bağlantısıdır. Ek masaüstü/mobil kanıtlar `/tmp/stocc-netstudio-detail/` altındadır. Sayfa kimliği, boş sayfa/framework hata katmanı, ilgili uygulama konsol hataları ve taşma kontrolleri geçti. Bu sonuçlar sentetik QA kanıtıdır; fiziksel Cisco/Huawei cihazı veya Safari/Firefox doğrulaması değildir.
-- Bu tur yalnız frontend değişikliğidir; backend testleri yeniden çalıştırılmadı. Firefox/Safari ve fiziksel dokunmatik cihaz doğrulaması yapılmadı. Mevcut `stocc-netstudio-fresh` kurulumu, cihazlar, anahtarlar ve volume'ler değiştirilmedi; çalışan kurulumda görünmesi için web imajı ayrıca güncellenmelidir.
+- README'nin üç görüntüsü son çalışan koddan, aynı QA cihazı ve 1536×1024 viewport ile yeniden alındı ve görsel olarak incelendi. SSH açık görüntüsü gerçek izole SSH bağlantısıdır. Ek masaüstü/mobil kanıtlar `/tmp/netstudio-detail/` altındadır. Sayfa kimliği, boş sayfa/framework hata katmanı, ilgili uygulama konsol hataları ve taşma kontrolleri geçti. Bu sonuçlar sentetik QA kanıtıdır; fiziksel Cisco/Huawei cihazı veya Safari/Firefox doğrulaması değildir.
+- Bu tur yalnız frontend değişikliğidir; backend testleri yeniden çalıştırılmadı. Firefox/Safari ve fiziksel dokunmatik cihaz doğrulaması yapılmadı. Mevcut `netstudio-fresh` kurulumu, cihazlar, anahtarlar ve volume'ler değiştirilmedi; çalışan kurulumda görünmesi için web imajı ayrıca güncellenmelidir.
 
 ### Yan menü ve üst bar doğrulaması — 2026-10-20
 
 - `1256311` üzerindeki çalışma ağacında ESLint, TypeScript, **46 birim testi** ve Docker web production build geçti. Yalnız frontend değişti; yeni bağımlılık, API veya migration yoktur. `ConsoleNavigation` görsel kabuğu, oturum/CSRF ve audit akışını değiştirmeden `ConsoleShell` içinden ayırır.
-- QA ortamı: `stocc-automation-qa-20261020`, `http://127.0.0.1:13006`, `stocc-netstudio-web:shell-navigation-qa-20261020`, sistem Chrome + Playwright. Browser eklentisi erişilebilir olmadığından mevcut Playwright akışı kullanıldı. Backend, worker, veritabanı ve SSH laboratuvarı yeniden kurulmadı; yalnız QA web servisi güncellendi.
+- QA ortamı: `netstudio-automation-qa-20261020`, `http://127.0.0.1:13006`, `netstudio-web:shell-navigation-qa-20261020`, sistem Chrome + Playwright. Browser eklentisi erişilebilir olmadığından mevcut Playwright akışı kullanıldı. Backend, worker, veritabanı ve SSH laboratuvarı yeniden kurulmadı; yalnız QA web servisi güncellendi.
 - Son imajda **40 farklı Playwright senaryosu** turlar halinde doğrulandı. 25 testlik tur 22 başarılı sonuçtan sonra SIGTERM/143 ile sonlandı; tek komutta tamamlanmış sayılmadı. Sonraki 4 testlik console, 8 testlik navigasyon/topoloji ve 15 testlik detay/toplama/ön panel gruplarının tamamı geçti; eksik kalan üç topoloji senaryosu da böylece doğrulandı. Testler arasında mevcut giriş hız sınırının doğal süresi korundu; API yeniden başlatılmadı veya sınır gevşetilmedi.
 - Yeni regresyonlar: 232/76 px menü ve üst bar hizası, animasyon, klavyeyle daraltma, route/reload sonrasında tercih, değişmeyen ECharts instance'ı, gerçek SSH oturumunda kesintisiz komut gönderimi, mobil odak çevrimi/Escape/dış alan/sayfa seçimi, masaüstü–mobil geçişi, 701 px sınırı, kısa ekranda alt hesap alanına kaydırma, azaltılmış hareket ve engellenen `localStorage`.
 - Görsel karşılaştırma, geniş/dar menü konsepti ile çalışan uygulama arasında yapıldı: (1) 232/76 px kolonlar ve 68 px üst bar, (2) mevcut grafit/açık gri/beyaz tokenlar ve köşeli yüzeyler, (3) aynı dört navigasyon etiketi ve açıklamaları, (4) tutarlı çizgisel SVG simgeleri, (5) mevcut şeffaf logo varlıkları ve alttaki hesap eylemleri, (6) mobilde taşmayan çekmece. Konsept iki durumu yan yana gösteren bir tasarım panosudur; uygulama ayrı 1536×1024, 390×844 ve 320×844 ekranlarda incelendi. Bilinçli farklar: dar menüde mevcut amblem kullanılır; üst bara gerçek sayfa bağlamı eklenir; mevcut grafik/içerik düzeni konsept görselinden yeniden üretilmez.
 - Görsel incelemede üst barın grid animasyonuyla logo alanının kaydığı yakalandı; üst bar `flex` + açık genişlik animasyonuna taşındı. Statik görüntülerde viewport yeniden ölçümünün geçişin ara karesini yakalamaması için Playwright `animations: "disabled"` kullanılır. Normal etkileşimde 220 ms geçiş ayrıca test edilir; azaltılmış harekette geçiş yoktur.
 - Bir marka testinde, çıkış isteğinden 7 ms sonra gönderilen gecikmeli `inventory.filter` etkinliği 401 aldı. Test, ana sayfaya dönüşten sonra bu gerçek etkinliğin 201 cevabını bekleyecek şekilde kararlılaştırıldı; 401 denetimi ve backend güvenliği gevşetilmedi. Bu, mevcut uygulamadaki çıkış/arka plan isteği yarışının genel olarak giderildiği iddiası değildir.
-- README'nin üç görüntüsü aynı QA cihazında, 1536×1024 viewport ve tam sayfa yakalamayla yeniden üretildi, açılıp incelendi ve `docs/screenshots/` altına alındı. SSH açık görüntüsü gerçek izole SSH oturumudur. Geniş/dar menü, mobil çekmece ve kısa ekran kanıtları `/tmp/stocc-netstudio-navigation/` altındadır.
+- README'nin üç görüntüsü aynı QA cihazında, 1536×1024 viewport ve tam sayfa yakalamayla yeniden üretildi, açılıp incelendi ve `docs/screenshots/` altına alındı. SSH açık görüntüsü gerçek izole SSH oturumudur. Geniş/dar menü, mobil çekmece ve kısa ekran kanıtları `/tmp/netstudio-navigation/` altındadır.
 - Bu tur üretime dağıtım yapılmadı. Backend testleri, fiziksel Cisco/Huawei, gerçek dokunmatik cihaz ve Safari/Firefox doğrulaması yapılmadı; sonuçlar izole Chrome QA kanıtıdır.
 
 ### MAC/IP eşleştirme doğrulaması — 2026-10-20
 
 - `492e66e` üzerindeki çalışma ağacında backend **163 test geçti, 2 test atlandı**; frontend ESLint, TypeScript ve **52 birim testi** geçti. Atlanan iki migration testi ayrı, boş loopback PostgreSQL test veritabanı ister; mevcut QA/üretim veritabanları bu amaçla sıfırlanmadı. API ve web production imajları `mac-ip-qa-20261020` etiketiyle oluşturuldu; yeni bağımlılık veya veritabanı migration'ı yoktur.
 - Birim/API regresyonları: IPv4/IPv6 ve ARP-only satırlar, cihazın kendi IP'sinin dışlanması, VLAN/VRF/site sınırları, LLDP yönetim adresiyle tekil komşu kimliği, belirsiz/eskimiş kayıtlar, gelecekte veya saat dilimsiz gözlem, link-local kapsamı, silinen arayüz, harici/worker snapshot önceliği, bağımsız uç/LLDP zamanları ve başarısız yenilemede son doğru kaydın korunması. Aynı endpoint kimliği ve site yetkileri korunur; IP eşleştirmesi fiziksel bağlantı üretmez.
-- Tarayıcı ortamı: `stocc-automation-qa-20261020`, `http://127.0.0.1:13006`, sistem Chrome + repository Playwright. Browser eklentisi erişilebilir olmadığından mevcut test akışı kullanıldı. Yeni senaryolar 1536×1024 ve 390×844'te gerçek API'ye sentetik FDB, LLDP, ARP ve NDP göndererek aynı MAC'in port popup'ı ve iki topolojide aynı IPv4/IPv6 adreslerini/kanıtını göstermesini; bilinmeyen MAC'in çözülememiş kalmasını sınar. Sayfa kimliği, dolu içerik, taşma, framework hata katmanı ve ilgili konsol hataları denetlenir.
+- Tarayıcı ortamı: `netstudio-automation-qa-20261020`, `http://127.0.0.1:13006`, sistem Chrome + repository Playwright. Browser eklentisi erişilebilir olmadığından mevcut test akışı kullanıldı. Yeni senaryolar 1536×1024 ve 390×844'te gerçek API'ye sentetik FDB, LLDP, ARP ve NDP göndererek aynı MAC'in port popup'ı ve iki topolojide aynı IPv4/IPv6 adreslerini/kanıtını göstermesini; bilinmeyen MAC'in çözülememiş kalmasını sınar. Sayfa kimliği, dolu içerik, taşma, framework hata katmanı ve ilgili konsol hataları denetlenir.
 - Bu çalışma boyunca turlar ve hedefli tekrarlarla **22 farklı Playwright senaryosu geçti**: console 4, cihaz detayı 4, yeni MAC/IP 2, topoloji 4, ön panel 4, otomasyon 2 ve Huawei 2. Son API/web imajlarında tekrarlanan **10 console + cihaz detayı + MAC/IP senaryosunun tamamı geçti**; ayrıca düzeltilen dört topoloji senaryosu ayrı turda geçti. Bu, repository'deki bütün tarayıcı test dosyalarının çalıştırıldığı anlamına gelmez.
 - İlk regresyonlarda eski cihaz-detay testi yeni uç düğümlerini saymıyordu; beklenti 7'den 11 düğüme güncellendi ve küçük filtreli grafik ile büyük kaydırılabilir grafik ayrı sınandı. Büyüyen QA envanteri 24 cihaz çizim sınırını aşınca topoloji testleri sınırı ve tüm envantere seçim listesinden erişimi birlikte denetleyecek şekilde düzeltildi; bağlantı çizimi bilinen fixture MAC önekiyle filtrelenir. Terminal yeniden açma testi, UI'nin kapanmasına ek olarak gerçek `DELETE /ssh-sessions/...` yanıtını bekler; tek oturum güvenliği gevşetilmez. Bunlar eski terminalin çok hızlı yeniden açılmasındaki uygulama yarışının genel olarak giderildiği iddiası değildir.
-- React/görselleştirme rehberleri doğrultusunda üç ekran aynı `EndpointDetails` bileşeni ve backend projection'ını kullanır; kaynağı, zamanı ve belirsizliği ayrı gösterir. Toplu okuma iki sorguyla sınırlıdır, ekran açılması cihaz taraması başlatmaz. Görsel incelemede yinelenen VLAN/VRF ayrıntısı kaldırıldı. Geçici masaüstü/mobil kanıtlar `/tmp/stocc-netstudio-mac-ip/` altındadır.
+- React/görselleştirme rehberleri doğrultusunda üç ekran aynı `EndpointDetails` bileşeni ve backend projection'ını kullanır; kaynağı, zamanı ve belirsizliği ayrı gösterir. Toplu okuma iki sorguyla sınırlıdır, ekran açılması cihaz taraması başlatmaz. Görsel incelemede yinelenen VLAN/VRF ayrıntısı kaldırıldı. Geçici masaüstü/mobil kanıtlar `/tmp/netstudio-mac-ip/` altındadır.
 - README'nin üç zorunlu görüntüsü son çalışan imajdan 1536×1024 viewport ve tam sayfa yakalamayla yeniden alındı, açılıp incelendi ve `docs/screenshots/` altına kopyalandı. Yakalama öncesi sayfa başına dönülerek sabit navigasyonun kaydırılmış sayfadaki görüntüleme artefaktı önlendi; SSH açık kare gerçek izole SSH oturumudur. Son QA imajları: API/worker `sha256:687b1841642723fc7c638911366a223da2ad10cfedcaed93f4342dc25c8f083b`, web `sha256:ee166956cca374fb43444f08ebcb26da3537fcc43bca2b66fbb9552ad4554bb4`.
-- Yalnız izole QA API/worker/web servisleri güncellendi. `stocc-netstudio-fresh`, mevcut kullanıcı cihazları, anahtarlar ve volume'ler değiştirilmedi. Fiziksel Cisco/Huawei kabulü, Safari/Firefox, gerçek dokunmatik donanım ve büyük filo performansı bu turda doğrulanmadı. Kullanıcı kurulumunda görünmesi için API, worker ve web birlikte güncellenmelidir; tüm MAC'lerin çözüleceği garantisi yoktur.
+- Yalnız izole QA API/worker/web servisleri güncellendi. `netstudio-fresh`, mevcut kullanıcı cihazları, anahtarlar ve volume'ler değiştirilmedi. Fiziksel Cisco/Huawei kabulü, Safari/Firefox, gerçek dokunmatik donanım ve büyük filo performansı bu turda doğrulanmadı. Kullanıcı kurulumunda görünmesi için API, worker ve web birlikte güncellenmelidir; tüm MAC'lerin çözüleceği garantisi yoktur.
 
 ### 20 Ekim 2026 — Ayarlar, canlı bildirimler ve host güncelleyicisi QA
 
 - `48b1ec4` üzerindeki çalışma ağacına `/settings`, `/settings/users`, `/settings/updates`, yetkili SSE bildirimleri ve ayrı host güncelleyicisi eklendi. Eski `/account` korunur; hesap yönetimi API'leri yeniden yazılmadı. `0007_settings_updates` additive migration'ı yalnız yeni durum, kurulum işi, runtime varlığı ve okunma işareti tablolarını ekler. [Güven sınırı, ilk kurulum ve kurtarma](docs/updates.md).
 - Backend tam turunda **188 test geçti, 2 test atlandı**. Son host-politika düzeltmesinden sonra **26 hedefli ayarlar/güncelleme testi** ayrıca geçti (tam turla örtüşür; sayılar toplanmaz). Atlanan mevcut iki PostgreSQL testi ayrı boş test DB'si gerektirir; kullanıcı/QA DB'leri sıfırlanmadı. Yeni migration mevcut PostgreSQL QA veritabanında da başarıyla çalıştırıldı. Yetki/CSRF, site/hesap bildirim ayrımı, okunma işareti, kuyruk birleştirme, ETag/hız sınırı, sahiplik kaybı, yedek önceliği, yarım migration ve geri dönüş kararları sınandı. Host kurulum komutları kontrollü executor testleridir; gerçek main yükseltmesi değildir.
 - Frontend ESLint, TypeScript, **52 birim testi** ve API/web production imaj derlemeleri geçti. Son API/worker imajı `sha256:245b9a295828b46ca3a02df3af8839193fdc644428bdf034f55dad36b694e5bf`; web `sha256:6c6e708974d397725d22e827b1a771bcad77764f8c806cfcbb3c6d6723b87d3e`. Etiket `settings-updates-qa-20261020`; kirli çalışma ağacına yayınlanmış SHA etiketi verilmedi (`revision=unknown`).
-- Son imajlarda **23 Playwright senaryosunun tamamı tek turda geçti**: hesap 4, marka 2, console 4, navigasyon 4, ayarlar 5, topoloji 4. Ortam `http://127.0.0.1:13006`, `stocc-automation-qa-20261020`, sistem Chrome; Browser eklentisi bulunmadığından repository Playwright akışı kullanıldı. Yeni ayarlar/bildirim yüzeyleri 1536, 390 ve 320 px; güncelleme işareti ayrıca 768 px; mevcut navigasyon 320–2560 px aralığında sınandı.
+- Son imajlarda **23 Playwright senaryosunun tamamı tek turda geçti**: hesap 4, marka 2, console 4, navigasyon 4, ayarlar 5, topoloji 4. Ortam `http://127.0.0.1:13006`, `netstudio-automation-qa-20261020`, sistem Chrome; Browser eklentisi bulunmadığından repository Playwright akışı kullanıldı. Yeni ayarlar/bildirim yüzeyleri 1536, 390 ve 320 px; güncelleme işareti ayrıca 768 px; mevcut navigasyon 320–2560 px aralığında sınandı.
 - Hesap oluşturma/düzenleme/silme, viewer profil/avatar/parola değişimi, engineer yönetim engeli, canlı SSH yetki iptali, gerçek profil olayının yenilemesiz SSE paneline gelmesi, okundu durumunun reload sonrası korunması, Escape/dış tıklama/odak iadesi, azaltılmış hareket ve mobil taşma denetlendi. Gerçek public GitHub kontrolü 30 commit aldı ve arayüzde GitHub bağlantısı doğrulandı. Güncelleme-available rozeti ve HTML olarak çalıştırılmayan commit metni ayrı UI fixture'ıyla sınandı; bu fixture gerçek kurulum kanıtı değildir.
 - İlk QA'da bildirim düğmesinin test seçicisi kapatma düğmesiyle çakıştı; kapsam daraltıldı. Kullanılmayan topoloji CSS ön yükleme uyarısı için yalnız topoloji navigasyonunun erken prefetch'i kapatıldı. Ekran yakalamalarından sonra global klavye odağını varsayan eski test, odağı kontrol ettikten sonra Enter'ı doğrudan hedef link üzerinden gönderecek şekilde ayrıldı; mobil odak ve gerçek SSH regresyonları korunur. Son turda ilgili konsol/hata katmanı/boş sayfa kontrolleri geçti.
-- README'nin üç zorunlu görüntüsü son çalışan imajlardan 1536×1024 viewport, `fullPage` ve animasyonlar kapalı alınarak açılıp incelendi ve `docs/screenshots/` altına kopyalandı. SSH açık kare gerçek izole SSH bağlantısıdır. Yeni sayfa/panel masaüstü-mobil kanıtları `/tmp/stocc-netstudio-settings/` altındadır. React ve PostgreSQL rehberleri doğrultusunda SSE bağlantısı unmount'ta temizlenir; ağ/derleme işlemleri DB kilidi altında çalışmaz.
-- Host hedef doğrulaması mevcut QA üzerinde **salt okunur** çalıştırıldı; doğru proje/DB bulundu ve sürümsüz imaj koruması beklendiği gibi `update_revision_unknown` döndürdü. Otomatik kurulum açık değildir, host agent servis olarak kurulmadı ve hiçbir gerçek güncelleme işi başlatılmadı. `stocc-netstudio-fresh`, kullanıcı verileri, SSH anahtarları ve volume'ler korunmuştur; commit/push yapılmadı. Canlı kullanım için temiz yayınlanmış sürüm, migration/API-worker-web geçişi ve bir defalık operatör host hazırlığı gerekir. Gerçek yükseltme/restore, güç kesintisi, Safari/Firefox ve fiziksel cihaz kabulü bu testlerin dışında kalır.
+- README'nin üç zorunlu görüntüsü son çalışan imajlardan 1536×1024 viewport, `fullPage` ve animasyonlar kapalı alınarak açılıp incelendi ve `docs/screenshots/` altına kopyalandı. SSH açık kare gerçek izole SSH bağlantısıdır. Yeni sayfa/panel masaüstü-mobil kanıtları `/tmp/netstudio-settings/` altındadır. React ve PostgreSQL rehberleri doğrultusunda SSE bağlantısı unmount'ta temizlenir; ağ/derleme işlemleri DB kilidi altında çalışmaz.
+- Host hedef doğrulaması mevcut QA üzerinde **salt okunur** çalıştırıldı; doğru proje/DB bulundu ve sürümsüz imaj koruması beklendiği gibi `update_revision_unknown` döndürdü. Otomatik kurulum açık değildir, host agent servis olarak kurulmadı ve hiçbir gerçek güncelleme işi başlatılmadı. `netstudio-fresh`, kullanıcı verileri, SSH anahtarları ve volume'ler korunmuştur; commit/push yapılmadı. Canlı kullanım için temiz yayınlanmış sürüm, migration/API-worker-web geçişi ve bir defalık operatör host hazırlığı gerekir. Gerçek yükseltme/restore, güç kesintisi, Safari/Firefox ve fiziksel cihaz kabulü bu testlerin dışında kalır.
 
-Önceki kapsam ve kararların tarihsel kaydı: [ilk uygulama raporu](stocc-netstudio-uygulama-raporu.md). Güncel çalışma sınırları bu README ve kaynak koddaki sözleşmelerdir.
+### 20 Ekim 2026 — NetStudio adlandırma geçişi
+
+- GitHub remote ve `gh repo view` sonucu public `KES-KING/NetStudio`, varsayılan dal `main`. Kaynak, paket metadata/lock, Docker, ayarlar, cookie, API başlığı/servis kimliği, UI sekme başlığı, testler, issue şablonları ve belgeler yeni adı kullanır. Üç rapor dosyası `netstudio-…` adlarına taşındı; yerel Markdown dosya bağlantıları doğrulandı.
+- Eski metin yalnız `backend/app/legacy_compat.py`, bunun regresyon testleri ve [geçiş açıklamasında](docs/name-transition.md) tutulur. Yeni sırlar yeni AAD ile yazılır; eski SSH/SNMP sırları aynı cihaz/key/protokol bağlarıyla okunur. Yeni keyring `0600`, UID/GID `100:101`; eski dosya seçimi ikinci bir anahtar üretmez. Kişisel notlar, yerel `.env`, workspace dizini ve Git geçmişi değiştirilmedi.
+- `.venv/bin/pytest backend/tests -q`: **197 geçti, 2 atlandı**. Sonradan iki ek kapsamla tamamlanan `test_name_transition.py`: **10 geçti** (sekizi tam turla örtüşür). Atlanan testler ayrı boş PostgreSQL migration testleri; QA'nın yeni ve boş PostgreSQL'inde migration zinciri ayrıca `0007_settings_updates` seviyesine başarılı ulaştı. Gerçek mevcut veritabanına ad taşıma uygulanmadı.
+- `npm run lint`, `npm run typecheck`, **52 Vitest**, API/web Docker build, yeni Compose/HTTPS yapılandırması ve `git diff --check` başarılı. Eksik geçiş onayında Compose'un durması ve açık external-volume bağları doğrulandı. Bağımlılık sürümleri değiştirilmedi; mevcut Vite/Starlette/FFDH/Alembic uyarıları ve imaj build sırasında bildirilen geliştirme bağımlılığı audit uyarıları bu kapsamda giderilmedi.
+- Playwright: `settings.spec.ts accounts.spec.ts navigation.spec.ts branding.spec.ts topology.spec.ts console.spec.ts --workers=1` turunda **22 geçti, 1 test beklentisi başarısızdı**. Yetki iptalinde SSE giriş ekranını terminalin geçici uyarısından önce gösterebiliyor; test, canlı WebSocket'in kapanmasını, iki geçerli UI durumundan birini ve HTTP 401'i doğrulayacak şekilde düzeltildi. `accounts.spec.ts --grep 'superadmin role change' --workers=1` tekrarı **geçti**. Böylece 23 farklı senaryo doğrulandı; ilk turun bütünü başarılıymış gibi raporlanmaz.
+- Browser eklentisi mevcut değildi; sistem Chrome ve repository Playwright kullanıldı. Marka/başlık/GitHub yeni sekme akışı 1280×900 ve 390×844; ana sayfa/detay/gerçek SSH 1536×1024; navigasyon 320–2560 px; ayarlar 320/390 px kontrolleri çalıştı. Sayfa kimliği, anlamlı içerik, framework overlay, ilgili konsol hataları, port/terminal ve logout etkileşimleri denetlendi. Mobil ana sayfa başlığında mevcut `Cihaz Ekle` buton daralması gözlendi; bu adlandırma değişikliğinde CSS'e dokunulmadı.
+- README'nin üç PNG'si son uygulamadan yeniden alınıp incelendi; kaynak geçici görüntülerle SHA-256 eşleşmeleri kontrol edildi. Üretim kurulumu, mevcut QA kurulumları, kullanıcıları, anahtarları ve volume'leri değiştirilmedi. Yeni izole QA kurulumu ayrı port/volume kullanır. Fiziksel Cisco/Huawei, Safari/Firefox, gerçek kurulum geçişi ve geri yükleme kabulü yapılmadı; commit/push yoktur.
+
+Önceki kapsam ve kararların tarihsel kaydı: [ilk uygulama raporu](netstudio-uygulama-raporu.md). Güncel çalışma sınırları bu README ve kaynak koddaki sözleşmelerdir.

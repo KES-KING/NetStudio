@@ -2,7 +2,6 @@
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import json
-import os
 import re
 import time
 from urllib.error import HTTPError, URLError
@@ -11,6 +10,7 @@ from uuid import uuid4
 
 import sqlalchemy as sa
 
+from .legacy_compat import getenv
 from .auth import fail
 from .database import now
 from .auditing import safe_text
@@ -22,7 +22,7 @@ ACTIVE = {"queued", "building", "draining", "backing_up", "migrating", "deployin
 
 
 def defaults():
-    revision = os.getenv("STOCC_BUILD_REVISION", "")
+    revision = getenv("NETSTUDIO_BUILD_REVISION", "")
     return dict(automatic=False, policy_actor=None, installed_revision=revision if SHA.fullmatch(revision) else None,
         commits=[], latest_revision=None, checked_at=None, next_check=0, etag=None, error_code=None,
         check_owner=None, check_until=0, agent_id=None, agent_seen=0, agent_ready=False,
