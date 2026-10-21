@@ -72,6 +72,8 @@ const messages: Record<string, string> = {
   user_not_found: "Kullanıcı bulunamadı; listeyi yenileyin.",
   last_superadmin: "Son aktif superadmin kaldırılamaz veya yetkisi düşürülemez.",
   probe_agent_not_found: "Probe ajanı bulunamadı.",
+  probe_agent_update_empty: "Ajan için değiştirilecek bir alan seçilmedi.",
+  probe_agent_site_bound: "Ajanın aktif kapsamları varken site değiştirilemez.",
   probe_scope_not_found: "ARP tarama kapsamı bulunamadı.",
   probe_scope_not_active: "ARP tarama kapsamı etkin değil veya yeniden onay bekliyor.",
   probe_agent_offline_or_wrong_site: "Seçilen ajan çevrimdışı veya farklı bir siteye bağlı.",

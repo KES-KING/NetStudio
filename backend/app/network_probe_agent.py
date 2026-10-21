@@ -12,7 +12,9 @@ from ipaddress import IPv4Address, IPv4Interface, IPv4Network, ip_address, ip_in
 import json
 import os
 from pathlib import Path
+import re
 import select
+import secrets
 import signal
 import socket
 import struct
@@ -96,7 +98,10 @@ def interface_state(name: str):
 
 def configured_interfaces(config):
     rows = []
-    for name in config["interfaces"]:
+    names = config["interfaces"]
+    if config.get("automatic"):
+        names = sorted(name for _, name in socket.if_nameindex() if name != "lo" and len(name.encode()) <= 15)
+    for name in names:
         state = interface_state(name)
         if state:
             rows.append(state)
@@ -118,8 +123,22 @@ def load_config(path):
     if any(not isinstance(name, str) or not name or "/" in name or len(name.encode()) > 15 for name in interfaces):
         raise AgentError("probe_config_invalid")
     return {"api_url": api_url, "token_file": token_file, "interfaces": sorted(set(interfaces)),
-        "poll_seconds": max(1, min(int(value.get("poll_seconds", 3)), 30)),
+        "automatic": False, "poll_seconds": max(1, min(int(value.get("poll_seconds", 3)), 30)),
         "timeout_seconds": max(2, min(int(value.get("timeout_seconds", 10)), 30))}
+
+
+def automatic_config():
+    api_url = os.getenv("NETSTUDIO_PROBE_API_URL", "http://127.0.0.1:8000").rstrip("/")
+    parsed = urlparse(api_url)
+    local_http = parsed.scheme == "http" and parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+    if parsed.scheme != "https" and not local_http:
+        raise AgentError("probe_https_required")
+    state_dir = os.getenv("NETSTUDIO_PROBE_STATE_DIR", "/run/netstudio-probe")
+    return {"api_url": api_url, "token_file": str(Path(state_dir) / "agent.token"),
+        "bootstrap_token_file": os.getenv("NETSTUDIO_PROBE_BOOTSTRAP_TOKEN_FILE", "/run/secrets/network-probe-bootstrap.token"),
+        "node_id_file": str(Path(state_dir) / "node-id"), "interfaces": [], "automatic": True,
+        "poll_seconds": max(1, min(int(os.getenv("NETSTUDIO_PROBE_POLL_SECONDS", "3")), 30)),
+        "timeout_seconds": max(2, min(int(os.getenv("NETSTUDIO_PROBE_TIMEOUT_SECONDS", "10")), 30))}
 
 
 def read_secret(path):
@@ -145,6 +164,18 @@ def write_secret(path, value):
         os.close(descriptor)
     os.replace(temporary, target)
     os.chmod(target, 0o600)
+
+
+def persistent_node_id(path):
+    target = Path(path)
+    try:
+        value = read_secret(target)
+    except FileNotFoundError:
+        value = secrets.token_hex(32)
+        write_secret(target, value)
+    if not re.fullmatch(r"[0-9a-f]{32,64}", value):
+        raise AgentError("probe_node_id_invalid")
+    return value
 
 
 def api_call(config, token, path, method="POST", payload=None):
@@ -245,7 +276,12 @@ def scan(task, states):
 class Agent:
     def __init__(self, config):
         self.config = config
-        self.token = read_secret(config["token_file"])
+        try:
+            self.token = read_secret(config["token_file"])
+        except FileNotFoundError:
+            if not config.get("automatic"):
+                raise
+            self.token = bootstrap(config)
         self.stopping = threading.Event()
         self.heartbeat_thread = threading.Thread(target=self.heartbeat_loop, name="network-probe-heartbeat", daemon=True)
 
@@ -294,15 +330,29 @@ def enroll(config, enrollment_token_file):
     return result["agent_id"]
 
 
+def bootstrap(config):
+    bootstrap_token = read_secret(config["bootstrap_token_file"])
+    node_id = persistent_node_id(config["node_id_file"])
+    name = socket.gethostname().strip()[:160] or "Yerel probe ajanı"
+    result = api_call(config, bootstrap_token, "/api/v1/network-probe-agent/bootstrap", payload={
+        "node_id": node_id, "name": name, "interfaces": configured_interfaces(config)})
+    write_secret(config["token_file"], result["agent_token"])
+    return result["agent_token"]
+
+
 def main():
     parser = argparse.ArgumentParser(description="NetStudio VLAN-aware IPv4 ARP probe")
-    parser.add_argument("--config", required=True)
+    startup = parser.add_mutually_exclusive_group(required=True)
+    startup.add_argument("--config")
+    startup.add_argument("--automatic", action="store_true")
     subcommands = parser.add_subparsers(dest="command")
     enrollment = subcommands.add_parser("enroll")
     enrollment.add_argument("--enrollment-token-file", required=True)
     args = parser.parse_args()
     try:
-        config = load_config(args.config)
+        if args.command == "enroll" and args.automatic:
+            parser.error("enroll requires --config")
+        config = automatic_config() if args.automatic else load_config(args.config)
         if args.command == "enroll":
             identifier = enroll(config, args.enrollment_token_file)
             print(f"Ajan kaydedildi: {identifier}")

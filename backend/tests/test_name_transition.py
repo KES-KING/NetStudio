@@ -63,6 +63,8 @@ def test_default_keyring_and_existing_file_are_not_replaced(tmp_path, monkeypatc
     monkeypatch.setattr(sys, "argv", ["keyring", "initialize"])
     keyring.main()
     assert old.read_bytes() == original
+    bootstrap = tmp_path / "network-probe-bootstrap.token"
+    assert bootstrap.is_file() and bootstrap.stat().st_mode & 0o077 == 0
     assert not (tmp_path / "netstudio-keyring.json").exists()
     (tmp_path / "netstudio-keyring.json").write_text("{}")
     with pytest.raises(SecretStoreError, match="ambiguous_keyring_paths"):

@@ -22,10 +22,10 @@ async function login(page: Page) {
   return errors;
 }
 
-test("network probe settings expose bounded approval, one-time enrollment and responsive status", async ({ page }) => {
+test("network probe settings expose automatic enrollment, bounded approval and responsive status", async ({ page }) => {
   const at = new Date().toISOString();
   const state = {
-    agents: [{ id: "agent-1", name: "QA trunk probe", site: "TEST FIXTURE / isolated", enabled: true, online: true,
+    agents: [{ id: "agent-1", name: "QA trunk probe", site: "", enabled: true, online: true,
       interfaces: [{ name: "eth0.10", mac: "02:00:00:00:fe:10", addresses: ["192.0.2.254/24"] }],
       enrolled_at: at, last_seen_at: at, revoked_at: null }],
     proposals: [{ id: "a".repeat(64), site: "TEST FIXTURE / isolated", vlan: 10, vrf: null, vrf_known: true,
@@ -44,7 +44,10 @@ test("network probe settings expose bounded approval, one-time enrollment and re
     const request = route.request(), url = new URL(request.url()), body = request.postDataJSON?.() ?? {};
     if (request.method() === "GET" && url.pathname === "/api/v1/network-probes") return route.fulfill({ json: state });
     mutations.push({ path: url.pathname, body });
-    if (url.pathname.endsWith("/enrollments")) return route.fulfill({ status: 201, json: { enrollment_token: "qa-one-time-token", expires_at: at } });
+    if (request.method() === "PATCH" && url.pathname.endsWith("/agents/agent-1")) {
+      state.agents[0].site = String(body.site || "");
+      return route.fulfill({ json: { id: "agent-1", site: state.agents[0].site } });
+    }
     if (url.pathname.endsWith("/scopes")) return route.fulfill({ status: 201, json: state.scopes[0] });
     if (url.pathname.endsWith("/runs")) return route.fulfill({ status: 202, json: { task_id: "task-1", coalesced: false } });
     return route.fulfill({ json: { status: "ok" } });
@@ -57,10 +60,10 @@ test("network probe settings expose bounded approval, one-time enrollment and re
   await expect(page.getByText("5 eşleşme / 7 yanıt", { exact: true })).toBeVisible();
   await expect(page.locator(".probe-facts div").filter({ hasText: "Bilinmeyen yanıt" })).toContainText("2");
 
-  await page.getByLabel("Ajan adı", { exact: true }).fill("QA ikinci probe");
-  await page.getByLabel("Site", { exact: true }).fill("TEST FIXTURE / isolated");
-  await page.getByRole("button", { name: "Kayıt tokenı oluştur", exact: true }).click();
-  await expect(page.getByText("qa-one-time-token", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Bu siteye ata", exact: true }).click();
+  await expect.poll(() => mutations.some((item) => item.path.endsWith("/agents/agent-1")
+    && item.body.site === "TEST FIXTURE / isolated")).toBeTruthy();
+  await expect(page.getByText("Probe ajanı siteye atandı.", { exact: true })).toBeVisible();
 
   await page.locator("select[name=source_ip]").selectOption("192.0.2.254");
   await page.locator("input[name=acknowledged]").check();

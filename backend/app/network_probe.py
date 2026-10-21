@@ -12,6 +12,8 @@ import hashlib
 import hmac
 from ipaddress import IPv4Address, IPv4Interface, IPv4Network, ip_address, ip_interface, ip_network
 import json
+from os import getenv
+from pathlib import Path
 import re
 import secrets
 from typing import Literal
@@ -77,6 +79,23 @@ class ProbeInterface(StrictModel):
 class EnrollmentCreate(StrictModel):
     name: str = Field(min_length=1, max_length=160)
     site: str = Field(min_length=1, max_length=160)
+
+
+class AutomaticBootstrap(StrictModel):
+    node_id: str = Field(min_length=32, max_length=64, pattern=r"^[0-9a-f]+$")
+    name: str = Field(min_length=1, max_length=160)
+    interfaces: list[ProbeInterface] = Field(default_factory=list, max_length=128)
+
+    @model_validator(mode="after")
+    def unique_interfaces(self):
+        if len({item.name for item in self.interfaces}) != len(self.interfaces):
+            raise ValueError("duplicate_probe_interface")
+        return self
+
+
+class AgentUpdate(StrictModel):
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    site: str | None = Field(default=None, min_length=1, max_length=160)
 
 
 class AgentHeartbeat(StrictModel):
@@ -446,6 +465,18 @@ def authenticate_agent(store, request):
     return row
 
 
+def bootstrap_secret():
+    path = Path(getenv("NETSTUDIO_PROBE_BOOTSTRAP_TOKEN_FILE", "/run/secrets/network-probe-bootstrap.token"))
+    try:
+        stat = path.stat()
+        value = path.read_text().strip()
+    except OSError:
+        fail("probe_bootstrap_unavailable", 503)
+    if not path.is_file() or stat.st_mode & 0o077 or not value or len(value) > 256:
+        fail("probe_bootstrap_unavailable", 503)
+    return value
+
+
 def scope_json(row):
     result = dict(row)
     for key in ("next_due_at", "last_started_at", "last_completed_at", "last_success_at", "last_manual_at", "approved_at", "updated_at"):
@@ -464,6 +495,7 @@ def dashboard(store):
     for row in agents:
         item = dict(row)
         item.pop("token_hash", None)
+        item.pop("bootstrap_id", None)
         item["online"] = online(row, at)
         item["last_seen_at"] = aware(row["last_seen_at"]).isoformat() if row["last_seen_at"] else None
         item["enrolled_at"] = aware(row["enrolled_at"]).isoformat()
@@ -545,6 +577,27 @@ def install(app, context):
         store.record(auth.user.user_id, "network_probe.enrollment.created", "succeeded", target_type="network_probe",
             target_id=value.site, details={"name": value.name, "site": value.site, "expires_in": 600})
         return {"enrollment_token": raw, "expires_at": (at + timedelta(minutes=10)).isoformat()}
+
+    @app.patch("/api/v1/network-probes/agents/{agent_id}")
+    def update_agent(agent_id: str, value: AgentUpdate, request: Request):
+        auth = manager(request, True)
+        if not value.model_fields_set:
+            fail("probe_agent_update_empty", 422)
+        with store.engine.begin() as conn:
+            agent = conn.execute(sa.select(store.network_probe_agents).where(
+                store.network_probe_agents.c.id == agent_id).with_for_update()).mappings().first()
+            if not agent or not agent["enabled"] or agent["revoked_at"]:
+                fail("probe_agent_not_found", 404)
+            changes = {key: getattr(value, key) for key in ("name", "site") if key in value.model_fields_set}
+            if "site" in changes and changes["site"] != agent["site"]:
+                has_scopes = conn.execute(sa.select(store.network_probe_scopes.c.id).where(
+                    store.network_probe_scopes.c.agent_id == agent_id).limit(1)).first()
+                if has_scopes:
+                    fail("probe_agent_site_bound", 409)
+            conn.execute(store.network_probe_agents.update().where(store.network_probe_agents.c.id == agent_id).values(**changes))
+        store.record(auth.user.user_id, "network_probe.agent.updated", "succeeded", target_type="network_probe",
+            target_id=agent_id, details={"site_assigned": "site" in changes, "renamed": "name" in changes})
+        return {"id": agent_id, **changes}
 
     @app.delete("/api/v1/network-probes/agents/{agent_id}")
     def revoke_agent(agent_id: str, request: Request):
@@ -679,6 +732,27 @@ def install(app, context):
         store.record(f"agent:{agent_id}", "network_probe.agent.enrolled", "succeeded", target_type="network_probe", target_id=agent_id,
             details={"site": enrollment["site"], "name": enrollment["name"]})
         return {"agent_id": agent_id, "agent_token": permanent, "site": enrollment["site"], "name": enrollment["name"]}
+
+    @app.post("/api/v1/network-probe-agent/bootstrap", status_code=201)
+    def bootstrap_agent(value: AutomaticBootstrap, request: Request):
+        authorization = request.headers.get("authorization", "")
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not token or len(token) > 256 or not hmac.compare_digest(token, bootstrap_secret()):
+            fail("probe_bootstrap_authentication_required", 401)
+        at, permanent = now(), secrets.token_urlsafe(48)
+        with store.engine.begin() as conn:
+            existing = conn.execute(sa.select(store.network_probe_agents).where(
+                store.network_probe_agents.c.bootstrap_id == value.node_id).with_for_update()).mappings().first()
+            if existing:
+                fail("probe_bootstrap_already_enrolled" if existing["enabled"] and not existing["revoked_at"]
+                     else "probe_bootstrap_revoked", 409)
+            agent_id = str(uuid4())
+            conn.execute(store.network_probe_agents.insert().values(id=agent_id, name=value.name, site="",
+                bootstrap_id=value.node_id, token_hash=digest(permanent), enabled=True,
+                interfaces=[item.model_dump() for item in value.interfaces], enrolled_at=at, last_seen_at=at, revoked_at=None))
+        store.record(f"agent:{agent_id}", "network_probe.agent.auto_enrolled", "succeeded", target_type="network_probe",
+            target_id=agent_id, details={"interfaces": len(value.interfaces)})
+        return {"agent_id": agent_id, "agent_token": permanent, "site": "", "name": value.name}
 
     @app.post("/api/v1/network-probe-agent/heartbeat")
     def heartbeat(value: AgentHeartbeat, request: Request):

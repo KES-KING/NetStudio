@@ -26,6 +26,10 @@ def system(tmp_path, monkeypatch):
     store.meta.create_all(store.engine)
     key_file = tmp_path / "keyring.json"
     key_file.write_text(json.dumps({"active": "test-v1", "keys": {"test-v1": base64.b64encode(os.urandom(32)).decode()}}))
+    bootstrap_file = tmp_path / "network-probe-bootstrap.token"
+    bootstrap_file.write_text("test-only-probe-bootstrap-token")
+    bootstrap_file.chmod(0o600)
+    monkeypatch.setenv("NETSTUDIO_PROBE_BOOTSTRAP_TOKEN_FILE", str(bootstrap_file))
     with store.engine.begin() as conn:
         for name, role, site in [("admin", "superadmin", "*"), ("viewer", "viewer", "lab"), ("operator", "engineer", "lab"), ("outsider", "engineer", "other")]:
             conn.execute(store.users.insert().values(id=name, username=name, password_hash=hasher.hash(PASSWORD), roles=[role], sites=[site], enabled=True))

@@ -20,6 +20,7 @@ def define_tables(metadata):
         sa.Column("id", sa.String(64), primary_key=True),
         sa.Column("name", sa.String(160), nullable=False),
         sa.Column("site", sa.String(160), nullable=False),
+        sa.Column("bootstrap_id", sa.String(64), unique=True),
         sa.Column("token_hash", sa.String(64), nullable=False, unique=True),
         sa.Column("enabled", sa.Boolean(), nullable=False),
         sa.Column("interfaces", sa.JSON(), nullable=False),

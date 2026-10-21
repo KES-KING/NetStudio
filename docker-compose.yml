@@ -119,8 +119,7 @@ services:
 
   network-probe-agent:
     image: netstudio-api:${IMAGE_TAG:-local}
-    profiles: [network-probe]
-    command: ["python", "-m", "app.network_probe_agent", "--config", "/etc/netstudio/network-probe.toml"]
+    command: ["python", "-m", "app.network_probe_agent", "--automatic"]
     restart: unless-stopped
     init: true
     user: "0:0"
@@ -128,15 +127,24 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    environment:
+      # Development uses the loopback API binding. Production must set this to
+      # the installation's HTTPS gateway origin.
+      NETSTUDIO_PROBE_API_URL: ${NETSTUDIO_PROBE_API_URL:-http://127.0.0.1:${API_PORT:-8000}}
     volumes:
-      - ${NETSTUDIO_PROBE_CONFIG_FILE:-./deploy/network-probe.toml}:/etc/netstudio/network-probe.toml:ro
-      - ${NETSTUDIO_PROBE_TOKEN_FILE:-./.secrets/network-probe.token}:/run/secrets/network-probe.token:ro
+      - netstudio-keyring:/run/secrets:ro
+      - netstudio-probe-state:/run/netstudio-probe
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
     cap_add:
       - NET_RAW
+    depends_on:
+      secrets-init:
+        condition: service_completed_successfully
+      api:
+        condition: service_healthy
     stop_grace_period: 15s
 
   web:
@@ -202,6 +210,9 @@ volumes:
     external: ${NETSTUDIO_EXTERNAL_VOLUMES:-false}
   netstudio-keyring:
     name: ${NETSTUDIO_KEYRING_VOLUME:-${COMPOSE_PROJECT_NAME:-netstudio}_netstudio-keyring}
+    external: ${NETSTUDIO_EXTERNAL_VOLUMES:-false}
+  netstudio-probe-state:
+    name: ${NETSTUDIO_PROBE_STATE_VOLUME:-${COMPOSE_PROJECT_NAME:-netstudio}_netstudio-probe-state}
     external: ${NETSTUDIO_EXTERNAL_VOLUMES:-false}
 
 networks:

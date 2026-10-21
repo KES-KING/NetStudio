@@ -27,45 +27,24 @@ sudo ip link set enp1s0.20 up
 
 Bu komutları kalıcı ağ yapılandırmanıza uyarlayın. NetStudio arayüz oluşturmaz ve hostun mevcut yönetim ağını değiştirmez.
 
-## Ajan kaydı
+## Otomatik ajan kaydı
 
-1. **Ayarlar → Ağ keşfi** sayfasında ajan adı ve site için tek kullanımlık kayıt tokenı oluşturun.
-2. Yapılandırmayı hazırlayın ve tokenları git dışında tutun:
+`network-probe-agent`, ana Compose kurulumu ile otomatik başlar. İlk açılışta yalnız yerel secret volume içindeki bootstrap yetkisini kullanarak kendine kalıcı, hash'lenmiş ajan tokenı oluşturur; token tarayıcıya, loga veya kullanıcıya gösterilmez. Kullanıcı CLI komutu, token dosyası veya Compose profili kullanmaz.
 
-```bash
-cp deploy/network-probe.toml.example deploy/network-probe.toml
-install -m 700 -d .secrets
-install -m 600 /dev/null .secrets/network-probe.enrollment
-# UI'da yalnız bir kez gösterilen tokenı dosyaya yazın; kabuk geçmişine koymayın.
-```
+1. Operatör trunk VLAN alt arayüzlerini ve SVI'dan farklı benzersiz probe IP'lerini ağ altyapısında hazırlar.
+2. **Ayarlar → Ağ keşfi** sayfasını açın. Yerel ajan arayüzlerini otomatik bildirir; ajana envanterdeki siteyi arayüzden atayın.
+3. Güncel switch SVI önerisinden VLAN/VRF, ajan arayüzü, benzersiz kaynak IP ve hedef CIDR'ı onaylayın.
 
-3. Kalıcı ajan tokenını üretin. Aşağıdaki komut veritabanı veya raw-socket yetkisi kullanmaz:
+Onaylı kapsam yokken ajan raw socket açmaz veya ARP paketi göndermez. Ajan iptal edilirse aynı kalıcı düğüm kimliği tekrar otomatik kaydolamaz; bu durum bilinçli bir güvenlik sınırıdır.
 
-```bash
-docker run --rm --network host --cap-drop ALL \
-  -v "$PWD/deploy/network-probe.toml:/etc/netstudio/network-probe.toml:ro" \
-  -v "$PWD/.secrets:/run/secrets:rw" \
-  netstudio-api:${IMAGE_TAG:-local} \
-  python -m app.network_probe_agent --config /etc/netstudio/network-probe.toml \
-  enroll --enrollment-token-file /run/secrets/network-probe.enrollment
-rm .secrets/network-probe.enrollment
-```
-
-4. Ajanı başlatın:
-
-```bash
-docker compose --profile network-probe up -d network-probe-agent
-docker compose --profile network-probe logs -f --tail=100 network-probe-agent
-```
-
-Heartbeat sonrasında ajan arayüzleri UI'da görünür. Güncel switch SVI önerisinden site/VLAN/VRF, ajan arayüzü, benzersiz kaynak IP ve hedef CIDR onaylanmadan hiçbir ARP paketi gönderilmez.
+Üretimde `NETSTUDIO_PROBE_API_URL`, kurulumun HTTPS gateway origin'i olmalıdır. Varsayılan loopback HTTP adresi yalnız geliştirme içindir; üretim API'si bunu reddeder.
 
 ## İşletim ve geri dönüş
 
 - Varsayılan tarama aralığı 15 dakikadır ve zamanlama `%10` jitter kullanır.
 - Başarılı aktif tarama ilgili kapsamda önceliklidir. Ajan çevrimdışıysa veya başarılı sonuç iki tarama aralığından eskiyse salt-okunur switch ARP gözlemleri yeniden yedek kaynak olur.
 - Switch SVI kanıtı veya ajan kaynak arayüzü değişirse kapsam durdurulur ve `Yeniden onay gerekli` görünür.
-- Geri dönüş için kapsamı kapatın veya ajanı iptal edin, ardından `docker compose --profile network-probe stop network-probe-agent` çalıştırın. Mevcut switch telemetrisi ve veritabanı kayıtları silinmez.
+- Geri dönüş için kapsamı kapatın veya ajanı arayüzden iptal edin. Ajan kapsamı olmadığı sürece paket üretmez; mevcut switch telemetrisi ve veritabanı kayıtları silinmez.
 
 ## Ayrıcalı VLAN laboratuvarı
 

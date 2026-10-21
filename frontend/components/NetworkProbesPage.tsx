@@ -10,40 +10,25 @@ const endpoint = "/api/v1/network-probes";
 export default function NetworkProbesPage() {
   const { data, error, mutate } = useSWR<NetworkProbeState>(endpoint, api, { refreshInterval: 10000 });
   const [busy, setBusy] = useState(false), [failure, setFailure] = useState(""), [notice, setNotice] = useState("");
-  const [enrollment, setEnrollment] = useState<{ enrollment_token: string; expires_at: string } | null>(null);
   async function action(path: string, init: RequestInit, message: string) {
     setBusy(true); setFailure(""); setNotice("");
     try { await api(path, init); await mutate(); setNotice(message); }
     catch (value) { setFailure(errorMessage(value)); }
     finally { setBusy(false); }
   }
-  async function createEnrollment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setFailure(""); setEnrollment(null);
-    const form = event.currentTarget, values = new FormData(form);
-    try {
-      const result = await api<{ enrollment_token: string; expires_at: string }>(`${endpoint}/enrollments`, { method: "POST",
-        body: JSON.stringify({ name: values.get("name"), site: values.get("site") }) });
-      setEnrollment(result); form.reset(); setNotice("Tek kullanımlık kayıt tokenı oluşturuldu.");
-    } catch (value) { setFailure(errorMessage(value)); } finally { setBusy(false); }
-  }
   if (error) return <p role="alert" className="notice error">{errorMessage(error)}</p>;
   if (!data) return <p role="status">Ağ keşfi yapılandırması yükleniyor…</p>;
   const agentNames = new Map(data.agents.map((agent) => [agent.id, agent.name]));
+  const sites = [...new Set(data.proposals.map((proposal) => proposal.site))].sort((left, right) => left.localeCompare(right, "tr"));
   const runByScope = new Map<string, NetworkProbeState["runs"][number]>();
   for (const run of data.runs) if (!runByScope.has(run.scope_id)) runByScope.set(run.scope_id, run);
   return <>
-    <section className="panel"><div className="panel-heading"><div><h2>VLAN ARP probe ajanları</h2><p>Ham ağ erişimi API’den ayrıdır; ajan yalnız operatörün hazırladığı trunk arayüzlerini kullanır.</p></div></div>
-      <div className="probe-body"><form className="probe-enrollment" onSubmit={createEnrollment}>
-        <label>Ajan adı<input name="name" required maxLength={160} placeholder="Örn. Merkez trunk probe" /></label>
-        <label>Site<input name="site" required maxLength={160} placeholder="Envanterdeki site adı" /></label>
-        <button className="primary" disabled={busy}>Kayıt tokenı oluştur</button>
-      </form>
-      {enrollment && <div className="notice" role="status"><strong>Bu token yalnız bir kez gösterilir ve 10 dakika geçerlidir.</strong>
-        <code className="probe-token">{enrollment.enrollment_token}</code><span>Son kullanım: {formatTime(enrollment.expires_at)}</span></div>}
-      <div className="probe-grid">{!data.agents.length ? <p>Henüz kayıtlı probe ajanı yok.</p> : data.agents.map((agent) => <article key={agent.id}>
+    <section className="panel"><div className="panel-heading"><div><h2>VLAN ARP probe ajanları</h2><p>Ham ağ erişimi API’den ayrıdır; yerel ajan otomatik kaydolur, token veya CLI gerektirmez.</p></div></div>
+      <div className="probe-body"><div className="probe-grid">{!data.agents.length ? <p>Yerel ajan başlatılıyor; kısa süre sonra bu listeye eklenecek.</p> : data.agents.map((agent) => <article key={agent.id}>
         <div><strong>{agent.name}</strong><span className={`status ${agent.online ? "ok" : "unknown"}`}>{agent.online ? "Bağlı" : "Bağlı değil"}</span></div>
-        <p>{agent.site} · Son heartbeat: {formatTime(agent.last_seen_at)}</p>
+        <p>{agent.site || "Site ataması bekliyor"} · Son heartbeat: {formatTime(agent.last_seen_at)}</p>
         <p>{agent.interfaces.length ? agent.interfaces.map((item) => `${item.name}: ${item.addresses.join(", ") || "IPv4 yok"}`).join(" · ") : "Henüz arayüz bildirilmedi"}</p>
+        {!agent.site && <AgentAssignment agent={agent} sites={sites} busy={busy} onAssigned={async () => { await mutate(); setNotice("Probe ajanı siteye atandı."); }} onFailure={setFailure} />}
         {agent.enabled && <button disabled={busy} onClick={() => { if (window.confirm(`${agent.name} ajanını iptal etmek istediğinize emin misiniz?`)) void action(`${endpoint}/agents/${agent.id}`, { method: "DELETE" }, "Probe ajanı iptal edildi."); }}>Ajanı iptal et</button>}
       </article>)}</div></div>
     </section>
@@ -67,6 +52,20 @@ export default function NetworkProbesPage() {
     </section>
     {notice && <p className="notice" role="status">{notice}</p>}{failure && <p className="notice error" role="alert">{failure}</p>}
   </>;
+}
+
+function AgentAssignment({ agent, sites, busy, onAssigned, onFailure }: { agent: NetworkProbeAgent; sites: string[]; busy: boolean;
+  onAssigned: () => Promise<void>; onFailure: (message: string) => void }) {
+  const [site, setSite] = useState(sites[0] || ""), [assigning, setAssigning] = useState(false);
+  async function assign(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setAssigning(true); onFailure("");
+    try { await api(`${endpoint}/agents/${agent.id}`, { method: "PATCH", body: JSON.stringify({ site }) }); await onAssigned(); }
+    catch (value) { onFailure(errorMessage(value)); } finally { setAssigning(false); }
+  }
+  return <form className="probe-agent-assignment" onSubmit={assign}><label>Site<select value={site} required onChange={(event) => setSite(event.target.value)}>
+    <option value="">Site seçin</option>{sites.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+    <button className="primary" disabled={busy || assigning || !site}>Bu siteye ata</button>
+  </form>;
 }
 
 function ProposalForm({ proposal, agents, busy, onCreated, onFailure }: { proposal: NetworkProbeProposal; agents: NetworkProbeAgent[];

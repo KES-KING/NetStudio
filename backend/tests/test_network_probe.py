@@ -7,6 +7,7 @@ import sqlalchemy as sa
 
 from app.database import now
 from app.network_probe import target_networks
+from app import network_probe_agent
 from app.network_probe_agent import build_arp_request, parse_arp_reply
 from conftest import login, observation, prepare
 
@@ -48,6 +49,26 @@ def test_target_ranges_enforce_prefix_overlap_and_total_budget():
         "02:00:00:00:fe:10", "198.51.100.254", {"198.51.100.101"}) is None
 
 
+def test_automatic_agent_bootstrap_persists_identity_and_token(tmp_path, monkeypatch):
+    bootstrap_file = tmp_path / "bootstrap.token"
+    bootstrap_file.write_text("bootstrap-test-token")
+    bootstrap_file.chmod(0o600)
+    monkeypatch.setenv("NETSTUDIO_PROBE_API_URL", "http://127.0.0.1:8000")
+    monkeypatch.setenv("NETSTUDIO_PROBE_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("NETSTUDIO_PROBE_BOOTSTRAP_TOKEN_FILE", str(bootstrap_file))
+    config = network_probe_agent.automatic_config()
+    monkeypatch.setattr(network_probe_agent, "configured_interfaces", lambda _: [])
+    calls = []
+    def fake_api(_, token, path, **kwargs):
+        calls.append((token, path, kwargs["payload"]))
+        return {"agent_token": "permanent-test-token"}
+    monkeypatch.setattr(network_probe_agent, "api_call", fake_api)
+    assert network_probe_agent.bootstrap(config) == "permanent-test-token"
+    assert network_probe_agent.read_secret(config["token_file"]) == "permanent-test-token"
+    assert network_probe_agent.persistent_node_id(config["node_id_file"]) == calls[0][2]["node_id"]
+    assert calls[0][0] == "bootstrap-test-token" and calls[0][1].endswith("/bootstrap")
+
+
 def setup_probe(system):
     client, store, _, _ = system
     login(client)
@@ -64,14 +85,14 @@ def setup_probe(system):
              "vrf_known": True, "discovery": "arp", "evidence": "test switch ARP"}]})
     response = client.post(f"/api/v1/devices/{device['id']}/observations", json=payload)
     assert response.status_code == 201, response.text
-    enrollment = client.post("/api/v1/network-probes/enrollments", json={"name": "Probe 10", "site": "lab"})
-    assert enrollment.status_code == 201, enrollment.text
-    token = enrollment.json()["enrollment_token"]
-    enrolled = client.post("/api/v1/network-probe-agent/enroll", headers={"authorization": f"Bearer {token}"})
+    enrolled = client.post("/api/v1/network-probe-agent/bootstrap", headers={"authorization": "Bearer test-only-probe-bootstrap-token"},
+        json={"node_id": "a" * 64, "name": "Yerel probe", "interfaces": [{"name": "probe.10", "mac": "02:00:00:00:fe:10", "addresses": ["198.51.100.254/24"]}]})
     assert enrolled.status_code == 201, enrolled.text
-    assert client.post("/api/v1/network-probe-agent/enroll",
-        headers={"authorization": f"Bearer {token}"}).status_code == 401
     agent_token, agent_id = enrolled.json()["agent_token"], enrolled.json()["agent_id"]
+    assert client.post("/api/v1/network-probe-agent/bootstrap", headers={"authorization": "Bearer test-only-probe-bootstrap-token"},
+        json={"node_id": "a" * 64, "name": "Yerel probe", "interfaces": []}).status_code == 409
+    assigned = client.patch(f"/api/v1/network-probes/agents/{agent_id}", json={"site": "lab"})
+    assert assigned.status_code == 200, assigned.text
     heartbeat = client.post("/api/v1/network-probe-agent/heartbeat", headers={"authorization": f"Bearer {agent_token}"},
         json={"interfaces": [{"name": "probe.10", "mac": "02:00:00:00:fe:10", "addresses": ["198.51.100.254/24"]}]})
     assert heartbeat.status_code == 200, heartbeat.text
