@@ -117,6 +117,28 @@ services:
       - application
     stop_grace_period: 20s
 
+  network-probe-agent:
+    image: netstudio-api:${IMAGE_TAG:-local}
+    profiles: [network-probe]
+    command: ["python", "-m", "app.network_probe_agent", "--config", "/etc/netstudio/network-probe.toml"]
+    restart: unless-stopped
+    init: true
+    user: "0:0"
+    network_mode: host
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - ${NETSTUDIO_PROBE_CONFIG_FILE:-./deploy/network-probe.toml}:/etc/netstudio/network-probe.toml:ro
+      - ${NETSTUDIO_PROBE_TOKEN_FILE:-./.secrets/network-probe.token}:/run/secrets/network-probe.token:ro
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_RAW
+    stop_grace_period: 15s
+
   web:
     image: netstudio-web:${IMAGE_TAG:-local}
     build:

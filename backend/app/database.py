@@ -101,6 +101,9 @@ class Store:
         from .system_schema_v1 import define_tables as system_tables
         for name, table in system_tables(self.meta).items():
             setattr(self, name, table)
+        from .network_probe_schema_v1 import define_tables as network_probe_tables
+        for name, table in network_probe_tables(self.meta).items():
+            setattr(self, name, table)
 
     @contextmanager
     def user_transaction(self):

@@ -15,7 +15,7 @@ export function EndpointDetails({ endpoint }: { endpoint: Endpoint }) {
     <details><summary>Adres kanıtı</summary>
       <p className="source-note">{endpoint.evidence}</p>
       {endpoint.resolution?.sources.map((source, index) => <p className="source-note" key={`${source.device_id}:${source.interface_id}:${index}`}>
-        {source.device_name} · {source.discovery.toUpperCase()} · {formatTime(source.observed_at)}<br />{source.evidence}
+        {source.device_name} · {source.discovery === "active_arp" ? "YAZILIM ARP" : source.discovery.toUpperCase()} · {formatTime(source.observed_at)}<br />{source.evidence}
       </p>)}
     </details>
   </div>;

@@ -96,7 +96,7 @@ def visible_board(row, devices):
 
 def network_graph(store, devices):
     latest = latest_payloads(store, devices)
-    resolved = resolve_endpoints(devices, latest)
+    resolved = resolve_endpoints(devices, latest, store=store)
     rows, links = [], []
     for device in sorted(devices.values(), key=lambda d: (d.name.casefold(), d.id)):
         data = latest.get(device.id)

@@ -253,3 +253,18 @@ export type UserProfile = {
   reauthenticate?: boolean;
 };
 export type CursorPage<T> = { items: T[]; next_cursor: string | null };
+export type NetworkProbeInterface = { name: string; mac: string; addresses: string[] };
+export type NetworkProbeAgent = { id: string; name: string; site: string; enabled: boolean; online: boolean;
+  interfaces: NetworkProbeInterface[]; enrolled_at: string; last_seen_at: string | null; revoked_at: string | null };
+export type NetworkProbeProposal = { id: string; site: string; vlan: number; vrf: string | null; vrf_known: boolean;
+  network: string; evidence_fingerprint: string; conflict: boolean; requires_narrowing: boolean;
+  evidence: { device_id: string; device_name: string; interface_id: string; address: string; observed_at: string | null }[] };
+export type NetworkProbeScope = { id: string; agent_id: string; site: string; vlan: number; vrf: string | null;
+  interface_name: string; source_ip: string; source_cidr: string; target_cidrs: string[]; interval_seconds: number;
+  enabled: boolean; status: "active" | "disabled" | "needs_review"; next_due_at: string; last_started_at: string | null;
+  last_completed_at: string | null; last_success_at: string | null; last_error: string | null };
+export type NetworkProbeRun = { id: string; scope_id: string; status: string; target_count: number; reply_count: number;
+  matched_count: number; unknown_count: number; duration_ms: number; error_code: string | null; completed_at: string };
+export type NetworkProbeState = { agents: NetworkProbeAgent[]; proposals: NetworkProbeProposal[]; scopes: NetworkProbeScope[];
+  runs: NetworkProbeRun[]; defaults: { interval_seconds: number; max_range_prefix: number; max_targets: number;
+    max_rate_pps: number; heartbeat_seconds: number } };

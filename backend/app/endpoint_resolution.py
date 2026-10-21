@@ -57,10 +57,14 @@ def network_clock(data, at, *, endpoints=False, neighbor=None):
     return measured, fresh
 
 
-def resolve_endpoints(devices, payloads, at=None):
+def resolve_endpoints(devices, payloads, at=None, store=None):
     """Build one bounded index, preserving endpoint IDs and original observations."""
     at = at or now()
     collections, clocks, adjacency = {}, {}, defaultdict(set)
+    probe_state = {"scopes": [], "observations": defaultdict(list)}
+    if store is not None:
+        from .network_probe import active_probe_state, aware
+        probe_state = active_probe_state(store, devices, at)
     by_mac = defaultdict(list)
     management = defaultdict(set)
     for device_id, device in devices.items():
@@ -106,6 +110,37 @@ def resolve_endpoints(devices, payloads, at=None):
                 resolution.update(status="stale", reason="network_observation_stale")
                 continue
             if entry["addresses"] or entry["discovery"] != "fdb":
+                continue
+            probe_scopes = [scope for scope in probe_state["scopes"]
+                if scope["site"] == devices[device_id].site and scope["vlan"] == entry.get("vlan")]
+            if entry.get("vrf_known"):
+                probe_scopes = [scope for scope in probe_scopes if (scope.get("vrf") or None) == (entry.get("vrf") or None)]
+            elif len({scope.get("vrf") for scope in probe_scopes}) > 1:
+                resolution.update(status="ambiguous", reason="active_arp_vrf_ambiguous")
+                continue
+            if probe_scopes:
+                observed = []
+                for scope in probe_scopes:
+                    observed.extend((scope, item) for item in probe_state["observations"].get((scope["id"], entry["mac"]), []))
+                addresses = sorted({item["address"] for _, item in observed})
+                if len(addresses) > 32:
+                    resolution.update(status="ambiguous", reason="address_limit")
+                    continue
+                resolution["observed_at"] = max(scope["last_success_at"] for scope in probe_scopes).isoformat()
+                if not addresses:
+                    resolution.update(status="unresolved", reason="active_arp_no_reply", sources=[])
+                    continue
+                entry["addresses"] = addresses
+                entry["vrf"] = probe_scopes[0].get("vrf")
+                entry["vrf_known"] = True
+                resolution.update(status="resolved", reason="active_arp_match",
+                    observed_at=min((aware(item["observed_at"]) for _, item in observed)).isoformat(),
+                    sources=[{"device_id": f"probe:{scope['agent_id']}", "device_name": scope["agent_name"],
+                        "interface_id": scope["interface_name"], "discovery": "active_arp",
+                        "observed_at": item["observed_at"].isoformat(),
+                        "evidence": (f"Yazılım ARP sorgusu · kapsam {scope['id']} · VLAN {scope['vlan']} · "
+                            f"VRF {scope.get('vrf') or 'varsayılan'} · kaynak {scope['source_ip']}")}
+                        for scope, item in observed[:8]])
                 continue
             candidates = []
             for source_id, source, source_at in by_mac.get((devices[device_id].site, entry["mac"]), []):

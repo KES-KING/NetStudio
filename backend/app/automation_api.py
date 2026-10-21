@@ -143,7 +143,7 @@ def install(app, context, device_for):
         devices = {key: value for key, value in authorized_devices(app.state.store, auth.user).items() if value.site == device.site}
         payloads = latest_payloads(app.state.store, devices)
         data = payloads.get(device.id)
-        resolved = resolve_endpoints(devices, payloads)[device.id]
+        resolved = resolve_endpoints(devices, payloads, store=app.state.store)[device.id]
         result = projection(device, data, endpoints=resolved)
         points = history(app.state.store, device.id)["points"]
         last_good = (data or {}).get("groups", {}).get("fast", {}).get("observed_at")

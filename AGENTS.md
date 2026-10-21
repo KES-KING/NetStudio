@@ -6,4 +6,4 @@ Bu repository'de çalışmaya başlamadan önce şu dosyaları okuyun:
 2. [agent.md](agent.md) — ajan çalışma sırası ve teslim kontrol listesi.
 3. [CONTRIBUTING.md](CONTRIBUTING.md) ve [SECURITY.md](SECURITY.md) — katkı akışı ve korunacak güvenlik sınırları.
 
-Her görsel değişiklikte README'deki ana sayfa, SSH kapalı detay ve SSH açık detay görüntülerinin üçü de güncel uygulamadan yeniden alınmalıdır. Ayrıntılar `rule.md` ve `agent.md` içindedir; bu dosya ayrı bir kural kopyası yerine onlara giriş sağlar.
+README'deki ana sayfa, SSH kapalı detay ve SSH açık detay görüntüleri yalnız bu kanonik görünümlerin ana yerleşimi, tema, tipografi, ana navigasyon veya genel kabuğu maddi biçimde değiştiğinde güncel uygulamadan yeniden alınır. Backend/fix ve küçük işlevsel UI değişiklikleri bu yenilemeyi tetiklemez; ayrıntılar `rule.md` ve `agent.md` içindedir.

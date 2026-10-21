@@ -31,6 +31,7 @@ from .topology import install_topology_routes
 from .vault import CredentialVault, credential_values
 from . import updates
 from .settings_api import install as install_settings
+from .network_probe import install as install_network_probe
 from .collection import upsert
 from starlette.concurrency import run_in_threadpool
 
@@ -119,9 +120,12 @@ def create_app(store=None, key_file=None):
                 if len(body) > 4_000_000:
                     return JSONResponse({"detail": {"code": "request_too_large"}}, status_code=413)
             request._body = bytes(body)
+            agent_completion = (request.url.path == "/api/v1/network-probe-agent/heartbeat" or
+                (request.url.path.startswith("/api/v1/network-probe-agent/tasks/") and request.url.path.endswith("/result")))
             permitted = request.url.path in {"/api/v1/session/login", "/api/v1/session/logout", "/api/v1/activity",
                 "/api/v1/notifications/read", "/api/v1/system/updates/policy"} or (
-                request.method == "DELETE" and request.url.path.startswith("/api/v1/ssh-sessions/"))
+                request.method == "DELETE" and request.url.path.startswith("/api/v1/ssh-sessions/")) or (
+                agent_completion)
             if request.url.path.startswith("/api/") and not permitted and await run_in_threadpool(updates.maintenance, app.state.store):
                 return JSONResponse({"detail": {"code": "system_maintenance"}}, status_code=503, headers={"Retry-After": "30"})
             tracked = not permitted
@@ -213,6 +217,7 @@ def create_app(store=None, key_file=None):
     install_account_routes(app, context)
     install_settings(app, context)
     install_topology_routes(app, context)
+    install_network_probe(app, context)
 
     def device_for(request, device_id, permission=Permission.INVENTORY_READ, mutation=False):
         auth = context(request, mutation)
@@ -237,6 +242,7 @@ def create_app(store=None, key_file=None):
                 conn.execute(sa.select(app.state.store.topology_boards.c.version).limit(1))
                 conn.execute(sa.select(app.state.store.polling.c.version).limit(1))
                 conn.execute(sa.select(app.state.store.system_update.c.id).limit(1))
+                conn.execute(sa.select(app.state.store.network_probe_agents.c.id).limit(1))
         except Exception:
             fail("persistence_unavailable", 503)
         return {"status": "ready", "service": "netstudio-api", "revision": getenv("NETSTUDIO_BUILD_REVISION", "unknown")}

@@ -2,7 +2,7 @@ import type { Projection, Reachability } from "./contracts";
 
 export type Endpoint = {
   id: string; interface_id: string; mac: string; addresses: string[];
-  vlan: number | null; discovery: "fdb" | "arp" | "ndp";
+  vlan: number | null; discovery: "fdb" | "arp" | "ndp" | "active_arp";
   state: "reachable" | "stale" | "static" | "unknown"; evidence: string;
   vrf?: string | null; vrf_known?: boolean;
   resolution?: {
@@ -41,6 +41,8 @@ export const dataLabels = { current: "Güncel gözlem", no_data: "Veri yok", sta
 export const endpointLabels = { ok: "Tablo okundu", partial: "Kısmi tablo", unknown: "Henüz toplanmadı", unsupported: "Desteklenmiyor", error: "Tablo okunamadı" };
 export const neighborStateLabels = { reachable: "Komşuluk erişilebilir", stale: "Komşuluk yeniden doğrulanmalı", static: "Statik kayıt", unknown: "Komşuluk durumu bilinmiyor" };
 export function resolutionLabel(endpoint: Endpoint) {
+  if (endpoint.resolution?.reason === "active_arp_match") return "Yazılım ARP sorgusuyla eşleştirildi";
+  if (endpoint.resolution?.reason === "active_arp_no_reply") return "Yazılım ARP sorgusunda yanıt alınamadı";
   const status = endpoint.resolution?.status;
   return status ? {
     observed: "IP doğrudan gözlendi", resolved: "IP eşleştirildi", unresolved: "IP bulunamadı · kapsamı doğrulanmış ARP/NDP kaydı yok",

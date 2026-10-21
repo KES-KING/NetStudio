@@ -70,7 +70,7 @@ def test_vrp5120_real_format_ports_and_directional_metrics(system):
     assert port.rate_interval_seconds == 300
     assert batch.health.uptime_seconds == 1140 and batch.health.status == "unknown"
     assert batch.health.cpu_percent == 12 and batch.health.memory_percent == 33
-    assert batch.interfaces[-1].addresses == ["192.0.2.1/24"]
+    assert batch.interfaces[-1].addresses == ["192.0.2.1/24"] and batch.interfaces[-1].l3_vlan == 1
     assert batch.interfaces[-1].vrf_known is False
     assert batch.interfaces[-1].rx_bps is None
     assert batch.neighbors == []  # FDB and ARP are not LLDP or cables.

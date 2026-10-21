@@ -589,6 +589,21 @@ h3 {
 .settings-tabs strong, .settings-tabs small { display: block; }
 .settings-tabs small { margin-top: 4px; color: var(--muted); }
 .settings-content > .panel { margin-bottom: 20px; }
+.probe-body { padding: 20px; }
+.probe-enrollment, .probe-scope-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: end; }
+.probe-enrollment button, .probe-scope-form button { min-height: 42px; }
+.probe-token { display: block; margin: 10px 0; padding: 10px; border: 1px solid var(--border); background: var(--surface); overflow-wrap: anywhere; user-select: all; }
+.probe-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.probe-grid article, .probe-proposals > article, .probe-scope-list > article { padding: 16px; border: 1px solid var(--border); background: var(--surface); min-width: 0; }
+.probe-grid article > div, .probe-proposal-heading, .probe-scope-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.probe-grid p, .probe-proposal-heading p, .probe-scope-heading p { color: var(--muted); overflow-wrap: anywhere; }
+.probe-proposals, .probe-scope-list { display: grid; gap: 12px; }
+.probe-proposals > article.has-conflict { border-left: 3px solid var(--red); }
+.probe-scope-form { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.probe-scope-form .checkbox { align-self: center; }
+.probe-scope-form .probe-ack { grid-column: 1 / -1; }
+.probe-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 14px 0; }
+.probe-actions { justify-content: flex-start; padding: 0; border: 0; background: transparent; }
 .update-body, .commit-list { padding: 20px; }
 .update-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
 .update-facts > div, .commit-heading, .update-runs li { min-width: 0; overflow-wrap: anywhere; }
@@ -639,6 +654,11 @@ h3 {
   .notification-dropdown { position: fixed; top: var(--shell-header-height); right: 12px; }
   .topbar-context { gap: 6px; }
   .topbar-update { padding: 8px; min-height: 44px; }
+  .probe-body { padding: 14px; }
+  .probe-enrollment, .probe-scope-form, .probe-grid, .probe-facts { grid-template-columns: minmax(0, 1fr); }
+  .probe-scope-form .probe-ack { grid-column: auto; }
+  .probe-scope-heading, .probe-proposal-heading { flex-direction: column; }
+  .probe-actions button { width: 100%; }
 }
 @media (max-width: 380px) {
   .topbar-context .mobile-menu span { display: none; }

@@ -265,6 +265,9 @@ def parse_snapshot(device, outputs, unavailable=None, observed_at=None):
                 except ValueError:
                     continue
                 entries[canonical(fields[0])]["sample"]["addresses"] = [address]
+                svi = re.fullmatch(r"Vlanif(\d+)", entries[canonical(fields[0])]["name"], re.I)
+                if svi and 1 <= int(svi.group(1)) <= 4094:
+                    entries[canonical(fields[0])]["sample"]["l3_vlan"] = int(svi.group(1))
     cpu = match_value(r"CPU (?:usage|utilization)\s*(?:for five seconds)?\s*:\s*(\d+(?:\.\d+)?)%", outputs.get("display cpu-usage", ""), float)
     memory = match_value(r"Memory Using Percentage Is\s*:\s*(\d+(?:\.\d+)?)%", outputs.get("display memory-usage", ""), float)
     for command, value in (("display cpu-usage", cpu), ("display memory-usage", memory)):

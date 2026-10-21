@@ -36,17 +36,19 @@ Bu dosya NetStudio üzerinde çalışan insanlar ve yapay zekâ araçları için
 - QA seed'i mevcut veya üretim veritabanına uygulamayın; test için ayrı proje, port ve volume kullanın. Erişim sorununu aşmak için mevcut kullanıcıyı sıfırlamayın veya güvenlik kontrollerini gevşetmeyin.
 - Migration ve dağıtım etkisini belgeleyin; kullanılan TLS override dosyalarını koruyun.
 
-## 5. Her görsel güncellemede README görüntülerini yenile
+## 5. Ana tasarım değişikliğinde README görüntülerini yenile
 
-**Arayüzde görünen her değişiklikte README'deki üç temel ekran görüntüsü güncel koddan yeniden alınmalıdır. Görüntü yenilemesi aynı değişiklik/PR kapsamının zorunlu parçasıdır; sonraki işe bırakılamaz.** Bu kural insanlar ve yapay zekâ ajanları için aynıdır.
+**README'deki üç temel ekran görüntüsü yalnız kanonik ana sayfa veya SSH kapalı/açık cihaz detayının ana tasarımı maddi biçimde değiştiğinde güncel koddan yeniden alınmalıdır.** Bu kural insanlar ve yapay zekâ ajanları için aynıdır.
 
-Yeni sayfa veya bileşen, navigasyon, yerleşim, tema, logo, tipografi, görünen metin, grafik, port paneli, terminal veya responsive davranış değişikliği bu kuralı tetikler. Yalnız backend/iç refactor ya da dokümantasyon değişikliğinde görünür sonuç değişmiyorsa görüntü yenilemesi gerekmez; gerekçesini teslimde/PR'da belirtin.
+Yenilemeyi; ana yerleşim, global tema/renk dili, tipografi sistemi, ana navigasyon, genel uygulama kabuğu veya üç kanonik görünümden birinin belirgin kompozisyon değişikliği tetikler. Backend/API/migration/test/dokümantasyon değişiklikleri, hata ve veri doğruluğu düzeltmeleri, iç refactor, küçük metin/ikon/kontrol/durum değişiklikleri ve kanonik karelerde yer almayan yeni alt sayfalar tetiklemez. Her PR/teslim açıklamasında `Ana tasarım etkisi: var/yok — gerekçe` yazılmalıdır.
 
 | Zorunlu görünüm | Repository dosyası | Beklenen durum |
 | --- | --- | --- |
 | Ana sayfa | `docs/screenshots/dashboard.png` | Grafikler üstte, cihaz listesi altta; veriler yüklenmiş |
 | Cihaz detayı — SSH kapalı | `docs/screenshots/device-detail.png` | Cihaz ön paneli, IP topolojisi ve teknik bilgiler görünür |
 | Cihaz detayı — SSH açık | `docs/screenshots/device-detail-ssh.png` | Aynı cihazda gerçek, bağlı QA SSH oturumu; cihaz ve terminal yan yana |
+
+Ana tasarım etkisi `var` ise:
 
 1. [README'deki izole QA akışını](README.md#izole-tarayıcı-test-ortamı) kullanın. Üretim/müşteri cihazı yerine açıkça test verisi olan envanter ve izole SSH cihazı kullanın.
 2. Son kodla çalışan uygulamayı gerçek tarayıcıda açın. Grafiklerin ve verilerin yüklenmesini, SSH açık görünümünde bağlantının gerçekten kurulmasını bekleyin.
@@ -55,12 +57,12 @@ Yeni sayfa veya bileşen, navigasyon, yerleşim, tema, logo, tipografi, görüne
 5. İncelenen son görüntüleri yukarıdaki dosyalara alın; README bağlantılarını, açıklamaları ve alternatif metinleri görünümle tutarlı tutun. Dosyalar aynı değişiklik/PR içinde yer almalıdır. Yeniden alınan bir kare birebir aynıysa yapay dosya farkı üretmeyin; yeniden doğrulandığını raporlayın.
 6. Yakalama tarihi, test edilen sürüm/çalışma ağacı, QA ortamı, viewport ve test sonucunu PR/teslim açıklamasına yazın. Ek bir sayfanın görüntüsü, zorunlu üçlü setin yerini tutmaz.
 
-Testlerin geçici dizine ürettiği ekran görüntüleri README'yi otomatik güncellemez. İncelenmiş üç PNG'nin `docs/screenshots/` altına alınması ayrı ve zorunlu adımdır. Gereken QA/SSH ortamı kurulamıyorsa engeli açıkça yazın; sahte görüntü kullanmayın ve görsel işi tamamlandı olarak bildirmeyin.
+Testlerin geçici dizine ürettiği ekran görüntüleri README'yi otomatik güncellemez. Ana tasarım etkisi `yok` olan işlerde değişen UI yine gerçek tarayıcıda masaüstü/mobil olarak doğrulanır, fakat üç kanonik PNG'de yapay dosya farkı üretilmez. Ana tasarım etkisi `var` iken gereken QA/SSH ortamı kurulamıyorsa engeli açıkça yazın; sahte görüntü kullanmayın ve görsel işi tamamlandı olarak bildirmeyin.
 
 ## 6. Doğrulama ve teslim
 
 - Değişikliğe uygun test, lint, typecheck ve build kontrollerini çalıştırın; güncel komutlar [README](README.md#geliştirme-ve-doğrulama) ve [CONTRIBUTING.md](CONTRIBUTING.md) içindedir.
 - Arayüz değişikliğinde build tek başına yeterli değildir: gerçek tarayıcıda ana etkileşimi, masaüstü/mobil yerleşimi ve konsol hatalarını kontrol edin.
 - Çalıştırılan kontrolleri gerçek sonuçlarıyla, çalıştırılmayanları nedenleriyle raporlayın. Yerel/sentetik QA kanıtını fiziksel cihaz veya üretim kabulü olarak sunmayın.
-- Görsel değişiklik için README görüntüleri kontrolünü teslim öncesi tamamlayın. Bu bir katkı/inceleme kuralıdır; otomatik CI zorlaması varmış gibi sunmayın.
+- Ana tasarım etkisini teslim öncesi sınıflandırın; `var` ise README görüntüleri kontrolünü tamamlayın. Bu bir katkı/inceleme kuralıdır; otomatik CI zorlaması varmış gibi sunmayın.
 - Kurallar değiştiğinde bu dosyayı esas alın; ajan yönergesi ve katkı/PR bağlantılarının tutarlı kaldığını doğrulayın.

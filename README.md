@@ -23,6 +23,7 @@ Arayüz: Next.js 16 / React 19 / TypeScript, Apache ECharts, xterm.js ve SWR. Ba
 - Apache ECharts ile RX/TX, port durumu ve kapasite gösterimleri; bilinmeyen/eski verinin açık ayrımı.
 - Cihaz detayına entegre SSH terminali; backend tarafında site/rol denetimi ve kayıtlı host key doğrulaması.
 - Harici envanter/telemetri aktarımı; sürümlü Cisco/Huawei/Junos sürücü kataloğu, salt okunur manuel ve zamanlanmış toplama, isteğe bağlı SNMPv3.
+- Switch SVI ağlarından yönetici onayıyla türetilen, ayrı `NET_RAW` ajanıyla VLAN bilinçli IPv4 ARP eşleştirmesi; [kurulum ve güven sınırları](docs/network-probe.md).
 - Parola göndermeden host key keşfi, bir defalık açık güven onayı ve cihaz bazlı izinle otomatik SSH uyumluluk seçimi.
 - Kişisel profil/avatar/parola yönetimi; `viewer`, `engineer`, `superadmin` rolleri ve yalnız superadmin'e açık kullanıcı yönetimi/ayrıntılı audit.
 - **Ayarlar:** Hesabım, Kullanıcılar ve GitHub commit bağlantılı Güncellemeler; üst barda site/hesap yetkili canlı bildirimler ve güncelleme işareti. [Host güncelleyici kurulumu ve kurtarma rehberi](docs/updates.md).
@@ -38,7 +39,7 @@ Marka varlıkları `frontend/public/branding/` içindedir: `netstudio-logo.png` 
 
 Aşağıdaki üç görüntü çalışan uygulamanın izole QA ortamından alınmıştır. Cihazlar, adresler ve telemetri test verisidir; SSH görüntüsü izole test cihazıyla kurulan gerçek oturumu gösterir. Üretim cihazı bilgisi veya bağlantı sırrı içermez. Varsayılan kurulum bu örnek verileri oluşturmaz.
 
-**Güncellik kuralı:** Her görsel arayüz güncellemesinde aşağıdaki üç görüntünün tamamı güncel koddan yeniden alınır ve aynı değişiklik/PR içinde teslim edilir. İnsanlar ve yapay zekâ için ayrıntılar [rule.md](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile), ajanların uygulama adımları [agent.md](agent.md) içindedir.
+**Güncellik kuralı:** Aşağıdaki üç görüntü yalnız kanonik ana sayfa veya SSH kapalı/açık cihaz detayının ana yerleşimi, tema, tipografi, ana navigasyon ya da genel kabuğu maddi biçimde değiştiğinde birlikte yenilenir. Backend/fix, küçük işlevsel UI değişikliği ve bu karelerde görünmeyen yeni alt sayfalar yenilemeyi tetiklemez. İnsanlar ve yapay zekâ için ayrıntılar [rule.md](rule.md#5-ana-tasarım-değişikliğinde-readme-görüntülerini-yenile), ajanların uygulama adımları [agent.md](agent.md) içindedir.
 
 Son set: **21 Ekim 2026, 14:12 TRT**, `netstudio-topology-detail-qa-20261021` izole Docker ortamı (`http://127.0.0.1:13001`), sistem Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `a7e10df` üzerine topoloji detaylandırma ve SSH komut yardımcısı değişikliklerini içerir; imajlar `netstudio-api:topology-detail-qa-20261021` ve `netstudio-web:topology-detail-qa-20261021`dir. Üç kare son imajlardan yeniden alınıp görsel olarak incelendi. Detay görüntülerinde `192.0.2.101` filtresiyle arayüz–uç gözlemi ilişkisi ve gerçek QA SSH bağlantısı gösterilir; mevcut kullanıcı kurulumu değiştirilmemiştir.
 
@@ -148,6 +149,8 @@ Nginx gateway ── / ─────────► Next.js web
 
 Başlatma: PostgreSQL healthy → Alembic migrate → API ready → web → gateway
           secrets-init ──────────────────────────┘
+
+İsteğe bağlı VLAN trunk'ı → ayrı network-probe-agent (`NET_RAW`, veritabanı/SSH sırrı yok) → HTTPS API
 ```
 
 Gateway WebSocket upgrade ve uzun süreli SSH akışını destekler. API tek Uvicorn süreciyle çalışır; terminal limiti ve oturum köprüsü bu sürece aittir. Birden fazla API worker/replica, ortak broker ve oturum yönlendirmesi eklenmeden kullanılmamalıdır. PostgreSQL ve anahtarlar iki ayrı kalıcı volume'dedir. Anahtar dosyası API kullanıcısına ait, `0600` izinlidir; frontend imajına veya ortam değişkenine girmez.
@@ -174,6 +177,8 @@ docker compose down                     # Container/ağları kaldırır; kalıc�
 ```
 
 `secrets-init` ve `migrate` tek seferlik başlatma işleridir; başarılı çalışmadan sonra `Exited (0)` görünmeleri normaldir. `down` sonrasında grubun Desktop'ın container listesinden kalkması beklenir; listede tutmak için `stop` kullanın. `COMPOSE_PROJECT_NAME` değerini değiştirmek başka bir proje ve volume kümesi seçer; mevcut kurulumda bu değeri sabit tutun. Makefile yalnız isteğe bağlı yerel geliştirme/test yardımcılarını içerir; Docker hedefleri yoktur.
+
+VLAN bilinçli aktif ARP eşleştirmesi varsayılan profilde başlamaz. Trunk alt arayüzleri, benzersiz probe IP'leri, tek kullanımlık kayıt ve `network-probe` Compose profilinin işletimi için [aktif ARP probe rehberini](docs/network-probe.md) izleyin.
 
 Mevcut verileri korumak için normal işletimde volume silme komutları kullanmayın. Migration `0003_enterprise_console`, mevcut tabloları/işleri silmeden yeni yönetim tablolarını ekler. Eski fixture kayıtları korunur fakat gerçek envanter olarak sunulmaz.
 
@@ -442,7 +447,7 @@ Playwright Chromium kurulu değilse `npx playwright install chromium` çalışt�
 
 Mevcut QA projesi kullanılıyorsa veya test hesabı değiştirilmişse hesabı sıfırlamayın. Yeni `COMPOSE_PROJECT_NAME` ve boşta olan PostgreSQL/API/web portlarıyla ayrı proje açın. QA SSH anahtar servisinin portu `NETSTUDIO_TEST_SSH_KEY_PORT` ile ayrılabilir. Seed sırasında `NETSTUDIO_TEST_ORIGIN`, `NETSTUDIO_TEST_SSH_KEY_URL`, `NETSTUDIO_TEST_SSH_CONTAINER` ve `NETSTUDIO_TEST_DATABASE_URL` değerlerini **aynı yeni projeyi** gösterecek şekilde verin; testlerde de `PLAYWRIGHT_BASE_URL` bu origin olmalıdır. Seed varsayılanları sırasıyla `http://127.0.0.1:13000`, `http://127.0.0.1:12223`, `netstudio-redesign-qa-ssh-lab-1` adresleridir. Seed seçili Docker context'i kullanır; gerekirse `NETSTUDIO_TEST_DOCKER_CONTEXT` ile aynı QA projesinin context'ini açıkça belirtin. Seed HTTP endpoint'leri yalnız loopback olabilir.
 
-Tarayıcı testleri masaüstü/mobil yerleşim, filtre kapsamı, ECharts, klavye ile port seçimi, form akışı, boş sır alanı, inline SSH giriş/kopyalama/yapıştırma/resize/kapanış, cihaz bazlı komut yardımcısını açma-kapatma/kopyalama ve logout senaryolarını gerçek API/gateway üzerinden denetler. Ayrıca sayfa kimliği, framework hata katmanı, konsol ve cookie güvenlik nitelikleri kontrol edilir. Girişten önceki `/session/me` 401 yanıtı beklenen davranıştır. Ekran görüntüleri işletim sisteminin geçici dizinindeki `netstudio-qa/` altına, başarısız test izleri `netstudio-playwright/` altına yazılır; otomatik olarak repository'ye eklenmez. Görsel değişikliklerde [görüntü yenileme kuralına](rule.md#5-her-görsel-güncellemede-readme-görüntülerini-yenile) göre incelenmiş üç README görüntüsü ayrıca `docs/screenshots/` altına alınır ve aynı değişiklikle teslim edilir; diğer geçici test kanıtları repository dışında kalır. Bunlar **sentetik QA envanteridir; fiziksel cihaz kanıtı değildir**.
+Tarayıcı testleri masaüstü/mobil yerleşim, filtre kapsamı, ECharts, klavye ile port seçimi, form akışı, boş sır alanı, inline SSH giriş/kopyalama/yapıştırma/resize/kapanış, cihaz bazlı komut yardımcısını açma-kapatma/kopyalama ve logout senaryolarını gerçek API/gateway üzerinden denetler. Ayrıca sayfa kimliği, framework hata katmanı, konsol ve cookie güvenlik nitelikleri kontrol edilir. Girişten önceki `/session/me` 401 yanıtı beklenen davranıştır. Ekran görüntüleri işletim sisteminin geçici dizinindeki `netstudio-qa/` altına, başarısız test izleri `netstudio-playwright/` altına yazılır; otomatik olarak repository'ye eklenmez. Ana tasarım değişikliklerinde [görüntü yenileme kuralına](rule.md#5-ana-tasarım-değişikliğinde-readme-görüntülerini-yenile) göre incelenmiş üç README görüntüsü ayrıca `docs/screenshots/` altına alınır ve aynı değişiklikle teslim edilir; küçük işlevsel UI değişikliklerinde geçici tarayıcı kanıtı yeterlidir. Bunlar **sentetik QA envanteridir; fiziksel cihaz kanıtı değildir**.
 
 **Tarihsel kayıt notu:** Aşağıdaki önceki QA bölümlerinde marka, ortam değişkeni ve proje/dizin yazımları yeni NetStudio terminolojisine uyarlanmıştır; bunlar eski runtime kaynaklarının yeniden adlandırıldığı veya testlerin tekrar çalıştırıldığı anlamına gelmez. Bu ad geçişinin güncel test sonuçları ayrıca en sonda raporlanır.
 

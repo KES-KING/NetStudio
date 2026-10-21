@@ -1,0 +1,11 @@
+# Copy to deploy/network-probe.toml and keep the interface allowlist explicit.
+# Production agents must use the public HTTPS gateway URL.
+api_url = "https://netstudio.example"
+token_file = "/run/secrets/network-probe.token"
+interfaces = ["enp1s0.10", "enp1s0.20"]
+poll_seconds = 3
+timeout_seconds = 10
+
+# Development only, and accepted only for localhost/loopback API URLs:
+# api_url = "http://127.0.0.1:8000"
+# allow_insecure_localhost = true

@@ -190,6 +190,7 @@ class InterfaceSample(StrictModel):
     tx_errors: int | None = Field(default=None, ge=0)
     tx_discards: int | None = Field(default=None, ge=0)
     access_vlan: int | None = Field(default=None, ge=1, le=4094)
+    l3_vlan: int | None = Field(default=None, ge=1, le=4094)
     pvid: int | None = Field(default=None, ge=1, le=4094)
     vlan_mode: Literal["access", "trunk", "unknown"] = "unknown"
     poe_watts: float | None = Field(default=None, ge=0)
@@ -266,7 +267,7 @@ class EndpointObservation(StrictModel):
     vlan: int | None = Field(default=None, ge=1, le=4094)
     vrf: str | None = Field(default=None, max_length=160)
     vrf_known: bool = False
-    discovery: Literal["fdb", "arp", "ndp"]
+    discovery: Literal["fdb", "arp", "ndp", "active_arp"]
     state: Literal["reachable", "stale", "static", "unknown"] = "unknown"
     evidence: str = Field(min_length=1, max_length=300)
 

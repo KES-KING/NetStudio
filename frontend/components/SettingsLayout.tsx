@@ -8,6 +8,7 @@ export function SettingsLayout({ children }: { children: ReactNode }) {
   const path = usePathname(), session = useSession();
   const tabs = [{ href: "/settings", label: "Hesabım", description: "Profil ve oturum güvenliği" },
     ...(session.permissions.includes("user.manage") ? [{ href: "/settings/users", label: "Kullanıcılar", description: "Hesap oluşturma ve yetkiler" }] : []),
+    ...(session.permissions.includes("network_probe.manage") ? [{ href: "/settings/network-probes", label: "Ağ keşfi", description: "VLAN ARP probe kapsamları" }] : []),
     { href: "/settings/updates", label: "Güncellemeler", description: "main · sürüm ve kurulum" }];
   return <>
     <div className="page-heading"><div><p className="eyebrow">SİSTEM VE KİŞİSEL TERCİHLER</p><h1>Ayarlar</h1><p>Hesabınızı, erişimleri ve NetStudio güncellemelerini yönetin.</p></div></div>

@@ -108,7 +108,7 @@ def test_2960x_inventory_uses_reported_ports_and_metrics(system):
     assert first.access_vlan == first.pvid == 10 and first.vlan_mode == "access"
     assert second.admin_up is second.oper_up is False
     assert uplink.capacity_bps == 10_000_000_000 and uplink.vlan_mode == "trunk"
-    assert svi.addresses == ["192.0.2.2/24"] and svi.vrf_known is False
+    assert svi.addresses == ["192.0.2.2/24"] and svi.l3_vlan == 10 and svi.vrf_known is False
     assert batch.health.uptime_seconds == 788640
     assert batch.health.status == "unknown"
     assert batch.neighbors == []

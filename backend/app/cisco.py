@@ -336,6 +336,9 @@ def apply_addresses(entries, raw, warnings):
                 warnings.append(f"show ip interface: {row['name']} adresi tanınmadı.")
         if addresses:
             row["sample"]["addresses"] = sorted(set(addresses))
+            svi = re.fullmatch(r"Vlan(\d+)", row["name"], re.I)
+            if svi and 1 <= int(svi.group(1)) <= 4094:
+                row["sample"]["l3_vlan"] = int(svi.group(1))
 
 
 def parse_snapshot(device, outputs, unavailable=None, observed_at=None):

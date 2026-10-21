@@ -207,7 +207,7 @@ def overview(store, devices, minutes):
                 fast = payload.get("groups", {}).get("fast", {})
                 if fast.get("observed_at"):
                     successes[device_id] = timestamp(fast["observed_at"])
-    resolved = resolve_endpoints({d.id: d for d in devices}, latest)
+    resolved = resolve_endpoints({d.id: d for d in devices}, latest, store=store)
     result = []
     for device in devices:
         row = projection(device, latest.get(device.id), endpoints=resolved[device.id])
