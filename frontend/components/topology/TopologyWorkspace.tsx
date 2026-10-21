@@ -29,6 +29,7 @@ function Workspace({ graph, initialBoard, graphError, refresh, persisted }: { gr
   const [focus, setFocus] = useState<{ id: string; sequence: number } | null>({ id: params.get("device") ?? graph.devices[0]?.id ?? "", sequence: 0 });
   const [query, setQuery] = useState(""), [site, setSite] = useState(""), [zoneId, setZoneId] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [detailed, setDetailed] = useState(false);
   const [dialog, setDialog] = useState<"zone" | "connection" | "reload" | null>(null);
   const [error, setError] = useState(""), [notice, setNotice] = useState("");
   const [baseIds] = useState(() => graph.devices.map((d) => d.id));
@@ -101,10 +102,10 @@ function Workspace({ graph, initialBoard, graphError, refresh, persisted }: { gr
     {(site || zoneId) && <p className="topology-active-filters">Kapsam: {site || "Tüm siteler"} · {board.zones.find((z) => z.id === zoneId)?.name ?? "Tüm zone’lar"} <button onClick={() => { setSite(""); setZoneId(""); }}>Filtreleri temizle</button></p>}
     {filtered.length > GRAPH_DEVICE_LIMIT && <p className="notice">Okunabilirlik için ilk {GRAPH_DEVICE_LIMIT} cihaz çiziliyor. Diğer cihazlara arama veya odak seçimiyle ulaşabilirsiniz; toplamlar tüm kapsamı içerir.</p>}
     <div className={`topology-stage ${busy ? "is-saving" : ""}`} aria-busy={busy}>
-      <TopologyCanvas graph={graph} devices={visible} board={board} positions={positions} selection={selection} select={select} change={change} query={query} focus={focus} />
+      <TopologyCanvas graph={graph} devices={visible} board={board} positions={positions} selection={selection} select={select} change={change} query={query} focus={focus} detailed={detailed} setDetailed={setDetailed} />
       <TopologyInspector selection={selection} graph={graph} board={board} positions={positions} select={select} change={change} />
     </div>
-    <p className="source-note">Görünüm yenilendi: {formatTime(graph.generated_at)} · 15 sn sorgulama. Her cihazın gözlem zamanı ayrıdır. Yenile, toplanmış verileri getirir; ağ taraması başlatmaz. Cihaz başına en fazla 6 uç çizilir; tüm kayıtlar seçim ayrıntılarındadır.</p>
+    <p className="source-note">Görünüm yenilendi: {formatTime(graph.generated_at)} · 15 sn sorgulama. Her cihazın gözlem zamanı ayrıdır. Yenile, toplanmış verileri getirir; ağ taraması başlatmaz. Varsayılan görünümde cihaz başına en fazla 6 uç çizilir; Detaylandır açıkken tüm uçlar gösterilir.</p>
     <details className="topology-accessible-list"><summary>Bağlantıları liste olarak göster ({board.links.length + graph.links.length})</summary>
       <ul>{board.links.map((l) => <li key={`m:${l.id}`}><button onClick={() => select({ kind: "manual", id: l.id })}>{graph.devices.find((d) => d.id === l.source_device_id)?.name ?? "Erişilemeyen cihaz"} ↔ {graph.devices.find((d) => d.id === l.target_device_id)?.name ?? "Erişilemeyen cihaz"} · Elle çizilen</button></li>)}
         {graph.links.map((l) => <li key={`o:${l.id}`}><button onClick={() => select({ kind: "observed", id: l.id })}>{graph.devices.find((d) => d.id === l.source_device_id)?.name} ↔ {graph.devices.find((d) => d.id === l.target_device_id)?.name} · {l.relation === "l2" ? "L2 komşuluk" : "Fiziksel kanıt"}</button></li>)}</ul>

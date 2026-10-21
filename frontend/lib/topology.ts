@@ -76,8 +76,25 @@ export function layoutPositions(devices: NetworkDevice[], board: TopologyBoard, 
   }
   return result;
 }
-export function endpointPosition(position: Placement, index: number, compact = false) {
+export function endpointPosition(position: Placement, index: number, compact = false, detailed = false) {
   const offsets = compact ? [[0, -158], [-84, 165], [84, 165], [-84, 300], [84, 300], [0, 435]] : [[0, -158], [-145, 165], [145, 165], [-220, -110], [220, -110], [0, 300]];
+  if (detailed) {
+    const stepX = compact ? 180 : 210, stepY = 120;
+    let remaining = index;
+    for (let ring = 1; ; ring++) {
+      const halfWidth = stepX * ring, halfHeight = 145 * ring;
+      const slots: [number, number][] = [];
+      for (let x = -halfWidth; x <= halfWidth; x += stepX) slots.push([x, -halfHeight]);
+      for (let y = -halfHeight + stepY; y < halfHeight; y += stepY) slots.push([halfWidth, y]);
+      for (let x = halfWidth; x >= -halfWidth; x -= stepX) slots.push([x, halfHeight]);
+      for (let y = halfHeight - stepY; y > -halfHeight; y -= stepY) slots.push([-halfWidth, y]);
+      if (remaining < slots.length) {
+        const [dx, dy] = slots[remaining];
+        return { x: position.x + dx, y: position.y + dy };
+      }
+      remaining -= slots.length;
+    }
+  }
   const [dx, dy] = offsets[index % offsets.length];
   return { x: position.x + dx, y: position.y + dy };
 }
@@ -115,9 +132,10 @@ export function matchesDevice(device: NetworkDevice, query: string) {
   return !q || [device.name, device.management_address, device.site,
     ...device.endpoints.entries.flatMap((e) => [e.mac, ...e.addresses])].some((v) => v.toLocaleLowerCase("tr").includes(q));
 }
-export function endpointsForCanvas(device: NetworkDevice, query: string, selectedId?: string) {
+export function endpointsForCanvas(device: NetworkDevice, query: string, selectedId?: string, detailed = false) {
   const q = query.trim().toLowerCase();
   const list = device.endpoints.entries;
+  if (detailed) return list;
   const prioritized = list.filter((e) => e.id === selectedId || (q && [e.mac, ...e.addresses].some((v) => v.toLowerCase().includes(q))));
   return [...prioritized, ...list.filter((e) => !prioritized.includes(e))].slice(0, GRAPH_ENDPOINT_LIMIT);
 }

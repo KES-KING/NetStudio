@@ -18,11 +18,12 @@ type Props = {
   graph: NetworkGraph; devices: NetworkDevice[]; board: TopologyBoard; positions: Map<string, Placement>;
   selection: Selection; select: (value: Selection) => void; change: (value: TopologyBoard) => void;
   query: string; focus: { id: string; sequence: number } | null;
+  detailed: boolean; setDetailed: (value: boolean) => void;
 };
 type Drag = { kind: "device" | "zone" | "pan"; id: string; startX: number; startY: number; dx: number; dy: number };
 const short = (text: string, size = 25) => text.length > size ? `${text.slice(0, size - 1)}…` : text;
 
-export default function TopologyCanvas({ graph, devices, board, positions, selection, select, change, query, focus }: Props) {
+export default function TopologyCanvas({ graph, devices, board, positions, selection, select, change, query, focus, detailed, setDetailed }: Props) {
   const svg = useRef<SVGSVGElement>(null);
   const frame = useRef<number | null>(null);
   const drag = useRef<Drag | null>(null);
@@ -139,6 +140,9 @@ export default function TopologyCanvas({ graph, devices, board, positions, selec
       <button aria-label="Topolojiyi uzaklaştır" onClick={() => zoom(-.15)}>−</button>
       <button onClick={center}>Ortala</button>
       <button aria-pressed={mode === "move"} onClick={() => setMode(mode === "select" ? "move" : "select")}>Taşıma modu</button>
+      <button className="topology-detail-switch" role="switch" aria-checked={detailed} aria-label="Detaylandır" onClick={() => setDetailed(!detailed)}>
+        <span>Detaylandır</span><span className="switch-state" aria-hidden="true">{detailed ? "Açık" : "Kapalı"}</span>
+      </button>
       <output aria-label="Yakınlaştırma oranı">{Math.round(view.scale * 100)}%</output>
     </div>
     <svg ref={svg} className={`network-canvas ${mode === "move" ? "move-mode" : ""}`} role="group" aria-label="Etkileşimli topoloji çalışma alanı"
@@ -164,10 +168,10 @@ export default function TopologyCanvas({ graph, devices, board, positions, selec
           `${interfaceLabel(deviceMap.get(l.source_device_id)!, l.source_interface_id)} ↔ ${interfaceLabel(deviceMap.get(l.target_device_id)!, l.target_interface_id)}`, "observed", l.relation, l.data_state !== "current"))}
         {devices.map((device) => {
           const p = point(device.id), active = selection?.kind === "device" && selection.id === device.id;
-          const endpoints = endpointsForCanvas(device, query, selection?.kind === "endpoint" && selection.deviceId === device.id ? selection.id : undefined);
+          const endpoints = endpointsForCanvas(device, query, selection?.kind === "endpoint" && selection.deviceId === device.id ? selection.id : undefined, detailed);
           return <g key={device.id}>
             {endpoints.map((e, index) => {
-              const { x, y } = endpointPosition(p, index, compact);
+              const { x, y } = endpointPosition(p, index, compact, detailed);
               const selected = selection?.kind === "endpoint" && selection.deviceId === device.id && selection.id === e.id;
               return <g key={e.id}>
                 <g className={`topology-edge endpoint ${device.data_state !== "current" || e.state === "stale" || e.resolution?.status === "stale" ? "stale" : ""}`}>
@@ -193,7 +197,7 @@ export default function TopologyCanvas({ graph, devices, board, positions, selec
               <NetworkSymbol /><text y={35} textAnchor="middle" className="node-title">{short(device.name, 24)}</text>
               <text y={54} textAnchor="middle" className="node-mono">{device.management_address}</text>
               <text y={73} textAnchor="middle" className={`node-meta ${device.reachability}`}>{reachLabels[device.reachability]}</text>
-              <text y={91} textAnchor="middle" className="node-meta">{["ok", "partial"].includes(device.endpoints.status) ? `${device.endpoints.entries.length} uç gözlemi${device.endpoints.entries.length > endpoints.length ? ` · ${endpoints.length} çiziliyor` : ""}` : endpointLabels[device.endpoints.status]}</text>
+              <text y={91} textAnchor="middle" className="node-meta">{["ok", "partial"].includes(device.endpoints.status) ? `${device.endpoints.entries.length} uç gözlemi${device.endpoints.entries.length > endpoints.length ? ` · ${endpoints.length} çiziliyor` : detailed && device.endpoints.entries.length > 0 ? " · tamamı çiziliyor" : ""}` : endpointLabels[device.endpoints.status]}</text>
             </g>
           </g>;
         })}

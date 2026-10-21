@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boardPayload, deleteZone, endpointsForCanvas, layoutPositions, matchesDevice, moveZone, physicalLabels, positionFor, type NetworkDevice, type TopologyBoard } from "../lib/topology";
+import { boardPayload, deleteZone, endpointPosition, endpointsForCanvas, layoutPositions, matchesDevice, moveZone, physicalLabels, positionFor, type NetworkDevice, type TopologyBoard } from "../lib/topology";
 
 const board: TopologyBoard = { version: 3, zones: [{ id: "z", name: "Test zone", x: 0, y: 0, width: 600, height: 500, tone: "slate" }], placements: [{ device_id: "d", x: 300, y: 250, zone_id: "z" }], links: [] };
 const device: NetworkDevice = { id: "d", name: "Test switch", management_address: "192.0.2.1", site: "Test", device_type: "switch", reachability: "unknown", data_state: "no_data", observed_at: null, source: null,
@@ -37,5 +37,11 @@ describe("topology geometry and evidence", () => {
     expect(device.endpoints.entries).toHaveLength(15);
     expect(matchesDevice(device, "192.0.2.114")).toBe(true);
     expect(matchesDevice(device, "missing")).toBe(false);
+  });
+  it("returns and lays out every endpoint when detailed mode is enabled", () => {
+    expect(endpointsForCanvas(device, "", undefined, true)).toEqual(device.endpoints.entries);
+    const positions = device.endpoints.entries.map((_, index) => endpointPosition(board.placements[0], index, false, true));
+    expect(new Set(positions.map(({ x, y }) => `${x}:${y}`)).size).toBe(device.endpoints.entries.length);
+    expect(endpointPosition(board.placements[0], 0)).toEqual({ x: 300, y: 92 });
   });
 });

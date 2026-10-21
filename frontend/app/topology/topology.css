@@ -13,6 +13,10 @@
 .topology-camera { padding: 8px 12px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; background: var(--secondary); border-bottom: 1px solid var(--border); }
 .topology-camera button { min-height: 34px; padding: 6px 12px; }
 .topology-camera button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+.topology-detail-switch { display: inline-flex; align-items: center; gap: 8px; }
+.topology-detail-switch .switch-state { color: var(--muted); font-size: 11px; }
+.topology-detail-switch[aria-checked="true"] { background: var(--accent); color: var(--surface); }
+.topology-detail-switch[aria-checked="true"] .switch-state { color: inherit; }
 .topology-camera output { margin-left: auto; color: var(--muted); font: 12px monospace; }
 .network-canvas { width: 100%; height: max(580px, calc(100dvh - 340px)); display: block; overflow: hidden; touch-action: pan-y; user-select: none; background: var(--ui-soft); }
 .network-canvas.move-mode { touch-action: none; cursor: grab; }
@@ -105,5 +109,8 @@
   .topology-workspace .page-heading { align-items: stretch; flex-direction: column; gap: 10px; }
   .topology-workspace .page-heading p { margin-bottom: 0; }
   .topology-status { font-size: 11px; }
-  .topology-camera button { min-height: 40px; }
+  .topology-camera { gap: 4px; padding: 8px; }
+  .topology-camera button { min-height: 40px; padding: 6px 7px; font-size: 11px; }
+  .topology-detail-switch .switch-state { display: none; }
+  .topology-camera output { font-size: 11px; }
 }

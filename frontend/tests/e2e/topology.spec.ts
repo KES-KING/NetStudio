@@ -135,6 +135,37 @@ test("drag, zoom, search and version conflicts preserve unsaved edits", async ({
   await expect(page.getByRole("button", { name: "Kaydet", exact: true })).toBeDisabled();
 });
 
+test("detail switch expands every endpoint and returns to the six-node view", async ({ page }) => {
+  await page.route(/\/api\/v1\/topology(?:\?.*)?$/, async (route) => {
+    const response = await route.fetch();
+    if (!response.ok()) { await route.fulfill({ response }); return; }
+    const body = await response.json();
+    const device = body.devices.find((item: { id: string }) => item.id === coreId);
+    const template = device?.endpoints.entries[0];
+    expect(template).toBeTruthy();
+    device.endpoints.entries = Array.from({ length: 11 }, (_, index) => ({
+      ...template,
+      id: `qa-detail-endpoint-${index}`,
+      interface_id: device.interfaces[index % device.interfaces.length].id,
+      mac: `02:aa:00:00:00:${index.toString(16).padStart(2, "0")}`,
+      addresses: [`198.51.100.${index + 1}`],
+    }));
+    await route.fulfill({ response, json: body });
+  });
+  await page.setViewportSize({ width: 1536, height: 1000 }); await enter(page);
+  const endpoints = page.locator('.network-endpoint[aria-label*="198.51.100."]');
+  const detail = page.getByRole("switch", { name: "Detaylandır", exact: true });
+  await expect(detail).toHaveAttribute("aria-checked", "false");
+  await expect(endpoints).toHaveCount(6);
+  await detail.click();
+  await expect(detail).toHaveAttribute("aria-checked", "true");
+  await expect(endpoints).toHaveCount(11);
+  await expect(page.locator(`.network-device[data-id="${coreId}"]`)).toContainText("11 uç gözlemi · tamamı çiziliyor");
+  await detail.click();
+  await expect(detail).toHaveAttribute("aria-checked", "false");
+  await expect(endpoints).toHaveCount(6);
+});
+
 test("mobile keeps the canvas readable and exposes details without horizontal page overflow", async ({ page }) => {
   const failures = errors(page);
   await page.setViewportSize({ width: 390, height: 844 }); await enter(page);
