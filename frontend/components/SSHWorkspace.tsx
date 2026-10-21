@@ -29,10 +29,14 @@ export function SSHWorkspace({
   ticket,
   name,
   onClose,
+  commandHelperOpen,
+  onToggleCommandHelper,
 }: {
   ticket: SSHTicket;
   name: string;
   onClose: () => void;
+  commandHelperOpen: boolean;
+  onToggleCommandHelper: () => void;
 }) {
   const element = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -193,6 +197,28 @@ export function SSHWorkspace({
           SSH <span> / {name}</span>
         </h2>
         <div className="toolbar-actions">
+          <button
+            className="ssh-command-helper-toggle"
+            aria-label={
+              commandHelperOpen
+                ? "Komut yardımcısını kapat"
+                : "Komut yardımcısını aç"
+            }
+            aria-pressed={commandHelperOpen}
+            title={
+              commandHelperOpen
+                ? "Komut yardımcısını kapat"
+                : "Komut yardımcısını aç"
+            }
+            onClick={onToggleCommandHelper}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 5.5h13v13H3z" />
+              <path d="m6 10 2 2-2 2m4 1h3" />
+              <circle cx="18" cy="6" r="4" />
+              <path d="M16.8 4.9a1.35 1.35 0 0 1 2.55.62c0 .95-1.35 1.05-1.35 1.85m0 1.4v.1" />
+            </svg>
+          </button>
           <button onClick={copySelection}>Seçimi kopyala</button>
           <button disabled={status !== "connected"} onClick={pasteClipboard}>
             Yapıştır

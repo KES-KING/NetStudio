@@ -1664,6 +1664,122 @@ dd {
 .ssh-heading .toolbar-actions {
   gap: 4px;
 }
+.ssh-heading .ssh-command-helper-toggle {
+  width: 34px;
+  padding: 3px;
+  display: inline-grid;
+  place-items: center;
+}
+.ssh-command-helper-toggle svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+.ssh-heading .ssh-command-helper-toggle[aria-pressed="true"] {
+  border-color: var(--selected);
+  background: var(--nav-secondary);
+  color: var(--surface);
+}
+.command-helper {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 430px;
+}
+.command-helper .panel-heading {
+  min-height: 47px;
+}
+.command-helper .panel-heading > div {
+  min-width: 0;
+}
+.command-helper-driver {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: var(--ui-type-caption);
+}
+.command-helper-body {
+  padding: 14px 16px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.command-helper-intro,
+.command-helper-state,
+.command-helper-feedback {
+  color: var(--muted);
+  font-size: var(--ui-type-caption);
+  line-height: 1.5;
+}
+.command-helper-intro {
+  margin: 0 0 12px;
+}
+.command-helper-state {
+  border: 1px solid var(--ui-line);
+  background: var(--ui-soft);
+  padding: 12px;
+}
+.command-helper-state p {
+  margin: 0 0 8px;
+}
+.command-helper-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--selected);
+  background: var(--ui-soft);
+  color: var(--muted);
+  font-size: var(--ui-type-caption);
+}
+.command-group {
+  margin-top: 14px;
+}
+.command-group h3 {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: var(--ui-type-caption);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.command-group ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.command-group li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--ui-line);
+  background: var(--surface);
+  padding: 6px 6px 6px 10px;
+}
+.command-group code {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 11px;
+}
+.command-group button {
+  flex: none;
+  min-height: 30px;
+  padding: 3px 7px;
+  font-size: var(--ui-type-caption);
+}
+.command-helper-feedback {
+  min-height: 34px;
+  margin: auto 0 0;
+  padding: 8px 16px;
+  border-top: 1px solid var(--ui-line);
+}
 .terminal-status {
   display: flex;
   flex-wrap: wrap;
@@ -2281,6 +2397,17 @@ tbody tr:last-child td {
   .ssh-heading h2 {
     max-width: 50%;
     overflow-wrap: anywhere;
+  }
+  .command-helper {
+    max-height: 520px;
+  }
+  .command-helper-body {
+    padding: 12px;
+  }
+  .command-group button,
+  .ssh-heading .ssh-command-helper-toggle {
+    min-width: 40px;
+    min-height: 40px;
   }
   .login-panel {
     padding: 24px;

@@ -23,6 +23,7 @@ import { Empty } from "./OperationSummary";
 import { SSHWorkspace } from "./SSHWorkspace";
 import { CollectionControls } from "./CollectionControls";
 import { DeviceFacts, DeviceInterfaces, DeviceSummary } from "./DeviceFacts";
+import { CommandHelper } from "./CommandHelper";
 
 export default function DeviceDetail({ id }: { id: string }) {
   const session = useSession();
@@ -52,6 +53,7 @@ export default function DeviceDetail({ id }: { id: string }) {
     setPanelOpen(true);
   };
   const [sshOpen, setSSHOpen] = useState(false),
+    [commandHelperOpen, setCommandHelperOpen] = useState(false),
     [ticket, setTicket] = useState<SSHTicket>(),
     [actionError, setActionError] = useState<string>(),
     [job, setJob] = useState<string>(),
@@ -106,6 +108,12 @@ export default function DeviceDetail({ id }: { id: string }) {
       );
     setTicket(undefined);
     setSSHOpen(false);
+    setCommandHelperOpen(false);
+  }
+  function toggleCommandHelper() {
+    closePort();
+    setPanelOpen(false);
+    setCommandHelperOpen((open) => !open);
   }
   async function runJob(kind: "polls" | "connection-tests") {
     setBusy(true);
@@ -253,28 +261,37 @@ export default function DeviceDetail({ id }: { id: string }) {
       )}
       <DeviceSummary row={row} />
       <div className={`device-workspace ${sshOpen ? "with-terminal" : ""}`}>
-        <section className="panel front-panel">
-          <div className="panel-heading">
-            <h2>Cihaz ön paneli</h2>
-            <div className="front-panel-actions">
-              <span>{portDescription(row)}</span>
-              <button onClick={openPanel} aria-haspopup="dialog">Tam ekran <span aria-hidden="true">⛶</span></button>
-            </div>
-          </div>
-          <DevicePanel
-            row={row}
-            selectedId={selected?.id}
-            onSelect={selectPort}
-            onExpand={openPanel}
+        {sshOpen && commandHelperOpen ? (
+          <CommandHelper
+            device={device}
+            onClose={() => setCommandHelperOpen(false)}
           />
-          <p className="source-note">
-            Envanter: {formatTime(device.inventory_observed_at)} ·{" "}
-            {device.inventory_source ?? "Kaynak yok"}
-            <br />
-            Port gözlemi: {formatTime(row.telemetry?.observed_at)} · Portu
-            seçerek detayları inceleyin.
-          </p>
-        </section>
+        ) : (
+          <section className="panel front-panel">
+            <div className="panel-heading">
+              <h2>Cihaz ön paneli</h2>
+              <div className="front-panel-actions">
+                <span>{portDescription(row)}</span>
+                <button onClick={openPanel} aria-haspopup="dialog">
+                  Tam ekran <span aria-hidden="true">⛶</span>
+                </button>
+              </div>
+            </div>
+            <DevicePanel
+              row={row}
+              selectedId={selected?.id}
+              onSelect={selectPort}
+              onExpand={openPanel}
+            />
+            <p className="source-note">
+              Envanter: {formatTime(device.inventory_observed_at)} ·{" "}
+              {device.inventory_source ?? "Kaynak yok"}
+              <br />
+              Port gözlemi: {formatTime(row.telemetry?.observed_at)} · Portu
+              seçerek detayları inceleyin.
+            </p>
+          </section>
+        )}
         {sshOpen &&
           (ticket ? (
             <SSHWorkspace
@@ -282,6 +299,8 @@ export default function DeviceDetail({ id }: { id: string }) {
               ticket={ticket}
               name={device.name}
               onClose={closeSSH}
+              commandHelperOpen={commandHelperOpen}
+              onToggleCommandHelper={toggleCommandHelper}
             />
           ) : (
             <section className="panel ssh-pending">

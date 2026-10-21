@@ -90,6 +90,20 @@ async function login(page: Page) {
   });
 }
 
+async function useCiscoIdentityForCommandHelp(page: Page) {
+  await page.route(
+    /\/api\/v1\/devices\/[^/]+\/overview(?:\?.*)?$/,
+    async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      body.device.vendor = "Cisco";
+      body.device.platform = "IOS";
+      body.device.collector = "cisco_ios";
+      await route.fulfill({ response, json: body });
+    },
+  );
+}
+
 test("real API dashboard, shared filters, square design and keyboard ports", async ({
   page,
 }) => {
@@ -142,6 +156,7 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
   const errors = observeClientErrors(page);
   await page.setViewportSize({ width: 1536, height: 1024 });
   await login(page);
+  await useCiscoIdentityForCommandHelp(page);
   await page.getByRole("link", { name: "QA-Core-01", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "IP topolojisi", exact: true }),
@@ -199,6 +214,35 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
   await expect(page.locator(".xterm-rows")).toContainText(
     "TEST ECHO: clipboard-browser",
   );
+  await page
+    .getByRole("button", { name: "Komut yardımcısını aç", exact: true })
+    .click();
+  const helper = page.getByRole("region", { name: "Komut yardımcısı" });
+  await expect(helper).toBeVisible();
+  await expect(page.locator(".front-panel")).toHaveCount(0);
+  await expect(helper).toContainText("Cisco IOS");
+  await expect(helper).toContainText("show interfaces status");
+  await helper
+    .getByRole("button", {
+      name: "show interfaces status komutunu kopyala",
+      exact: true,
+    })
+    .click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    "show interfaces status",
+  );
+  await expect(page.getByText("Bağlandı", { exact: true })).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: join(evidenceDir, "command-helper-desktop.png"),
+    fullPage: true,
+    animations: "disabled",
+  });
+  await helper.getByRole("button", { name: "Kapat", exact: true }).click();
+  await expect(page.locator(".front-panel")).toBeVisible();
+  await expect(page.locator(".xterm-rows")).toContainText(
+    "TEST ECHO: clipboard-browser",
+  );
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: join(evidenceDir, "detail-ssh-desktop.png"),
@@ -242,6 +286,7 @@ test("mobile navigation, device and SSH stack without page overflow", async ({
     path: join(evidenceDir, "dashboard-mobile.png"),
     fullPage: true,
   });
+  await useCiscoIdentityForCommandHelp(page);
   await page.getByRole("link", { name: "QA-Core-01", exact: true }).click();
   await page.getByRole("button", { name: "SSH", exact: true }).click();
   await expect(page.getByText("Bağlandı", { exact: true })).toBeVisible({
@@ -250,9 +295,23 @@ test("mobile navigation, device and SSH stack without page overflow", async ({
   const panel = await page.locator(".front-panel").boundingBox(),
     terminal = await page.locator(".ssh-workspace").boundingBox();
   expect(terminal!.y).toBeGreaterThan(panel!.y + panel!.height);
+  await page
+    .getByRole("button", { name: "Komut yardımcısını aç", exact: true })
+    .click();
+  const helper = page.getByRole("region", { name: "Komut yardımcısı" });
+  await expect(helper).toContainText("Cisco IOS");
+  const helperBox = await helper.boundingBox(),
+    stackedTerminal = await page.locator(".ssh-workspace").boundingBox();
+  expect(stackedTerminal!.y).toBeGreaterThan(helperBox!.y + helperBox!.height);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);
+  await page.screenshot({
+    path: join(evidenceDir, "command-helper-mobile.png"),
+    fullPage: true,
+    animations: "disabled",
+  });
+  await helper.getByRole("button", { name: "Kapat", exact: true }).click();
   await page.screenshot({
     path: join(evidenceDir, "detail-ssh-mobile.png"),
     fullPage: true,

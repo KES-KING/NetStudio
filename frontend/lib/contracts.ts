@@ -23,6 +23,15 @@ export type Interface = {
   kind: string;
   if_index: number | null;
 };
+export type DeviceCollector =
+  | "external"
+  | "auto"
+  | "linux_ssh"
+  | "huawei_vrp"
+  | "cisco_ios"
+  | "cisco_iosxe"
+  | "cisco_nxos"
+  | "juniper_junos";
 export type Device = {
   id: string;
   name: string;
@@ -37,7 +46,9 @@ export type Device = {
   read_only: boolean;
   support_status: string;
   ssh_port: number;
-  collector: "external" | "auto" | "linux_ssh" | "huawei_vrp" | "cisco_ios" | "cisco_iosxe" | "cisco_nxos" | "juniper_junos";
+  collector: DeviceCollector;
+  resolved_collector?: DeviceCollector | null;
+  driver_version?: string | null;
   ssh_profile?: "auto" | "standard" | "huawei_legacy" | "legacy_sha1" | "legacy_cbc" | "advanced";
   allow_legacy_ssh?: boolean;
   ssh_algorithms?: Record<string, string[]>;
@@ -171,6 +182,31 @@ export type SSHTicket = {
   id: string;
   websocket_path: string;
   expires_in: number;
+};
+export type DriverCommand = {
+  text: string;
+  group: "fast" | "health" | "network" | "inventory";
+  parser: string;
+  reference: string;
+  required: boolean;
+  privilege: string;
+  timeout_seconds: number;
+  max_bytes: number;
+  parser_version: string;
+};
+export type DriverCatalogEntry = {
+  id: string;
+  label: string;
+  available: boolean;
+  validation_level: string;
+  tested_versions: string[];
+  commands: DriverCommand[];
+  reason?: string;
+};
+export type DriverCatalog = {
+  version: string;
+  template_version: string;
+  drivers: DriverCatalogEntry[];
 };
 export type Job = {
   id: string;
