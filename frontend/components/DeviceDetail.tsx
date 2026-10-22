@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, ViewTransition } from "react";
+import { flushSync } from "react-dom";
 import useSWR from "swr";
 import { api, ApiError, errorMessage } from "../lib/api";
 import { recordActivity } from "../lib/activity";
@@ -60,7 +61,44 @@ export default function DeviceDetail({ id }: { id: string }) {
     [job, setJob] = useState<string>(),
     [busy, setBusy] = useState(false);
   const opening = useRef(false),
-    generation = useRef(0);
+    generation = useRef(0),
+    sshMotion = useRef(0);
+  const changeSSHView = useCallback((view: SSHWorkspaceView, revealHelper = true) => {
+    if (view === sshView) return;
+    const apply = () => {
+      closePort();
+      setPanelOpen(false);
+      setSSHView(view);
+      if (view !== "inline" && revealHelper) setCommandHelperOpen(true);
+    };
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      apply();
+      return;
+    }
+    const direction = view === "fullscreen"
+      ? "fullscreen"
+      : sshView === "fullscreen"
+        ? "exit-fullscreen"
+        : view === "expanded"
+          ? "expand"
+          : "collapse";
+    const root = document.documentElement;
+    const sequence = ++sshMotion.current;
+    root.dataset.sshTransition = direction;
+    const cleanup = () => {
+      if (sshMotion.current === sequence) delete root.dataset.sshTransition;
+    };
+    const startViewTransition = (document as Document & {
+      startViewTransition?: (update: () => void) => { finished: Promise<unknown> };
+    }).startViewTransition;
+    if (!startViewTransition) {
+      apply();
+      window.setTimeout(cleanup, 480);
+      return;
+    }
+    const transition = startViewTransition.call(document, () => flushSync(apply));
+    void transition.finished.finally(cleanup);
+  }, [closePort, setCommandHelperOpen, setPanelOpen, setSSHView, sshView]);
   const { data: jobState } = useSWR<Job>(
     job ? `/api/v1/jobs/${job}` : null,
     api,
@@ -85,14 +123,14 @@ export default function DeviceDetail({ id }: { id: string }) {
     const leaveFullscreen = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
-      setSSHView("expanded");
+      changeSSHView("expanded", false);
     };
     window.addEventListener("keydown", leaveFullscreen, true);
     return () => {
       root.classList.remove("ssh-fullscreen-open");
       window.removeEventListener("keydown", leaveFullscreen, true);
     };
-  }, [sshView]);
+  }, [changeSSHView, sshView]);
   async function openSSH() {
     if (opening.current || sshOpen) return;
     opening.current = true;
@@ -134,12 +172,6 @@ export default function DeviceDetail({ id }: { id: string }) {
     }
     setCommandHelperOpen((open) => !open);
   }
-  function changeSSHView(view: SSHWorkspaceView) {
-    closePort();
-    setPanelOpen(false);
-    setSSHView(view);
-    if (view !== "inline") setCommandHelperOpen(true);
-  }
   async function runJob(kind: "polls" | "connection-tests") {
     setBusy(true);
     setActionError(undefined);
@@ -158,7 +190,7 @@ export default function DeviceDetail({ id }: { id: string }) {
   if (!row)
     return (
       <>
-        <Link href="/">Ağ cihazlarına dön</Link>
+        <Link href="/" transitionTypes={["nav-back"]}>Ağ cihazlarına dön</Link>
         <Empty
           text={
             error
@@ -173,7 +205,7 @@ export default function DeviceDetail({ id }: { id: string }) {
   return (
     <>
       <nav className="breadcrumb" aria-label="Konum">
-        <Link href="/">Ağ cihazları</Link>
+        <Link href="/" transitionTypes={["nav-back"]}>Ağ cihazları</Link>
         <span>/</span>
         <span>{device.name}</span>
       </nav>
@@ -275,7 +307,7 @@ export default function DeviceDetail({ id }: { id: string }) {
           {jobState.error_code
             ? ` · ${errorMessage(new ApiError(jobState.error_code, 409))}`
             : ""}{" "}
-          · <Link href="/jobs">İş geçmişi</Link>
+          · <Link href="/jobs" transitionTypes={["nav-forward"]}>İş geçmişi</Link>
         </p>
       )}
       {row.data_state !== "current" && (
@@ -290,30 +322,32 @@ export default function DeviceDetail({ id }: { id: string }) {
       >
         {(!sshOpen || sshView !== "fullscreen") &&
         !(sshOpen && sshView === "inline" && commandHelperOpen) ? (
-          <section className="panel front-panel">
-            <div className="panel-heading">
-              <h2>Cihaz ön paneli</h2>
-              <div className="front-panel-actions">
-                <span>{portDescription(row)}</span>
-                <button onClick={openPanel} aria-haspopup="dialog">
-                  Tam ekran <span aria-hidden="true">⛶</span>
-                </button>
+          <ViewTransition name={`device-panel-${device.id}`} share="device-morph" default="none">
+            <section className="panel front-panel" data-motion-id={`device-panel-${device.id}`}>
+              <div className="panel-heading">
+                <h2>Cihaz ön paneli</h2>
+                <div className="front-panel-actions">
+                  <span>{portDescription(row)}</span>
+                  <button onClick={openPanel} aria-haspopup="dialog">
+                    Tam ekran <span aria-hidden="true">⛶</span>
+                  </button>
+                </div>
               </div>
-            </div>
-            <DevicePanel
-              row={row}
-              selectedId={selected?.id}
-              onSelect={selectPort}
-              onExpand={openPanel}
-            />
-            <p className="source-note">
-              Envanter: {formatTime(device.inventory_observed_at)} ·{" "}
-              {device.inventory_source ?? "Kaynak yok"}
-              <br />
-              Port gözlemi: {formatTime(row.telemetry?.observed_at)} · Portu
-              seçerek detayları inceleyin.
-            </p>
-          </section>
+              <DevicePanel
+                row={row}
+                selectedId={selected?.id}
+                onSelect={selectPort}
+                onExpand={openPanel}
+              />
+              <p className="source-note">
+                Envanter: {formatTime(device.inventory_observed_at)} ·{" "}
+                {device.inventory_source ?? "Kaynak yok"}
+                <br />
+                Port gözlemi: {formatTime(row.telemetry?.observed_at)} · Portu
+                seçerek detayları inceleyin.
+              </p>
+            </section>
+          </ViewTransition>
         ) : null}
         {sshOpen && sshView === "fullscreen" ? (
           <div

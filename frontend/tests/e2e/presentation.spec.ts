@@ -26,6 +26,37 @@ async function expectNoPageOverflow(page: Page, width: number) {
   ).toBeLessThanOrEqual(width);
 }
 
+async function expectVisibleControlsInsideViewport(page: Page, width: number) {
+  const escaped = await page.locator([
+    ".toolbar-actions button",
+    ".page-heading .button-link",
+    ".management-toolbar button",
+    ".form-actions button",
+    ".small-actions button",
+    ".settings-tabs a",
+    ".topology-commandbar > button",
+    ".device-topology-camera button",
+    ".pagination button",
+    ".row-actions button",
+    ".panel-heading > button",
+    ".panel-heading > .button-link",
+  ].join(", ")).evaluateAll(
+    (elements, viewportWidth) => elements
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        return !element.closest(".table-scroll, .chassis-scroll, .topology-stage") &&
+          style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
+      })
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { text: element.textContent?.trim().slice(0, 60), left: rect.left, right: rect.right };
+      })
+      .filter((rect) => rect.left < -0.5 || rect.right > Number(viewportWidth) + 0.5),
+    width,
+  );
+  expect(escaped).toEqual([]);
+}
+
 test("white content, graphite navigation and stable ECharts across filtering", async ({
   page,
 }) => {
@@ -149,6 +180,31 @@ test("keyboard focus, form surfaces, escape dismissal and activity table", async
   await expect(page.getByRole("table")).toBeVisible();
   await expectNoPageOverflow(page, 1280);
   await page.screenshot({ path: join(evidence, "audit-desktop.png") });
+  await page.getByRole("button", { name: "Çıkış", exact: true }).click();
+});
+
+test("primary pages keep action groups and tabs inside narrow viewports", async ({ page }) => {
+  await page.setViewportSize({ width: 1536, height: 900 });
+  await login(page);
+  const routes = [
+    { path: "/", ready: ".inventory-list" },
+    { path: "/topology", ready: "h1" },
+    { path: "/jobs", ready: "h1" },
+    { path: "/audit", ready: "h1" },
+    { path: "/settings", ready: "h1" },
+    { path: "/settings/users", ready: "h1" },
+    { path: "/settings/network-probes", ready: "h1" },
+    { path: "/settings/updates", ready: "h1" },
+  ];
+  for (const width of [320, 768, 1536]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const route of routes) {
+      await page.goto(route.path);
+      await expect(page.locator(route.ready).first()).toBeVisible();
+      await expectNoPageOverflow(page, width);
+      await expectVisibleControlsInsideViewport(page, width);
+    }
+  }
   await page.getByRole("button", { name: "Çıkış", exact: true }).click();
 });
 

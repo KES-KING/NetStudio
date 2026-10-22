@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, ViewTransition, type ReactNode } from "react";
 import type { Session } from "../lib/contracts";
 import { roleLabels } from "../lib/accounts";
 import { Brand } from "./Brand";
@@ -123,13 +123,13 @@ export function ConsoleNavigation({ user, onLogout, children }: {
       <a href="#main-content" className="skip-link" inert={drawerOpen}>İçeriğe geç</a>
       <header className="topbar" inert={drawerOpen}>
         <div className="topbar-brand">
-          <Link href="/" className="brand" aria-label="NetStudio — Ağ cihazları">
+          <Link href="/" className="brand" aria-label="NetStudio — Ağ cihazları" transitionTypes={["nav-back"]}>
             <span className="brand-wordmark"><Brand decorative /></span>
             <span className="brand-emblem"><Brand variant="emblem" decorative /></span>
           </Link>
         </div>
         <div className="topbar-context">
-          {(notification.feed.update_available || notification.feed.maintenance) && <Link href="/settings/updates" className="topbar-update" aria-label={notification.feed.maintenance ? "Güncelleme sürüyor — güncelleme sayfasını aç" : "Yeni güncelleme var — güncelleme sayfasını aç"} title={notification.feed.maintenance ? "Güncelleme sürüyor" : "Yeni güncelleme var"}>
+          {(notification.feed.update_available || notification.feed.maintenance) && <Link href="/settings/updates" transitionTypes={["nav-section"]} className="topbar-update" aria-label={notification.feed.maintenance ? "Güncelleme sürüyor — güncelleme sayfasını aç" : "Yeni güncelleme var — güncelleme sayfasını aç"} title={notification.feed.maintenance ? "Güncelleme sürüyor" : "Yeni güncelleme var"}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 15v6h16v-6" /></svg><span>Güncelleme</span>
           </Link>}
           <button ref={desktopToggle} className="sidebar-toggle" onClick={toggleCollapsed}
@@ -146,7 +146,7 @@ export function ConsoleNavigation({ user, onLogout, children }: {
         </div>
         <div className="session-nav">
           <LiveNotifications {...notification} />
-          <Link href="/settings" className="account-link" aria-label="Hesabım — profil ve kullanıcı yönetimi"
+          <Link href="/settings" transitionTypes={["nav-section"]} className="account-link" aria-label="Hesabım — profil ve kullanıcı yönetimi"
             aria-current={path === "/account" || path === "/settings" ? "page" : undefined}>
             <UserAvatar id={user.user_id} name={user.display_name} version={user.avatar_version} />
             <span className="account-link-text"><strong>{user.display_name}</strong><small>{roles}</small></span>
@@ -165,7 +165,7 @@ export function ConsoleNavigation({ user, onLogout, children }: {
             </div>
             <nav aria-label="Ana navigasyon">
               {navigation.filter((item) => item.href !== "/audit" || user.permissions.includes("audit.read")).map((item) => (
-                <Link key={item.href} href={item.href} prefetch={item.href === "/topology" ? false : undefined} aria-label={item.label} title={item.label}
+                <Link key={item.href} href={item.href} transitionTypes={[item.href === "/" ? "nav-back" : "nav-section"]} prefetch={item.href === "/topology" ? false : undefined} aria-label={item.label} title={item.label}
                   onClick={() => setMenuOpen(false)}
                   aria-current={path === item.href || (item.href === "/settings" && path.startsWith("/settings/")) || (item.href === "/" && path.startsWith("/devices")) ? "page" : undefined}>
                   <NavigationIcon name={item.icon} />
@@ -181,14 +181,24 @@ export function ConsoleNavigation({ user, onLogout, children }: {
             </div>
             <div className="sidebar-footer-actions">
               <RepositoryLink />
-              <Link href="/settings" className="sidebar-account-link" aria-label="Hesabım — hesap sayfasını aç" title="Hesabım"
+              <Link href="/settings" transitionTypes={["nav-section"]} className="sidebar-account-link" aria-label="Hesabım — hesap sayfasını aç" title="Hesabım"
                 aria-current={path === "/account" || path === "/settings" ? "page" : undefined} onClick={() => setMenuOpen(false)}>
                 <NavigationIcon name="account" /><span className="sidebar-label">Hesabım</span>
               </Link>
             </div>
           </div>
         </aside>
-        <main id="main-content" className="main-content" inert={drawerOpen} tabIndex={-1}>{children}</main>
+        <main id="main-content" className="main-content" inert={drawerOpen} tabIndex={-1}>
+          <ViewTransition
+            key={path}
+            name="route-content"
+            enter={{ "nav-section": "route-section", "nav-forward": "route-forward", "nav-back": "route-back", "device-detail": "route-device-detail", default: "none" }}
+            exit={{ "nav-section": "route-section", "nav-forward": "route-forward", "nav-back": "route-back", "device-detail": "route-device-detail", default: "none" }}
+            default="none"
+          >
+            <div className="route-content">{children}</div>
+          </ViewTransition>
+        </main>
       </div>
     </div>
   );

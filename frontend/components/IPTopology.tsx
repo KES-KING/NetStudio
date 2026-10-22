@@ -46,7 +46,7 @@ export function IPTopology({ row, port }: { row: Projection; port?: PhysicalPort
   return <section className="topology-panel panel device-ip-panel" aria-label="Cihaz IP topolojisi">
     <div className="panel-heading">
       <div><h2>IP topolojisi</h2><p>{row.topology.nodes.length} düğüm · {row.topology.links.length} ilişki · {stateLabels[row.data_state]}</p></div>
-      <Link href="/topology" className="button-link">Ağ topolojisini aç</Link>
+      <Link href="/topology" transitionTypes={["nav-forward"]} className="button-link">Ağ topolojisini aç</Link>
     </div>
     {!!row.topology.nodes.length && <div className="topology-controls">
       <label>Topolojide ara<input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Arayüz, MAC, IP, VRF veya VLAN" /></label>

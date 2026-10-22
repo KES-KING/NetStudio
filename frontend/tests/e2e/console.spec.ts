@@ -154,13 +154,17 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
   page,
 }) => {
   const errors = observeClientErrors(page);
+  const sockets: string[] = [];
+  page.on("websocket", (socket) => sockets.push(socket.url()));
   await page.setViewportSize({ width: 1536, height: 1024 });
   await login(page);
   await useCiscoIdentityForCommandHelp(page);
+  const dashboardMotionId = await page.locator(".device-miniature").first().getAttribute("data-motion-id");
   await page.getByRole("link", { name: "QA-Core-01", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "IP topolojisi", exact: true }),
   ).toBeVisible();
+  await expect(page.locator(".front-panel")).toHaveAttribute("data-motion-id", dashboardMotionId!);
   await page.getByRole("button", { name: "1, Aktif", exact: true }).click();
   await expect(
     page.getByRole("region", { name: "1 port detayları" }),
@@ -181,6 +185,8 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
   await expect(page.getByText("Bağlandı", { exact: true })).toBeVisible({
     timeout: 20000,
   });
+  const connectedSocketCount = sockets.length;
+  expect(connectedSocketCount).toBeGreaterThan(0);
   await expect(page.getByRole("dialog")).toHaveCount(0);
   const panel = await page.locator(".front-panel").boundingBox(),
     terminal = await page.locator(".ssh-workspace").boundingBox();
@@ -217,6 +223,7 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
   await page
     .getByRole("button", { name: "SSH görünümünü büyüt", exact: true })
     .click();
+  await expect(page.locator("html")).toHaveAttribute("data-ssh-transition", "expand");
   const expandedWorkspace = page.locator(
     ".device-workspace.ssh-view-expanded",
   );
@@ -236,6 +243,7 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
   await page
     .getByRole("button", { name: "SSH terminalini tam ekran yap", exact: true })
     .click();
+  await expect(page.locator("html")).toHaveAttribute("data-ssh-transition", "fullscreen");
   const fullscreenWorkspace = page.locator(
     ".device-workspace.ssh-view-fullscreen",
   );
@@ -291,11 +299,13 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
     animations: "disabled",
   });
   await page.keyboard.press("Escape");
+  await expect(page.locator("html")).toHaveAttribute("data-ssh-transition", "exit-fullscreen");
   await expect(expandedWorkspace).toBeVisible();
   await expect(page.locator("html")).not.toHaveClass(/ssh-fullscreen-open/);
   await page
     .getByRole("button", { name: "Standart SSH görünümüne dön", exact: true })
     .click();
+  await expect(page.locator("html")).toHaveAttribute("data-ssh-transition", "collapse");
   await page
     .getByRole("button", { name: "Komut yardımcısını kapat", exact: true })
     .click();
@@ -329,6 +339,7 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
   await expect(page.locator(".xterm-rows")).toContainText(
     "TEST ECHO: fullscreen-session",
   );
+  expect(sockets).toHaveLength(connectedSocketCount);
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: join(evidenceDir, "detail-ssh-desktop.png"),

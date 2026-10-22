@@ -49,15 +49,22 @@ button,
   font-size: var(--ui-type-small);
   text-decoration: none;
   white-space: nowrap;
+  max-width: 100%;
   transition:
     background-color 140ms ease,
     border-color 140ms ease,
-    color 140ms ease;
+    color 140ms ease,
+    transform 140ms ease;
 }
 button:where(:not(:disabled)):hover,
 .button-link:hover {
   background: var(--ui-hover);
   border-color: var(--ui-control-hover);
+  transform: translateY(-1px);
+}
+button:where(:not(:disabled)):active,
+.button-link:active {
+  transform: translateY(0);
 }
 button:disabled {
   cursor: default;
@@ -569,6 +576,69 @@ h3 {
   width: 100%;
   padding: 24px 20px 32px;
 }
+.route-content {
+  min-width: 0;
+}
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-group(route-content) {
+  animation-duration: 360ms;
+  animation-timing-function: cubic-bezier(.2, 0, 0, 1);
+}
+::view-transition-old(.route-section) {
+  animation: 130ms ease-in both route-fade-out;
+}
+::view-transition-new(.route-section) {
+  animation: 260ms ease-out 90ms both route-rise-in;
+}
+::view-transition-old(.route-forward) {
+  --route-shift: -38px;
+  animation: 150ms ease-in both route-slide-out;
+}
+::view-transition-new(.route-forward) {
+  --route-shift: 38px;
+  animation: 340ms cubic-bezier(.2, 0, 0, 1) both route-slide-in;
+}
+::view-transition-old(.route-back) {
+  --route-shift: 38px;
+  animation: 150ms ease-in both route-slide-out;
+}
+::view-transition-new(.route-back) {
+  --route-shift: -38px;
+  animation: 340ms cubic-bezier(.2, 0, 0, 1) both route-slide-in;
+}
+::view-transition-old(.route-device-detail) {
+  animation: 140ms ease-in both route-fade-out;
+}
+::view-transition-new(.route-device-detail) {
+  animation: 280ms ease-out 100ms both route-fade-in;
+}
+::view-transition-group(.device-morph) {
+  z-index: 25;
+  animation-duration: 460ms;
+  animation-timing-function: cubic-bezier(.2, 0, 0, 1);
+}
+::view-transition-image-pair(.device-morph) {
+  isolation: auto;
+}
+@keyframes route-fade-out {
+  to { opacity: 0; }
+}
+@keyframes route-fade-in {
+  from { opacity: 0; }
+}
+@keyframes route-rise-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes route-slide-out {
+  to { opacity: 0; transform: translateX(var(--route-shift)); }
+}
+@keyframes route-slide-in {
+  from { opacity: 0; transform: translateX(var(--route-shift)); }
+  to { opacity: 1; transform: translateX(0); }
+}
 .mobile-menu {
   display: none;
 }
@@ -647,7 +717,8 @@ h3 {
 .notification-footer button { font-size: 11px; margin-left: auto; }
 @media (max-width: 1100px) { .topbar-update span { display: none; } }
 @media (max-width: 700px) {
-  .settings-tabs a { padding: 12px 8px; font-size: 12px; }
+  .settings-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .settings-tabs a { padding: 12px; font-size: 12px; overflow-wrap: anywhere; }
   .settings-tabs small { display: none; }
   .update-facts { grid-template-columns: minmax(0, 1fr); }
   .update-body, .commit-list { padding: 16px; }
@@ -688,7 +759,14 @@ h3 {
   margin: 0 0 8px;
   color: var(--muted);
 }
-.toolbar-actions,
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
 /* Device workspace: bounded diagram, independent inspector, evidence-first facts. */
 .device-summary {
   display: grid;
@@ -1674,6 +1752,8 @@ dd {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  view-transition-name: ssh-workspace;
+  transform-origin: top right;
 }
 .ssh-heading {
   display: flex;
@@ -1949,6 +2029,49 @@ html.ssh-fullscreen-open body {
 }
 .ssh-pending {
   min-height: 380px;
+}
+html[data-ssh-transition="expand"]::view-transition-group(ssh-workspace),
+html[data-ssh-transition="collapse"]::view-transition-group(ssh-workspace) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(.2, 0, 0, 1);
+}
+html[data-ssh-transition="expand"]::view-transition-new(ssh-workspace),
+html[data-ssh-transition="collapse"]::view-transition-new(ssh-workspace) {
+  animation: 420ms cubic-bezier(.2, 0, 0, 1) both ssh-slide-grow;
+}
+html[data-ssh-transition="fullscreen"]::view-transition-group(ssh-workspace),
+html[data-ssh-transition="exit-fullscreen"]::view-transition-group(ssh-workspace) {
+  z-index: 50;
+  animation-duration: 460ms;
+  animation-timing-function: cubic-bezier(.16, 1, .3, 1);
+}
+html[data-ssh-transition="fullscreen"]::view-transition-new(ssh-workspace) {
+  animation: 460ms cubic-bezier(.16, 1, .3, 1) both ssh-cover-in;
+}
+html[data-ssh-transition="exit-fullscreen"]::view-transition-old(ssh-workspace) {
+  animation: 360ms cubic-bezier(.4, 0, 1, 1) both ssh-cover-out;
+}
+html[data-ssh-transition="expand"] .ssh-workspace,
+html[data-ssh-transition="collapse"] .ssh-workspace {
+  animation: 420ms cubic-bezier(.2, 0, 0, 1) both ssh-slide-grow;
+}
+html[data-ssh-transition="fullscreen"] .ssh-workspace {
+  animation: 460ms cubic-bezier(.16, 1, .3, 1) both ssh-cover-in;
+}
+html[data-ssh-transition="exit-fullscreen"] .ssh-workspace {
+  animation: 360ms cubic-bezier(.4, 0, 1, 1) both ssh-cover-out;
+}
+@keyframes ssh-slide-grow {
+  from { opacity: .72; transform: translateY(18px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes ssh-cover-in {
+  from { opacity: .65; clip-path: inset(12% 0 0 24%); }
+  to { opacity: 1; clip-path: inset(0); }
+}
+@keyframes ssh-cover-out {
+  from { opacity: 1; clip-path: inset(0); }
+  to { opacity: .45; clip-path: inset(0 0 18% 28%); }
 }
 .auth-page {
   min-height: 100vh;
@@ -2390,6 +2513,7 @@ tbody tr:last-child td {
   }
   .page-heading {
     align-items: flex-start;
+    flex-direction: column;
     gap: 12px;
     margin-bottom: 20px;
   }
@@ -2400,8 +2524,12 @@ tbody tr:last-child td {
     font-size: var(--ui-type-small);
   }
   .page-heading .toolbar-actions {
-    flex-direction: column-reverse;
+    width: 100%;
     align-items: stretch;
+    justify-content: flex-start;
+  }
+  .page-heading .toolbar-actions > * {
+    flex: 1 1 120px;
   }
   .toolbar-actions button {
     font-size: var(--ui-type-small);
@@ -2482,9 +2610,16 @@ tbody tr:last-child td {
   }
   .management-toolbar {
     align-items: flex-start;
+    flex-direction: column;
   }
   .management-toolbar .toolbar-actions {
+    width: 100%;
+    justify-content: flex-start;
     gap: 6px;
+  }
+  .management-toolbar .toolbar-actions button {
+    flex: 1 1 130px;
+    white-space: normal;
   }
   .panel-heading {
     padding: 10px 12px;
@@ -2536,6 +2671,13 @@ tbody tr:last-child td {
   .form-actions {
     flex-wrap: wrap;
   }
+  .form-actions button {
+    flex: 1 1 140px;
+    white-space: normal;
+  }
+  .row-actions {
+    flex-wrap: wrap;
+  }
   .detail-body {
     padding: 16px;
   }
@@ -2580,20 +2722,37 @@ tbody tr:last-child td {
     width: 100%;
     max-width: none;
   }
+  .ssh-toolbar,
   .ssh-view-fullscreen .ssh-toolbar {
     width: 100%;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    padding-bottom: 2px;
+    flex-wrap: wrap;
+    justify-content: stretch;
   }
-  .ssh-view-fullscreen .ssh-view-switcher,
+  .ssh-view-switcher,
+  .ssh-view-fullscreen .ssh-view-switcher {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .ssh-view-switcher button {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 6px;
+  }
+  .ssh-session-actions,
   .ssh-view-fullscreen .ssh-session-actions {
-    flex: none;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex: 1 1 100%;
+    width: 100%;
+    border: 0;
+    background: transparent;
   }
+  .ssh-session-actions button,
   .ssh-view-fullscreen .ssh-heading button {
-    flex: none;
+    min-width: 0;
     min-height: 40px;
+    white-space: normal;
+    border: 1px solid #59616b;
   }
   .ssh-view-fullscreen .terminal-status {
     padding: 8px;
@@ -2613,7 +2772,7 @@ tbody tr:last-child td {
   }
   .ssh-command-drawer.is-open,
   .ssh-command-drawer .command-helper {
-    width: 100vw;
+    width: min(88vw, 360px);
   }
 }
 .front-panel-actions {
@@ -2803,5 +2962,11 @@ tbody tr:last-child td {
     scroll-behavior: auto !important;
     animation: none !important;
     transition: none !important;
+  }
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
   }
 }

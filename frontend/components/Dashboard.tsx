@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import useSWR from "swr";
+import { useEffect, useMemo, useState, ViewTransition } from "react";
+import useSWR, { useSWRConfig } from "swr";
 import { api, errorMessage } from "../lib/api";
 import { recordActivity } from "../lib/activity";
 import type { Overview, Projection } from "../lib/contracts";
@@ -205,7 +205,7 @@ export default function Dashboard() {
           onSaved={(device) => {
             setAdding(false);
             void mutate();
-            router.push(`/devices/${device.id}`);
+            router.push(`/devices/${device.id}`, { transitionTypes: ["device-detail"] });
           }}
         />
       )}
@@ -215,24 +215,30 @@ export default function Dashboard() {
 
 function DeviceRow({ row }: { row: Projection }) {
   const [selectedId, setSelectedId] = useState<string>();
+  const { mutate } = useSWRConfig();
   const port = physicalPorts(row).find((p) => p.id === selectedId);
+  const prepareDetail = () => {
+    void mutate(`/api/v1/devices/${row.device.id}/overview`, row, { revalidate: false });
+  };
   return (
     <article className="device-row-wrapper">
       <div className="device-row">
-        <div className="device-miniature">
-          <DevicePanel
-            row={row}
-            compact
-            selectedId={port?.id}
-            onSelect={(p) => {
-              setSelectedId(p.id === selectedId ? undefined : p.id);
-              if (p.id !== selectedId) recordActivity({ action: "port.select", page: "dashboard", device_id: row.device.id, port_id: p.id });
-            }}
-          />
-          <span className="schematic-label">Şematik görünüm</span>
-        </div>
+        <ViewTransition name={`device-panel-${row.device.id}`} share="device-morph" default="none">
+          <div className="device-miniature" data-motion-id={`device-panel-${row.device.id}`}>
+            <DevicePanel
+              row={row}
+              compact
+              selectedId={port?.id}
+              onSelect={(p) => {
+                setSelectedId(p.id === selectedId ? undefined : p.id);
+                if (p.id !== selectedId) recordActivity({ action: "port.select", page: "dashboard", device_id: row.device.id, port_id: p.id });
+              }}
+            />
+            <span className="schematic-label">Şematik görünüm</span>
+          </div>
+        </ViewTransition>
         <div className="device-identity">
-          <Link href={`/devices/${row.device.id}`} className="device-name">
+          <Link href={`/devices/${row.device.id}`} transitionTypes={["device-detail"]} className="device-name" onPointerEnter={prepareDetail} onFocus={prepareDetail} onClick={prepareDetail}>
             {row.device.name}
           </Link>
           <p className="mono">{row.device.management_address}</p>
@@ -268,7 +274,7 @@ function DeviceRow({ row }: { row: Projection }) {
           <span className="mono">TX {formatRate(row.ports.tx_bps)}</span>
         </div>
         <div className="device-actions">
-          <Link className="button-link" href={`/devices/${row.device.id}`}>
+          <Link className="button-link" href={`/devices/${row.device.id}`} transitionTypes={["device-detail"]} onPointerEnter={prepareDetail} onFocus={prepareDetail} onClick={prepareDetail}>
             Detaylar
           </Link>
           <span>

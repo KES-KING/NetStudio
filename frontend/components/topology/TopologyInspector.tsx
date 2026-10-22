@@ -49,7 +49,7 @@ export default function TopologyInspector({ selection, graph, board, positions, 
         {!!device.neighbors.length && <details><summary>Uzak kimliği eşlenmemiş komşular ({device.neighbors.length})</summary>
           {device.neighbors.map((n) => <button key={n.id} onClick={() => select({ kind: "neighbor", id: n.id, deviceId: device.id })}>{n.label} · {interfaceLabel(device, n.interface_id)}</button>)}</details>}
       </>}
-      <Link className="button-link" href={`/devices/${encodeURIComponent(device.id)}`}>Cihaz detayları</Link>
+      <Link className="button-link" href={`/devices/${encodeURIComponent(device.id)}`} transitionTypes={["nav-forward"]}>Cihaz detayları</Link>
     </>;
   } else if (selection) content = <p role="status">Seçilen kayıt artık bu gözlemde veya yetki kapsamında yok. Başka bir düğüm seçin.</p>;
   return <aside className="topology-inspector" aria-label="Topoloji seçim ayrıntıları">
