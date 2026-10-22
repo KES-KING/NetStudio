@@ -244,6 +244,7 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
     .getByRole("button", { name: "SSH terminalini tam ekran yap", exact: true })
     .click();
   await expect(page.locator("html")).toHaveAttribute("data-ssh-transition", "fullscreen");
+  await expect(page.locator("html")).toHaveAttribute("data-ssh-transition-engine", "native");
   const fullscreenWorkspace = page.locator(
     ".device-workspace.ssh-view-fullscreen",
   );
@@ -264,6 +265,10 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
     width: 1536 - sidebar!.width,
     height: 1024 - topbar!.height,
   });
+  expect(topbar!.y).toBe(0);
+  expect(sidebar!.y).toBe(topbar!.height);
+  expect(sidebar!.height).toBe(1024 - topbar!.height);
+  await expect(fullscreenWorkspace.locator(".ssh-workspace")).toHaveCSS("animation-name", "none");
   expect(fullscreenHelper!.x).toBe(fullscreenBounds!.x);
   expect(fullscreenHelper!.y).toBe(fullscreenBounds!.y);
   expect(fullscreenTerminal).toEqual({

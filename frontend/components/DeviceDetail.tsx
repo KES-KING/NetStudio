@@ -65,7 +65,9 @@ export default function DeviceDetail({ id }: { id: string }) {
     sshMotion = useRef(0);
   const changeSSHView = useCallback((view: SSHWorkspaceView, revealHelper = true) => {
     if (view === sshView) return;
+    const root = document.documentElement;
     const apply = () => {
+      root.classList.toggle("ssh-fullscreen-open", view === "fullscreen");
       closePort();
       setPanelOpen(false);
       setSSHView(view);
@@ -82,20 +84,23 @@ export default function DeviceDetail({ id }: { id: string }) {
         : view === "expanded"
           ? "expand"
           : "collapse";
-    const root = document.documentElement;
     const sequence = ++sshMotion.current;
     root.dataset.sshTransition = direction;
     const cleanup = () => {
-      if (sshMotion.current === sequence) delete root.dataset.sshTransition;
+      if (sshMotion.current !== sequence) return;
+      delete root.dataset.sshTransition;
+      delete root.dataset.sshTransitionEngine;
     };
     const startViewTransition = (document as Document & {
       startViewTransition?: (update: () => void) => { finished: Promise<unknown> };
     }).startViewTransition;
     if (!startViewTransition) {
+      root.dataset.sshTransitionEngine = "fallback";
       apply();
       window.setTimeout(cleanup, 480);
       return;
     }
+    root.dataset.sshTransitionEngine = "native";
     const transition = startViewTransition.call(document, () => flushSync(apply));
     void transition.finished.finally(cleanup);
   }, [closePort, setCommandHelperOpen, setPanelOpen, setSSHView, sshView]);
@@ -119,7 +124,6 @@ export default function DeviceDetail({ id }: { id: string }) {
   useEffect(() => {
     if (sshView !== "fullscreen") return;
     const root = document.documentElement;
-    root.classList.add("ssh-fullscreen-open");
     const leaveFullscreen = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();

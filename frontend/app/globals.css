@@ -16,6 +16,9 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
+html {
+  scrollbar-gutter: stable;
+}
 button,
 input,
 select,
@@ -572,6 +575,7 @@ h3 {
   }
 }
 .main-content {
+  grid-column: 2;
   min-width: 0;
   width: 100%;
   padding: 24px 20px 32px;
@@ -583,8 +587,10 @@ h3 {
   pointer-events: none;
 }
 ::view-transition-group(route-content) {
-  animation-duration: 360ms;
-  animation-timing-function: cubic-bezier(.2, 0, 0, 1);
+  animation: none;
+}
+::view-transition-image-pair(route-content) {
+  isolation: isolate;
 }
 ::view-transition-old(.route-section) {
   animation: 130ms ease-in both route-fade-out;
@@ -1973,12 +1979,34 @@ html.ssh-fullscreen-open,
 html.ssh-fullscreen-open body {
   overflow: hidden;
 }
+html.ssh-fullscreen-open .console-shell {
+  padding-top: var(--shell-header-height);
+}
+html.ssh-fullscreen-open .topbar {
+  position: fixed;
+  inset: 0 0 auto;
+  width: 100vw;
+}
+@media (min-width: 701px) {
+  html.ssh-fullscreen-open .sidebar {
+    position: fixed;
+    top: var(--shell-header-height);
+    bottom: 0;
+    left: 0;
+    z-index: 19;
+    width: var(--sidebar-width);
+    height: calc(100dvh - var(--shell-header-height));
+    max-height: none;
+    transform: none;
+  }
+}
 .device-workspace.with-terminal.ssh-view-fullscreen {
   position: fixed;
   top: var(--shell-header-height);
-  right: 0;
+  right: auto;
   bottom: 0;
   left: var(--sidebar-width);
+  width: calc(100vw - var(--sidebar-width));
   z-index: 15;
   display: flex;
   align-items: stretch;
@@ -2051,14 +2079,14 @@ html[data-ssh-transition="fullscreen"]::view-transition-new(ssh-workspace) {
 html[data-ssh-transition="exit-fullscreen"]::view-transition-old(ssh-workspace) {
   animation: 360ms cubic-bezier(.4, 0, 1, 1) both ssh-cover-out;
 }
-html[data-ssh-transition="expand"] .ssh-workspace,
-html[data-ssh-transition="collapse"] .ssh-workspace {
+html[data-ssh-transition-engine="fallback"][data-ssh-transition="expand"] .ssh-workspace,
+html[data-ssh-transition-engine="fallback"][data-ssh-transition="collapse"] .ssh-workspace {
   animation: 420ms cubic-bezier(.2, 0, 0, 1) both ssh-slide-grow;
 }
-html[data-ssh-transition="fullscreen"] .ssh-workspace {
+html[data-ssh-transition-engine="fallback"][data-ssh-transition="fullscreen"] .ssh-workspace {
   animation: 460ms cubic-bezier(.16, 1, .3, 1) both ssh-cover-in;
 }
-html[data-ssh-transition="exit-fullscreen"] .ssh-workspace {
+html[data-ssh-transition-engine="fallback"][data-ssh-transition="exit-fullscreen"] .ssh-workspace {
   animation: 360ms cubic-bezier(.4, 0, 1, 1) both ssh-cover-out;
 }
 @keyframes ssh-slide-grow {
@@ -2765,6 +2793,7 @@ tbody tr:last-child td {
   }
   .device-workspace.with-terminal.ssh-view-fullscreen {
     left: 0;
+    width: 100vw;
     transition: none;
   }
   .ssh-command-drawer {
