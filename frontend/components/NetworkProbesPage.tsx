@@ -19,7 +19,8 @@ export default function NetworkProbesPage() {
   if (error) return <p role="alert" className="notice error">{errorMessage(error)}</p>;
   if (!data) return <p role="status">Ağ keşfi yapılandırması yükleniyor…</p>;
   const agentNames = new Map(data.agents.map((agent) => [agent.id, agent.name]));
-  const sites = [...new Set(data.proposals.map((proposal) => proposal.site))].sort((left, right) => left.localeCompare(right, "tr"));
+  const sites = [...new Set(data.sites?.length ? data.sites : data.proposals.map((proposal) => proposal.site))]
+    .sort((left, right) => left.localeCompare(right, "tr"));
   const runByScope = new Map<string, NetworkProbeState["runs"][number]>();
   for (const run of data.runs) if (!runByScope.has(run.scope_id)) runByScope.set(run.scope_id, run);
   return <>
@@ -34,7 +35,7 @@ export default function NetworkProbesPage() {
     </section>
 
     <section className="panel"><div className="panel-heading"><div><h2>Switch SVI önerileri</h2><p>Hedef ağ switch’in SVI CIDR’ından gelir; SVI adresi kaynak olarak kullanılmaz.</p></div><span>En fazla /{data.defaults.max_range_prefix} · {data.defaults.max_targets} hedef · {data.defaults.max_rate_pps} ARP/sn</span></div>
-      <div className="probe-body probe-proposals">{!data.proposals.length ? <p>Güncel ve VLAN kimliği doğrulanmış IPv4 SVI gözlemi bulunamadı.</p> : data.proposals.map((proposal) =>
+      <div className="probe-body probe-proposals">{!data.proposals.length ? <p>Kapsam eklemek için güncel ve VLAN kimliği doğrulanmış IPv4 SVI gözlemi gerekir. Switch verisini yeniledikten sonra öneri burada görünür.</p> : data.proposals.map((proposal) =>
         <ProposalForm key={proposal.id} proposal={proposal} agents={data.agents} busy={busy} onFailure={setFailure}
           onCreated={async () => { await mutate(); setNotice("ARP tarama kapsamı onaylandı."); }} />)}</div>
     </section>

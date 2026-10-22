@@ -29,7 +29,7 @@ Bu komutları kalıcı ağ yapılandırmanıza uyarlayın. NetStudio arayüz olu
 
 ## Otomatik ajan kaydı
 
-`network-probe-agent`, ana Compose kurulumu ile otomatik başlar. İlk açılışta yalnız yerel secret volume içindeki bootstrap yetkisini kullanarak kendine kalıcı, hash'lenmiş ajan tokenı oluşturur; token tarayıcıya, loga veya kullanıcıya gösterilmez. Kullanıcı CLI komutu, token dosyası veya Compose profili kullanmaz.
+`network-probe-agent`, ana Compose kurulumu ile otomatik başlar. `secrets-init`, API'nin genel şifreleme keyring'ini ajana açmak yerine yalnız bootstrap yetkisinin `0600 root:root` kopyasını probe state volume'üne yazar. Ajan ilk açılışta bu dar yetkiyle kendine kalıcı, hash'lenmiş ajan tokenı oluşturur; genel keyring'i mount etmez ve token tarayıcıya, loga veya kullanıcıya gösterilmez. Kullanıcı CLI komutu, token dosyası veya Compose profili kullanmaz.
 
 1. Operatör trunk VLAN alt arayüzlerini ve SVI'dan farklı benzersiz probe IP'lerini ağ altyapısında hazırlar.
 2. **Ayarlar → Ağ keşfi** sayfasını açın. Yerel ajan arayüzlerini otomatik bildirir; ajana envanterdeki siteyi arayüzden atayın.
@@ -45,6 +45,7 @@ Onaylı kapsam yokken ajan raw socket açmaz veya ARP paketi göndermez. Ajan ip
 - Başarılı aktif tarama ilgili kapsamda önceliklidir. Ajan çevrimdışıysa veya başarılı sonuç iki tarama aralığından eskiyse salt-okunur switch ARP gözlemleri yeniden yedek kaynak olur.
 - Switch SVI kanıtı veya ajan kaynak arayüzü değişirse kapsam durdurulur ve `Yeniden onay gerekli` görünür.
 - Geri dönüş için kapsamı kapatın veya ajanı arayüzden iptal edin. Ajan kapsamı olmadığı sürece paket üretmez; mevcut switch telemetrisi ve veritabanı kayıtları silinmez.
+- `netstudio-probe-state` volume'ünü normal güncellemede silmeyin. Bu volume bootstrap kopyasını, düğüm kimliğini ve kalıcı ajan tokenını taşır; kaybı yeni bir ajan kimliği ve yönetici incelemesi gerektirir.
 
 ## Ayrıcalı VLAN laboratuvarı
 

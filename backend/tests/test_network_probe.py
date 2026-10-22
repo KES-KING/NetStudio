@@ -9,7 +9,7 @@ from app.database import now
 from app.network_probe import target_networks
 from app import network_probe_agent
 from app.network_probe_agent import build_arp_request, parse_arp_reply
-from conftest import login, observation, prepare
+from conftest import add_device, login, observation, prepare
 
 
 MAC = "02:00:00:00:00:11"
@@ -69,6 +69,24 @@ def test_automatic_agent_bootstrap_persists_identity_and_token(tmp_path, monkeyp
     assert calls[0][0] == "bootstrap-test-token" and calls[0][1].endswith("/bootstrap")
 
 
+def test_unreadable_probe_token_has_stable_error(tmp_path, monkeypatch):
+    token = tmp_path / "token"
+    token.write_text("test-token")
+    token.chmod(0o600)
+    monkeypatch.setattr(type(token), "read_text", lambda self: (_ for _ in ()).throw(PermissionError()))
+    with pytest.raises(network_probe_agent.AgentError, match="probe_token_unreadable"):
+        network_probe_agent.read_secret(token)
+
+
+def test_probe_dashboard_lists_inventory_sites_without_svi_proposals(system):
+    client, _, _, _ = system
+    login(client)
+    add_device(client, site="branch-no-svi")
+    state = client.get("/api/v1/network-probes").json()
+    assert state["sites"] == ["branch-no-svi"]
+    assert state["proposals"] == []
+
+
 def setup_probe(system):
     client, store, _, _ = system
     login(client)
@@ -97,6 +115,7 @@ def setup_probe(system):
         json={"interfaces": [{"name": "probe.10", "mac": "02:00:00:00:fe:10", "addresses": ["198.51.100.254/24"]}]})
     assert heartbeat.status_code == 200, heartbeat.text
     state = client.get("/api/v1/network-probes").json()
+    assert state["sites"] == ["lab"]
     proposal = next(item for item in state["proposals"] if item["vlan"] == 10)
     scope = client.post("/api/v1/network-probes/scopes", json={"proposal_id": proposal["id"], "agent_id": agent_id,
         "interface_name": "probe.10", "source_ip": "198.51.100.254", "target_cidrs": ["198.51.100.0/24"],

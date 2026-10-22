@@ -74,6 +74,25 @@ def test_default_keyring_and_existing_file_are_not_replaced(tmp_path, monkeypatc
     assert keyring_path(directory=tmp_path) == str(old)
 
 
+def test_probe_bootstrap_export_is_isolated_and_kept_in_sync(tmp_path, monkeypatch):
+    keyring_file = tmp_path / "keyring" / "netstudio-keyring.json"
+    export_file = tmp_path / "probe-state" / "bootstrap.token"
+    keyring_file.parent.mkdir()
+    keyring_file.write_text(json.dumps({"active": "test", "keys": {"test": "unused"}}))
+    monkeypatch.setattr(keyring, "keyring_path", lambda: str(keyring_file))
+    monkeypatch.setenv("NETSTUDIO_PROBE_BOOTSTRAP_EXPORT_FILE", str(export_file))
+    monkeypatch.setattr(sys, "argv", ["keyring", "initialize"])
+
+    keyring.main()
+    source = keyring.probe_bootstrap_path()
+    assert export_file.read_bytes() == source.read_bytes()
+    assert export_file.stat().st_mode & 0o077 == 0
+
+    export_file.write_text("tampered\n")
+    keyring.main()
+    assert export_file.read_bytes() == source.read_bytes()
+
+
 @pytest.mark.parametrize("protocol", [None, "snmp"])
 def test_legacy_envelopes_read_without_mutation_and_new_writes_use_new_aad(system, protocol):
     client, store, app, _ = system

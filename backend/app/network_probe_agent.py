@@ -143,10 +143,18 @@ def automatic_config():
 
 def read_secret(path):
     target = Path(path)
-    stat = target.stat()
+    try:
+        stat = target.stat()
+    except FileNotFoundError:
+        raise
+    except OSError as error:
+        raise AgentError("probe_token_unreadable") from error
     if stat.st_mode & 0o077:
         raise AgentError("probe_token_permissions_invalid")
-    value = target.read_text().strip()
+    try:
+        value = target.read_text().strip()
+    except OSError as error:
+        raise AgentError("probe_token_unreadable") from error
     if not value or len(value) > 256:
         raise AgentError("probe_token_invalid")
     return value

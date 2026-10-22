@@ -486,6 +486,7 @@ def scope_json(row):
 
 def dashboard(store):
     at = now()
+    sites = sorted({device.site for device in store.list_devices() if device.site}, key=str.casefold)
     with store.engine.connect() as conn:
         agents = conn.execute(sa.select(store.network_probe_agents).order_by(store.network_probe_agents.c.name)).mappings().all()
         scopes = conn.execute(sa.select(store.network_probe_scopes).order_by(store.network_probe_scopes.c.site,
@@ -507,7 +508,7 @@ def dashboard(store):
         item["started_at"] = aware(row["started_at"]).isoformat()
         item["completed_at"] = aware(row["completed_at"]).isoformat()
         run_rows.append(item)
-    return {"agents": agent_rows, "proposals": derive_proposals(store, at),
+    return {"agents": agent_rows, "sites": sites, "proposals": derive_proposals(store, at),
         "scopes": [scope_json(row) for row in scopes], "runs": run_rows,
         "defaults": {"interval_seconds": DEFAULT_INTERVAL_SECONDS, "max_range_prefix": MAX_RANGE_PREFIX,
             "max_targets": MAX_TARGETS, "max_rate_pps": MAX_RATE_PPS, "heartbeat_seconds": HEARTBEAT_SECONDS}}

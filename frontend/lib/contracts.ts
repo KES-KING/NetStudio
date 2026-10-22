@@ -265,6 +265,6 @@ export type NetworkProbeScope = { id: string; agent_id: string; site: string; vl
   last_completed_at: string | null; last_success_at: string | null; last_error: string | null };
 export type NetworkProbeRun = { id: string; scope_id: string; status: string; target_count: number; reply_count: number;
   matched_count: number; unknown_count: number; duration_ms: number; error_code: string | null; completed_at: string };
-export type NetworkProbeState = { agents: NetworkProbeAgent[]; proposals: NetworkProbeProposal[]; scopes: NetworkProbeScope[];
+export type NetworkProbeState = { agents: NetworkProbeAgent[]; sites?: string[]; proposals: NetworkProbeProposal[]; scopes: NetworkProbeScope[];
   runs: NetworkProbeRun[]; defaults: { interval_seconds: number; max_range_prefix: number; max_targets: number;
     max_rate_pps: number; heartbeat_seconds: number } };

@@ -150,10 +150,10 @@ Nginx gateway ── / ─────────► Next.js web
 Başlatma: PostgreSQL healthy → Alembic migrate → API ready → web → gateway
           secrets-init ──────────────────────────┘
 
-İsteğe bağlı VLAN trunk'ı → ayrı network-probe-agent (`NET_RAW`, veritabanı/SSH sırrı yok) → HTTPS API
+İsteğe bağlı VLAN trunk'ı → ayrı network-probe-agent (`NET_RAW`, veritabanı/SSH sırrı/keyring mount'u yok) → HTTPS API
 ```
 
-Gateway WebSocket upgrade ve uzun süreli SSH akışını destekler. API tek Uvicorn süreciyle çalışır; terminal limiti ve oturum köprüsü bu sürece aittir. Birden fazla API worker/replica, ortak broker ve oturum yönlendirmesi eklenmeden kullanılmamalıdır. PostgreSQL ve anahtarlar iki ayrı kalıcı volume'dedir. Anahtar dosyası API kullanıcısına ait, `0600` izinlidir; frontend imajına veya ortam değişkenine girmez.
+Gateway WebSocket upgrade ve uzun süreli SSH akışını destekler. API tek Uvicorn süreciyle çalışır; terminal limiti ve oturum köprüsü bu sürece aittir. Birden fazla API worker/replica, ortak broker ve oturum yönlendirmesi eklenmeden kullanılmamalıdır. PostgreSQL ve anahtarlar iki ayrı kalıcı volume'dedir. Anahtar dosyası API kullanıcısına ait, `0600` izinlidir; frontend imajına veya ortam değişkenine girmez. `secrets-init`, yalnız probe bootstrap yetkisinin `0600 root:root` kopyasını probe state volume'üne eşitler; ajan genel şifreleme keyring'ini mount etmez.
 
 ### Günlük yönetim
 
@@ -178,7 +178,7 @@ docker compose down                     # Container/ağları kaldırır; kalıc�
 
 `secrets-init` ve `migrate` tek seferlik başlatma işleridir; başarılı çalışmadan sonra `Exited (0)` görünmeleri normaldir. `down` sonrasında grubun Desktop'ın container listesinden kalkması beklenir; listede tutmak için `stop` kullanın. `COMPOSE_PROJECT_NAME` değerini değiştirmek başka bir proje ve volume kümesi seçer; mevcut kurulumda bu değeri sabit tutun. Makefile yalnız isteğe bağlı yerel geliştirme/test yardımcılarını içerir; Docker hedefleri yoktur.
 
-VLAN bilinçli aktif ARP eşleştirmesi varsayılan profilde başlamaz. Trunk alt arayüzleri, benzersiz probe IP'leri, tek kullanımlık kayıt ve `network-probe` Compose profilinin işletimi için [aktif ARP probe rehberini](docs/network-probe.md) izleyin.
+VLAN bilinçli aktif ARP ajanı ana Compose kurulumu ile otomatik başlar ancak yönetici onaylı kapsam olmadan paket göndermez. Trunk alt arayüzleri, benzersiz probe IP'leri, otomatik kayıt ve kapsam onayı için [aktif ARP probe rehberini](docs/network-probe.md) izleyin.
 
 Mevcut verileri korumak için normal işletimde volume silme komutları kullanmayın. Migration `0003_enterprise_console`, mevcut tabloları/işleri silmeden yeni yönetim tablolarını ekler. Eski fixture kayıtları korunur fakat gerçek envanter olarak sunulmaz.
 

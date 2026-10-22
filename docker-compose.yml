@@ -25,9 +25,14 @@ services:
     <<: *api-service
     user: "0:0"
     command: ["python", "-m", "app.keyring", "initialize"]
+    environment:
+      NETSTUDIO_ENV: ${NETSTUDIO_ENV:-development}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://netstudio:netstudio@postgres:5432/netstudio}
+      NETSTUDIO_PROBE_BOOTSTRAP_EXPORT_FILE: /run/netstudio-probe/bootstrap.token
     cap_add: [CHOWN, FOWNER, DAC_OVERRIDE]
     volumes:
       - netstudio-keyring:/run/secrets
+      - netstudio-probe-state:/run/netstudio-probe
     restart: "no"
 
   postgres:
@@ -131,8 +136,8 @@ services:
       # Development uses the loopback API binding. Production must set this to
       # the installation's HTTPS gateway origin.
       NETSTUDIO_PROBE_API_URL: ${NETSTUDIO_PROBE_API_URL:-http://127.0.0.1:${API_PORT:-8000}}
+      NETSTUDIO_PROBE_BOOTSTRAP_TOKEN_FILE: /run/netstudio-probe/bootstrap.token
     volumes:
-      - netstudio-keyring:/run/secrets:ro
       - netstudio-probe-state:/run/netstudio-probe
     security_opt:
       - no-new-privileges:true

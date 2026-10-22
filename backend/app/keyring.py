@@ -15,28 +15,49 @@ def probe_bootstrap_path():
     return Path(keyring_path()).with_name("network-probe-bootstrap.token")
 
 
+def export_probe_bootstrap_token(path, value):
+    """Copy only the probe bootstrap capability to its isolated state volume."""
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=".network-probe-bootstrap-", dir=target.parent)
+    try:
+        with os.fdopen(descriptor, "w") as handle:
+            handle.write(value + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        if os.geteuid() == 0:
+            os.chown(temporary, 0, 0)
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, target)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
 def ensure_probe_bootstrap_token():
     """Create the local probe bootstrap capability without ever printing it."""
     path = probe_bootstrap_path()
     if path.exists():
         if not path.is_file() or path.stat().st_mode & 0o077:
             raise SystemExit("Invalid network probe bootstrap token.")
-        return
-    descriptor, temporary = tempfile.mkstemp(prefix=".network-probe-bootstrap-", dir=path.parent)
-    try:
-        with os.fdopen(descriptor, "w") as handle:
-            handle.write(secrets.token_urlsafe(48) + "\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        if os.geteuid() == 0:
-            os.chown(temporary, 100, 101)
-        os.chmod(temporary, 0o600)
+    else:
+        descriptor, temporary = tempfile.mkstemp(prefix=".network-probe-bootstrap-", dir=path.parent)
         try:
-            os.link(temporary, path)
-        except FileExistsError:
-            pass
-    finally:
-        Path(temporary).unlink(missing_ok=True)
+            with os.fdopen(descriptor, "w") as handle:
+                handle.write(secrets.token_urlsafe(48) + "\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            if os.geteuid() == 0:
+                os.chown(temporary, 100, 101)
+            os.chmod(temporary, 0o600)
+            try:
+                os.link(temporary, path)
+            except FileExistsError:
+                pass
+        finally:
+            Path(temporary).unlink(missing_ok=True)
+    export_path = os.getenv("NETSTUDIO_PROBE_BOOTSTRAP_EXPORT_FILE")
+    if export_path:
+        export_probe_bootstrap_token(export_path, path.read_text().strip())
 
 
 def main():

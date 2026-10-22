@@ -28,6 +28,7 @@ test("network probe settings expose automatic enrollment, bounded approval and r
     agents: [{ id: "agent-1", name: "QA trunk probe", site: "", enabled: true, online: true,
       interfaces: [{ name: "eth0.10", mac: "02:00:00:00:fe:10", addresses: ["192.0.2.254/24"] }],
       enrolled_at: at, last_seen_at: at, revoked_at: null }],
+    sites: ["TEST FIXTURE / isolated"],
     proposals: [{ id: "a".repeat(64), site: "TEST FIXTURE / isolated", vlan: 10, vrf: null, vrf_known: true,
       network: "192.0.2.0/24", evidence_fingerprint: "b".repeat(64), conflict: false, requires_narrowing: false,
       evidence: [{ device_id: "qa-core", device_name: "QA-Core-01", interface_id: "if-vlan10", address: "192.0.2.1/24", observed_at: at }] }],
