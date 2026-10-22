@@ -5,6 +5,30 @@ import type { SSHTicket } from "../lib/contracts";
 import type { Terminal } from "@xterm/xterm";
 import { theme } from "../lib/theme";
 
+export type SSHWorkspaceView = "inline" | "expanded" | "fullscreen";
+
+function ViewIcon({ view }: { view: SSHWorkspaceView }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      {view === "inline" && (
+        <>
+          <rect x="3" y="5" width="18" height="14" />
+          <path d="M10 5v14" />
+        </>
+      )}
+      {view === "expanded" && (
+        <>
+          <rect x="3" y="4" width="18" height="16" />
+          <path d="M3 10h18M8 7H5m14 0h-3" />
+        </>
+      )}
+      {view === "fullscreen" && (
+        <path d="M9 4H4v5m11-5h5v5M9 20H4v-5m11 5h5v-5" />
+      )}
+    </svg>
+  );
+}
+
 const messages: Record<string, string> = {
   connecting: "Bağlantı kuruluyor",
   connected: "Bağlandı",
@@ -31,12 +55,16 @@ export function SSHWorkspace({
   onClose,
   commandHelperOpen,
   onToggleCommandHelper,
+  view,
+  onViewChange,
 }: {
   ticket: SSHTicket;
   name: string;
   onClose: () => void;
   commandHelperOpen: boolean;
   onToggleCommandHelper: () => void;
+  view: SSHWorkspaceView;
+  onViewChange: (view: SSHWorkspaceView) => void;
 }) {
   const element = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -193,37 +221,72 @@ export function SSHWorkspace({
   return (
     <section className="ssh-workspace" aria-label={`${name} SSH terminali`}>
       <div className="ssh-heading">
-        <h2>
-          SSH <span> / {name}</span>
-        </h2>
-        <div className="toolbar-actions">
-          <button
-            className="ssh-command-helper-toggle"
-            aria-label={
-              commandHelperOpen
-                ? "Komut yardımcısını kapat"
-                : "Komut yardımcısını aç"
-            }
-            aria-pressed={commandHelperOpen}
-            title={
-              commandHelperOpen
-                ? "Komut yardımcısını kapat"
-                : "Komut yardımcısını aç"
-            }
-            onClick={onToggleCommandHelper}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 5.5h13v13H3z" />
-              <path d="m6 10 2 2-2 2m4 1h3" />
-              <circle cx="18" cy="6" r="4" />
-              <path d="M16.8 4.9a1.35 1.35 0 0 1 2.55.62c0 .95-1.35 1.05-1.35 1.85m0 1.4v.1" />
-            </svg>
-          </button>
-          <button onClick={copySelection}>Seçimi kopyala</button>
-          <button disabled={status !== "connected"} onClick={pasteClipboard}>
-            Yapıştır
-          </button>
-          <button onClick={onClose}>Oturumu kapat</button>
+        <div className="ssh-title">
+          <span>Güvenli terminal</span>
+          <h2>
+            SSH <small> / {name}</small>
+          </h2>
+        </div>
+        <div className="ssh-toolbar">
+          <div className="ssh-view-switcher" role="group" aria-label="SSH görünümü">
+            <button
+              aria-label="Standart SSH görünümüne dön"
+              title="Cihaz paneli ve terminali yan yana göster"
+              aria-pressed={view === "inline"}
+              onClick={() => onViewChange("inline")}
+            >
+              <ViewIcon view="inline" />
+              <span>Standart</span>
+            </button>
+            <button
+              aria-label="SSH görünümünü büyüt"
+              title="Cihazı, terminali ve komut yardımcısını tam genişlikte göster"
+              aria-pressed={view === "expanded"}
+              onClick={() => onViewChange("expanded")}
+            >
+              <ViewIcon view="expanded" />
+              <span>Büyüt</span>
+            </button>
+            <button
+              aria-label="SSH terminalini tam ekran yap"
+              title="Menüleri koruyarak terminali içerik alanına yay"
+              aria-pressed={view === "fullscreen"}
+              onClick={() => onViewChange("fullscreen")}
+            >
+              <ViewIcon view="fullscreen" />
+              <span>Tam ekran</span>
+            </button>
+          </div>
+          <div className="ssh-session-actions">
+            <button
+              className="ssh-command-helper-toggle"
+              aria-label={
+                commandHelperOpen
+                  ? "Komut yardımcısını kapat"
+                  : "Komut yardımcısını aç"
+              }
+              aria-pressed={commandHelperOpen}
+              title={
+                commandHelperOpen
+                  ? "Komut yardımcısını kapat"
+                  : "Komut yardımcısını aç"
+              }
+              onClick={onToggleCommandHelper}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 5.5h13v13H3z" />
+                <path d="m6 10 2 2-2 2m4 1h3" />
+                <circle cx="18" cy="6" r="4" />
+                <path d="M16.8 4.9a1.35 1.35 0 0 1 2.55.62c0 .95-1.35 1.05-1.35 1.85m0 1.4v.1" />
+              </svg>
+              <span>Komutlar</span>
+            </button>
+            <button aria-label="Seçimi kopyala" onClick={copySelection}>Kopyala</button>
+            <button disabled={status !== "connected"} onClick={pasteClipboard}>
+              Yapıştır
+            </button>
+            <button className="ssh-close-session" onClick={onClose}>Oturumu kapat</button>
+          </div>
         </div>
       </div>
       <div className="terminal-status" role="status">

@@ -20,7 +20,7 @@ import { DevicePanel } from "./DevicePanel";
 import { DevicePanelInspector, PortPopover } from "./DevicePanelInspector";
 import { IPTopology } from "./IPTopology";
 import { Empty } from "./OperationSummary";
-import { SSHWorkspace } from "./SSHWorkspace";
+import { SSHWorkspace, type SSHWorkspaceView } from "./SSHWorkspace";
 import { CollectionControls } from "./CollectionControls";
 import { DeviceFacts, DeviceInterfaces, DeviceSummary } from "./DeviceFacts";
 import { CommandHelper } from "./CommandHelper";
@@ -54,6 +54,7 @@ export default function DeviceDetail({ id }: { id: string }) {
   };
   const [sshOpen, setSSHOpen] = useState(false),
     [commandHelperOpen, setCommandHelperOpen] = useState(false),
+    [sshView, setSSHView] = useState<SSHWorkspaceView>("inline"),
     [ticket, setTicket] = useState<SSHTicket>(),
     [actionError, setActionError] = useState<string>(),
     [job, setJob] = useState<string>(),
@@ -77,6 +78,21 @@ export default function DeviceDetail({ id }: { id: string }) {
     },
     [],
   );
+  useEffect(() => {
+    if (sshView !== "fullscreen") return;
+    const root = document.documentElement;
+    root.classList.add("ssh-fullscreen-open");
+    const leaveFullscreen = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setSSHView("expanded");
+    };
+    window.addEventListener("keydown", leaveFullscreen, true);
+    return () => {
+      root.classList.remove("ssh-fullscreen-open");
+      window.removeEventListener("keydown", leaveFullscreen, true);
+    };
+  }, [sshView]);
   async function openSSH() {
     if (opening.current || sshOpen) return;
     opening.current = true;
@@ -109,11 +125,20 @@ export default function DeviceDetail({ id }: { id: string }) {
     setTicket(undefined);
     setSSHOpen(false);
     setCommandHelperOpen(false);
+    setSSHView("inline");
   }
   function toggleCommandHelper() {
+    if (sshView === "inline") {
+      closePort();
+      setPanelOpen(false);
+    }
+    setCommandHelperOpen((open) => !open);
+  }
+  function changeSSHView(view: SSHWorkspaceView) {
     closePort();
     setPanelOpen(false);
-    setCommandHelperOpen((open) => !open);
+    setSSHView(view);
+    if (view !== "inline") setCommandHelperOpen(true);
   }
   async function runJob(kind: "polls" | "connection-tests") {
     setBusy(true);
@@ -260,13 +285,11 @@ export default function DeviceDetail({ id }: { id: string }) {
         </p>
       )}
       <DeviceSummary row={row} />
-      <div className={`device-workspace ${sshOpen ? "with-terminal" : ""}`}>
-        {sshOpen && commandHelperOpen ? (
-          <CommandHelper
-            device={device}
-            onClose={() => setCommandHelperOpen(false)}
-          />
-        ) : (
+      <div
+        className={`device-workspace ${sshOpen ? "with-terminal" : ""} ssh-view-${sshView}`}
+      >
+        {(!sshOpen || sshView !== "fullscreen") &&
+        !(sshOpen && sshView === "inline" && commandHelperOpen) ? (
           <section className="panel front-panel">
             <div className="panel-heading">
               <h2>Cihaz ön paneli</h2>
@@ -291,6 +314,25 @@ export default function DeviceDetail({ id }: { id: string }) {
               seçerek detayları inceleyin.
             </p>
           </section>
+        ) : null}
+        {sshOpen && sshView === "fullscreen" ? (
+          <div
+            className={`ssh-command-drawer ${commandHelperOpen ? "is-open" : ""}`}
+            aria-hidden={!commandHelperOpen}
+            inert={!commandHelperOpen}
+          >
+            <CommandHelper
+              device={device}
+              onClose={() => setCommandHelperOpen(false)}
+            />
+          </div>
+        ) : (
+          sshOpen && commandHelperOpen && (
+            <CommandHelper
+              device={device}
+              onClose={() => setCommandHelperOpen(false)}
+            />
+          )
         )}
         {sshOpen &&
           (ticket ? (
@@ -301,6 +343,8 @@ export default function DeviceDetail({ id }: { id: string }) {
               onClose={closeSSH}
               commandHelperOpen={commandHelperOpen}
               onToggleCommandHelper={toggleCommandHelper}
+              view={sshView}
+              onViewChange={changeSSHView}
             />
           ) : (
             <section className="panel ssh-pending">

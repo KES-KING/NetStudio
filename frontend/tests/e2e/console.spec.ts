@@ -215,6 +215,92 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
     "TEST ECHO: clipboard-browser",
   );
   await page
+    .getByRole("button", { name: "SSH görünümünü büyüt", exact: true })
+    .click();
+  const expandedWorkspace = page.locator(
+    ".device-workspace.ssh-view-expanded",
+  );
+  await expect(expandedWorkspace).toBeVisible();
+  const expandedPanel = await expandedWorkspace.locator(".front-panel").boundingBox(),
+    expandedTerminal = await expandedWorkspace.locator(".ssh-workspace").boundingBox(),
+    expandedHelper = await expandedWorkspace.locator(".command-helper").boundingBox();
+  expect(expandedPanel!.y + expandedPanel!.height).toBeLessThan(
+    expandedTerminal!.y,
+  );
+  expect(expandedTerminal!.y + expandedTerminal!.height).toBeLessThan(
+    expandedHelper!.y,
+  );
+  await expect(page.locator(".xterm-rows")).toContainText(
+    "TEST ECHO: clipboard-browser",
+  );
+  await page
+    .getByRole("button", { name: "SSH terminalini tam ekran yap", exact: true })
+    .click();
+  const fullscreenWorkspace = page.locator(
+    ".device-workspace.ssh-view-fullscreen",
+  );
+  await expect(fullscreenWorkspace).toHaveCSS("position", "fixed");
+  await expect(page.locator("html")).toHaveClass(/ssh-fullscreen-open/);
+  const topbar = await page.locator(".topbar").boundingBox(),
+    sidebar = await page.locator(".sidebar").boundingBox(),
+    fullscreenBounds = await fullscreenWorkspace.boundingBox(),
+    fullscreenTerminal = await fullscreenWorkspace
+      .locator(".ssh-workspace")
+      .boundingBox(),
+    commandDrawer = fullscreenWorkspace.locator(".ssh-command-drawer"),
+    fullscreenHelper = await commandDrawer
+      .boundingBox();
+  expect(fullscreenBounds).toEqual({
+    x: sidebar!.width,
+    y: topbar!.height,
+    width: 1536 - sidebar!.width,
+    height: 1024 - topbar!.height,
+  });
+  expect(fullscreenHelper!.x).toBe(fullscreenBounds!.x);
+  expect(fullscreenHelper!.y).toBe(fullscreenBounds!.y);
+  expect(fullscreenTerminal).toEqual({
+    x: fullscreenBounds!.x + fullscreenHelper!.width,
+    y: fullscreenBounds!.y,
+    width: fullscreenBounds!.width - fullscreenHelper!.width,
+    height: fullscreenBounds!.height,
+  });
+  await expect(page.locator(".topbar")).toBeVisible();
+  await expect(page.locator(".sidebar")).toBeVisible();
+  await expect(commandDrawer).toHaveCSS("transition-duration", "0.22s, 0s");
+  await page
+    .getByRole("region", { name: "Komut yardımcısı" })
+    .getByRole("button", { name: "Kapat", exact: true })
+    .click();
+  await expect(commandDrawer).toHaveAttribute("aria-hidden", "true");
+  await expect.poll(async () => (await commandDrawer.boundingBox())?.width).toBeLessThanOrEqual(1);
+  await expect
+    .poll(async () => (await fullscreenWorkspace.locator(".ssh-workspace").boundingBox())?.width)
+    .toBeGreaterThanOrEqual(fullscreenBounds!.width - 1);
+  await page
+    .getByRole("button", { name: "Komut yardımcısını aç", exact: true })
+    .click();
+  await expect(commandDrawer).toHaveAttribute("aria-hidden", "false");
+  await expect(commandDrawer).toHaveCSS("width", `${fullscreenHelper!.width}px`);
+  await page.locator(".xterm-helper-textarea").pressSequentially("fullscreen-session");
+  await page.locator(".xterm-helper-textarea").press("Enter");
+  await expect(page.locator(".xterm-rows")).toContainText(
+    "TEST ECHO: fullscreen-session",
+  );
+  await page.screenshot({
+    path: join(evidenceDir, "detail-ssh-fullscreen-desktop.png"),
+    animations: "disabled",
+  });
+  await page.keyboard.press("Escape");
+  await expect(expandedWorkspace).toBeVisible();
+  await expect(page.locator("html")).not.toHaveClass(/ssh-fullscreen-open/);
+  await page
+    .getByRole("button", { name: "Standart SSH görünümüne dön", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Komut yardımcısını kapat", exact: true })
+    .click();
+  await expect(page.locator(".front-panel")).toBeVisible();
+  await page
     .getByRole("button", { name: "Komut yardımcısını aç", exact: true })
     .click();
   const helper = page.getByRole("region", { name: "Komut yardımcısı" });
@@ -241,7 +327,7 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
   await helper.getByRole("button", { name: "Kapat", exact: true }).click();
   await expect(page.locator(".front-panel")).toBeVisible();
   await expect(page.locator(".xterm-rows")).toContainText(
-    "TEST ECHO: clipboard-browser",
+    "TEST ECHO: fullscreen-session",
   );
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
@@ -296,9 +382,45 @@ test("mobile navigation, device and SSH stack without page overflow", async ({
     terminal = await page.locator(".ssh-workspace").boundingBox();
   expect(terminal!.y).toBeGreaterThan(panel!.y + panel!.height);
   await page
+    .getByRole("button", { name: "SSH görünümünü büyüt", exact: true })
+    .click();
+  const expandedPanel = await page.locator(".front-panel").boundingBox(),
+    expandedTerminal = await page.locator(".ssh-workspace").boundingBox();
+  const helper = page.getByRole("region", { name: "Komut yardımcısı" });
+  const expandedHelper = await helper.boundingBox();
+  expect(expandedTerminal!.y).toBeGreaterThan(
+    expandedPanel!.y + expandedPanel!.height,
+  );
+  expect(expandedHelper!.y).toBeGreaterThan(
+    expandedTerminal!.y + expandedTerminal!.height,
+  );
+  await page
+    .getByRole("button", { name: "SSH terminalini tam ekran yap", exact: true })
+    .click();
+  await expect(page.locator(".device-workspace.ssh-view-fullscreen")).toHaveCSS(
+    "position",
+    "fixed",
+  );
+  const mobilePopup = await page.locator(".ssh-command-drawer").boundingBox(),
+    mobileTopbar = await page.locator(".topbar").boundingBox();
+  expect(mobilePopup!.x).toBeGreaterThanOrEqual(0);
+  expect(mobilePopup!.x + mobilePopup!.width).toBeLessThanOrEqual(390);
+  await helper.getByRole("button", { name: "Kapat", exact: true }).click();
+  await expect
+    .poll(async () => (await page.locator(".ssh-command-drawer").boundingBox())?.width)
+    .toBeLessThanOrEqual(1);
+  const mobileFullscreen = await page.locator(".ssh-workspace").boundingBox();
+  expect(mobileFullscreen!.width).toBeGreaterThanOrEqual(389);
+  expect(mobileFullscreen!.x + mobileFullscreen!.width).toBe(390);
+  expect(mobileFullscreen!.y).toBe(mobileTopbar!.height);
+  expect(mobileFullscreen!.height).toBe(844 - mobileTopbar!.height);
+  await page.keyboard.press("Escape");
+  await page
+    .getByRole("button", { name: "Standart SSH görünümüne dön", exact: true })
+    .click();
+  await page
     .getByRole("button", { name: "Komut yardımcısını aç", exact: true })
     .click();
-  const helper = page.getByRole("region", { name: "Komut yardımcısı" });
   await expect(helper).toContainText("Cisco IOS");
   const helperBox = await helper.boundingBox(),
     stackedTerminal = await page.locator(".ssh-workspace").boundingBox();

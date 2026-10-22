@@ -1133,6 +1133,28 @@ h3 {
 .device-workspace.with-terminal {
   grid-template-columns: minmax(300px, 2fr) minmax(400px, 3fr);
 }
+.device-workspace.with-terminal.ssh-view-inline {
+  grid-template-areas: "context terminal";
+}
+.device-workspace.with-terminal.ssh-view-inline .front-panel,
+.device-workspace.with-terminal.ssh-view-inline .command-helper {
+  grid-area: context;
+}
+.device-workspace.with-terminal.ssh-view-inline .ssh-workspace,
+.device-workspace.with-terminal.ssh-view-inline .ssh-pending {
+  grid-area: terminal;
+}
+.device-workspace.with-terminal.ssh-view-expanded {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "panel"
+    "terminal"
+    "helper";
+}
+.ssh-view-expanded .front-panel { grid-area: panel; }
+.ssh-view-expanded .ssh-workspace,
+.ssh-view-expanded .ssh-pending { grid-area: terminal; }
+.ssh-view-expanded .command-helper { grid-area: helper; }
 .front-panel .panel-heading {
   flex-wrap: wrap;
 }
@@ -1656,56 +1678,94 @@ dd {
 .ssh-heading {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px 18px;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid #454b53;
-  min-height: 46px;
+  min-height: 58px;
 }
-.ssh-heading h2 {
-  font-size: 13px;
+.ssh-title {
+  min-width: 125px;
 }
-.ssh-heading h2 span {
+.ssh-title > span {
+  display: block;
+  margin-bottom: 3px;
+  color: #93a1af;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+.ssh-title h2 {
+  margin: 0;
+  font-size: 14px;
+}
+.ssh-title h2 small {
   font-weight: 400;
   color: #b7c0ca;
   font-size: 11px;
 }
+.ssh-toolbar,
+.ssh-view-switcher,
+.ssh-session-actions {
+  display: flex;
+  align-items: stretch;
+}
+.ssh-toolbar {
+  flex: 1;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.ssh-view-switcher,
+.ssh-session-actions {
+  gap: 1px;
+  border: 1px solid #59616b;
+  background: #59616b;
+}
 .ssh-heading button {
   font-size: var(--ui-type-caption);
-  min-height: 32px;
-  border-color: #636a74;
+  min-height: 36px;
+  border: 0;
   background: #30363d;
   color: white;
-  padding: 3px 9px;
+  padding: 5px 10px;
 }
 .ssh-heading button:hover:not(:disabled) {
   background: var(--nav-secondary);
-  border-color: var(--ui-control-hover);
   color: var(--surface);
 }
-.ssh-heading .toolbar-actions {
-  gap: 4px;
+.ssh-view-switcher button,
+.ssh-command-helper-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
-.ssh-heading .ssh-command-helper-toggle {
-  width: 34px;
-  padding: 3px;
-  display: inline-grid;
-  place-items: center;
+.ssh-view-switcher button[aria-pressed="true"] {
+  background: #dbe6ee;
+  color: #17212a;
 }
+.ssh-view-switcher svg,
 .ssh-command-helper-toggle svg {
-  width: 21px;
-  height: 21px;
+  width: 18px;
+  height: 18px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.7;
   stroke-linecap: square;
   stroke-linejoin: miter;
 }
+.ssh-heading .ssh-command-helper-toggle {
+  padding-inline: 9px;
+}
 .ssh-heading .ssh-command-helper-toggle[aria-pressed="true"] {
-  border-color: var(--selected);
   background: var(--nav-secondary);
   color: var(--surface);
+}
+.ssh-heading .ssh-close-session {
+  color: #ffd9d9;
 }
 .command-helper {
   min-width: 0;
@@ -1822,6 +1882,70 @@ dd {
   padding: 10px 14px;
   color: #bec5ce;
   margin-top: auto;
+}
+.ssh-view-expanded .terminal-container {
+  height: clamp(420px, 58dvh, 760px);
+}
+.ssh-view-expanded .command-helper {
+  max-height: min(560px, 65dvh);
+}
+html.ssh-fullscreen-open,
+html.ssh-fullscreen-open body {
+  overflow: hidden;
+}
+.device-workspace.with-terminal.ssh-view-fullscreen {
+  position: fixed;
+  top: var(--shell-header-height);
+  right: 0;
+  bottom: 0;
+  left: var(--sidebar-width);
+  z-index: 15;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  background: #202429;
+  isolation: isolate;
+  transition: left var(--shell-motion);
+}
+.ssh-view-fullscreen .ssh-workspace {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  width: auto;
+  height: 100%;
+  border: 0;
+}
+.ssh-view-fullscreen .terminal-container {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  margin: 0 14px;
+}
+.ssh-command-drawer {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  width: 0;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  visibility: hidden;
+  transition:
+    width 220ms cubic-bezier(.2, 0, 0, 1),
+    visibility 0s 220ms;
+  background: var(--surface);
+  border-right: 1px solid var(--ui-control-hover);
+}
+.ssh-command-drawer.is-open {
+  width: min(400px, 100%);
+  visibility: visible;
+  transition-delay: 0s;
+}
+.ssh-command-drawer .command-helper {
+  width: min(400px, 100vw);
+  height: 100%;
+  max-height: none;
+  border: 0;
 }
 .ssh-pending {
   min-height: 380px;
@@ -2106,6 +2230,11 @@ tbody tr:last-child td {
   .profile-grid,
   .device-workspace.with-terminal {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .device-workspace.with-terminal.ssh-view-inline {
+    grid-template-areas:
+      "context"
+      "terminal";
   }
   .filter-bar {
     flex-wrap: wrap;
@@ -2437,6 +2566,54 @@ tbody tr:last-child td {
   }
   .login-panel h1 {
     font-size: 22px;
+  }
+}
+@media (max-width: 700px) {
+  .ssh-view-expanded .terminal-container {
+    height: max(420px, 58dvh);
+  }
+  .ssh-view-fullscreen .ssh-heading {
+    align-items: flex-start;
+    padding: 8px;
+  }
+  .ssh-view-fullscreen .ssh-title {
+    width: 100%;
+    max-width: none;
+  }
+  .ssh-view-fullscreen .ssh-toolbar {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    padding-bottom: 2px;
+  }
+  .ssh-view-fullscreen .ssh-view-switcher,
+  .ssh-view-fullscreen .ssh-session-actions {
+    flex: none;
+  }
+  .ssh-view-fullscreen .ssh-heading button {
+    flex: none;
+    min-height: 40px;
+  }
+  .ssh-view-fullscreen .terminal-status {
+    padding: 8px;
+  }
+  .ssh-view-fullscreen .terminal-container {
+    margin: 0 8px;
+  }
+  .ssh-view-fullscreen .terminal-help {
+    padding: 8px;
+  }
+  .device-workspace.with-terminal.ssh-view-fullscreen {
+    left: 0;
+    transition: none;
+  }
+  .ssh-command-drawer {
+    max-width: 100%;
+  }
+  .ssh-command-drawer.is-open,
+  .ssh-command-drawer .command-helper {
+    width: 100vw;
   }
 }
 .front-panel-actions {
