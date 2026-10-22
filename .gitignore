@@ -5,6 +5,8 @@ coverage/
 __pycache__/
 .pytest_cache/
 .venv/
+.updater-venv/
+backend/build/
 *.pyc
 *.egg-info/
 *.tsbuildinfo

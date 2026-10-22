@@ -683,6 +683,9 @@ h3 {
 .probe-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 14px 0; }
 .probe-actions { justify-content: flex-start; padding: 0; border: 0; background: transparent; }
 .update-body, .commit-list { padding: 20px; }
+.update-setup-note { display: grid; gap: 8px; margin: 14px 0; padding: 14px 16px; border: 1px solid #e3b04b; border-radius: 10px; background: #fff8e8; color: #45350f; }
+.update-setup-note p { margin: 0; }
+.update-setup-note code { width: fit-content; max-width: 100%; overflow-wrap: anywhere; padding: 5px 8px; border-radius: 6px; background: #2c3035; color: #fff; }
 .update-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
 .update-facts > div, .commit-heading, .update-runs li { min-width: 0; overflow-wrap: anywhere; }
 .update-consent { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; margin: 20px 0; max-width: 850px; }
@@ -730,7 +733,7 @@ h3 {
   .update-body, .commit-list { padding: 16px; }
   .commit-heading { flex-direction: column; gap: 6px; }
   .update-actions button { width: 100%; white-space: normal; }
-  .notification-dropdown { position: fixed; top: var(--shell-header-height); right: 12px; }
+  .notification-dropdown { position: fixed; top: var(--shell-header-height); right: 12px; left: 12px; width: auto; }
   .topbar-context { gap: 6px; }
   .topbar-update { padding: 8px; min-height: 44px; }
   .probe-body { padding: 14px; }

@@ -79,6 +79,7 @@ for (const width of [390, 320]) test(`updates and live notification accordion fi
   await page.getByRole("navigation", { name: "Ayarlar bölümleri" }).getByRole("link", { name: /Güncellemeler/ }).click();
   await expect(page.getByRole("heading", { name: "Güncelleme sistemi", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Güncellemeyi kur", exact: true })).toBeDisabled();
+  await expect(page.getByRole("note")).toContainText("./netstudio-update setup");
   await healthy(page, width);
   await page.screenshot({ path: join(evidence, `updates-${width}.png`), fullPage: true, animations: "disabled" });
   await page.getByRole("button", { name: /^Bildirimler(?: \(|$)/ }).click();
@@ -145,6 +146,7 @@ test("opt-in public GitHub check renders real commits without starting installat
   const first = page.locator(".commit-heading a").first();
   await expect(first).toHaveAttribute("href", `https://github.com/KES-KING/NetStudio/commit/${data.latest_revision}`);
   await expect(page.getByRole("button", { name: "Güncellemeyi kur", exact: true })).toBeDisabled();
+  await expect(page.getByRole("note")).toContainText("Host güncelleyicisi bağlı değil");
   await healthy(page, 1536);
   await page.screenshot({ path: join(evidence, "updates-live-desktop.png"), animations: "disabled" });
   expect(errors).toEqual([]);

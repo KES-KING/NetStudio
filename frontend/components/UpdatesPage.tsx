@@ -19,6 +19,7 @@ export default function UpdatesPage() {
   if (error) return <p role="alert" className="notice error">{errorMessage(error)}</p>;
   if (!data) return <p role="status">Güncellemeler yükleniyor…</p>;
   const active = data.runs.find((run) => !["succeeded", "failed", "cancelled", "recovery_required"].includes(run.status));
+  const installationReady = !!data.installed_revision && data.agent_online && !data.recovery_required;
   return <>
     <section className="panel update-overview"><div className="panel-heading"><h2>Güncelleme sistemi</h2><span>{data.repository} · {data.branch}</span></div>
       <div className="update-body">
@@ -28,7 +29,12 @@ export default function UpdatesPage() {
           <div><dt>Son başarılı kontrol</dt><dd>{formatTime(data.checked_at)}</dd></div><div><dt>Sonraki kontrol</dt><dd>{formatTime(data.next_check_at)}</dd></div>
           <div><dt>Sunucu güncelleyicisi</dt><dd>{data.agent_online ? "Bağlı" : "Bağlı değil"}</dd></div><div><dt>Otomatik kurulum</dt><dd>{data.automatic ? "Açık" : "Kapalı"}</dd></div></dl>
         {data.error_code && <p className="notice error" role="alert">{updateErrors[data.error_code] ?? data.error_code}</p>}
-        {!data.agent_online && <p className="source-note">Commitler görüntülenebilir; kurulum için sunucuda ayrı güncelleyici yapılandırılmalıdır. API için Docker socket erişimi verilmez. <a href={`${data.repository_url}/blob/main/docs/updates.md`} target="_blank" rel="noopener noreferrer">Kurulum rehberi ↗</a></p>}
+        {!installationReady && !data.recovery_required && <div className="update-setup-note" role="note">
+          <strong>Kurulum hazırlığı tamamlanmamış.</strong>
+          <p>{!data.installed_revision ? "Çalışan imajlarda doğrulanmış commit etiketi yok. " : ""}{!data.agent_online ? "Host güncelleyicisi bağlı değil. " : ""}Public resmi checkout dizininde aşağıdaki tek seferlik komut hem mevcut commit’i doğrular hem de güncelleyiciyi başlatır:</p>
+          <code>./netstudio-update setup</code>
+          <p>API container’ına Docker socket verilmez. <a href={`${data.repository_url}/blob/main/docs/updates.md`} target="_blank" rel="noopener noreferrer">Kurulum ve güvenlik rehberi ↗</a></p>
+        </div>}
         {data.can_manage ? <>
           <label className="update-consent"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />main üzerindeki kodun sunucuda çalıştırılacağını, yedek sonrası servislerin yeniden başlayacağını ve kısa kesinti olacağını anladım.</label>
           <div className="toolbar-actions update-actions"><button disabled={busy} onClick={() => void action("check")}>Güncellemeleri kontrol et</button>

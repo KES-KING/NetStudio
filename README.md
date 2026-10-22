@@ -85,9 +85,9 @@ Dağıtımlarda lisans ve telif bildirimlerini koruyun; bağımlılıklar kendi 
 
 ## Docker ile kurulum
 
-Otomatik güncelleme mevcut kuruluma kendiliğinden açılmaz. Önce `0007_settings_updates` migration'ı ve API/worker/web geçişi, ardından ayrı host güncelleyicisinin bir defalık operatör yapılandırması gerekir. Public `KES-KING/NetStudio/main` kontrolü ile otomatik **kurulum** farklıdır; kurulum superadmin onayıyla açılır. [Ayarlar, güven sınırı ve işletim adımları](docs/updates.md).
+Otomatik güncelleme mevcut kuruluma kendiliğinden açılmaz. Public `KES-KING/NetStudio/main` kontrolü ile otomatik **kurulum** farklıdır; kurulum için çalışan imajların kesin commit'i ve ayrı host güncelleyicisi gerekir. Resmi, temiz bir checkout'ta `./netstudio-update setup` bu iki önkoşulu tek seferde güvenli biçimde hazırlar; otomatik politika yine yalnız superadmin onayıyla açılır. [Ayarlar, güven sınırı ve işletim adımları](docs/updates.md).
 
-Docker Engine veya Docker Desktop ve Compose 2.24.4 veya üzeri gerekir (TLS override dosyasındaki `!override` için). Makinede Make, Python veya Node kurulu olması gerekmez. Aşağıdaki komutları repository kökünde çalıştırın; tüm servisler doğrudan `docker compose` ile yönetilir.
+Docker Engine veya Docker Desktop ve Compose 2.24.4 veya üzeri gerekir (TLS override dosyasındaki `!override` için). Temel Docker kurulumu için makinede Make, Python veya Node gerekmez; isteğe bağlı host güncelleyici hazırlığı Python 3.11+ kullanır. Aşağıdaki komutları repository kökünde çalıştırın; tüm servisler doğrudan `docker compose` ile yönetilir.
 
 ### Docker motorunu seçme
 
@@ -114,6 +114,14 @@ docker compose config --quiet
 docker compose up --build -d --wait
 docker compose exec api python -m app.admin create-user --username admin --role superadmin --site '*'
 ```
+
+Arayüzden güncelleme kurmak isteyen resmi public checkout kullanıcıları, yukarıdaki `docker compose up` komutu yerine veya mevcut kurulumda bir kez aşağıdaki hazırlığı çalıştırabilir:
+
+```bash
+./netstudio-update setup
+```
+
+Komut yalnız temiz ve resmi `KES-KING/NetStudio` geçmişinin `main` dalında bulunan bir commit'i kabul eder; mevcut Compose proje/context/TLS dosyalarını keşfeder, `.env` içindeki diğer değerleri koruyarak kesin SHA'yı yazar, aynı volume'lerle imajları yeniden oluşturur ve özel host güncelleyici yapılandırmasını başlatır. Python 3.11+, Git ve yerel bir Docker context gerekir. Kirli çalışma ağacı, fork commit'i, uzak Docker motoru veya eşleşmeyen proje güvenli biçimde reddedilir. API/web container'larına Docker socket bağlanmaz. Ayrıntılar ve servis yöneticisi davranışı: [güncelleme işletim rehberi](docs/updates.md).
 
 Son komut ilk yönetici hesabını oluşturur ve parolayı etkileşimli olarak iki kez ister; en az 12 karakter gerekir. Sonraki başlatmalarda hesabı tekrar oluşturmayın. Varsayılan yönetici parolası yoktur. Web: <http://127.0.0.1:3000>. Desktop motoru seçiliyken servisler Docker Desktop'ın Containers ekranında `netstudio` grubu altında görünür (`COMPOSE_PROJECT_NAME` değiştirilmişse o ad kullanılır).
 
@@ -290,6 +298,8 @@ NetStudio adlandırmasına ilk geçişte **önce [ad geçişi rehberini](docs/na
 ```bash
 docker compose up --build -d --wait
 ```
+
+Güncelleme ekranından sonraki commit'leri kurabilmek için resmi checkout'u elle ileri aldıktan sonra bir kez `./netstudio-update setup` çalıştırın. Bu hazırlık eski `unknown` imaj etiketini doğrulanmış checkout SHA'sıyla değiştirir ve host ajanını bağlar; cihazları, kullanıcıları, veritabanı volume'ünü veya keyring volume'ünü yeniden oluşturmaz.
 
 Üretim TLS kurulumunda bunun yerine mevcut override'ı koruyun:
 

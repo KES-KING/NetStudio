@@ -12,6 +12,8 @@ Yan menüde **Ayarlar** bulunur:
 
 Üst barın sol bağlam alanındaki güncelleme işareti `/settings/updates` adresini açar. Kurulu SHA bilinmiyorsa sistem kendisini güncel saymaz; güncelleme karşılaştırması ve kurulum engellenir. Bildirim düğmesi 180 ms aşağı açılan bir paneldir; Escape, dış alana tıklama ve sayfa değişimi kapatır. Azaltılmış hareket tercihinde animasyon yoktur.
 
+Commitlerin görünüp **Güncellemeyi kur** düğmesinin ilerlememesi çoğunlukla iki bağımsız önkoşuldan kaynaklanır: standart geliştirme build'inin `NETSTUDIO_BUILD_REVISION=unknown` olması veya host güncelleyicisinin bağlı olmaması. Güncelleme ekranı artık eksik olan koşulu ayrı gösterir ve resmi checkout için tek seferlik hazırlık komutunu verir.
+
 Bildirimler sunucu audit olaylarının izinli bir izdüşümüdür: yetkili sitelerdeki cihaz olayları, kişinin kendi hesap/SSH olayları ve global güncelleme olayları. Superadmin hesap yönetimi olaylarını da görür. Ham audit ayrıntıları, terminal verisi ve sırlar aktarılmaz. Son 7 gün/30 olay gösterilir; okunmamış sayaç 100 ile sınırlıdır (`99+`). Okunma işareti kullanıcı başına sunucuda kalıcıdır. SSE her 3 saniyede değişiklikleri gönderir; bağlantı 60 saniyede yenilenir ve her çevrimde oturum/yetki yeniden doğrulanır. Sınır API süreci başına kullanıcıda 3, toplamda 100 açık akıştır. Bu bir sınırsız olay arşivi değildir; tam denetim geçmişi ayrı audit ekranındadır.
 
 ## Güven sınırı ve varsayılanlar
@@ -25,6 +27,28 @@ API içinde `git pull`, Docker komutu veya shell çalışmaz; Docker socket API/
 ## Bir defalık host hazırlığı
 
 Bu adımlar operatör içindir; geliştirme testi bunları mevcut kullanıcı kurulumunda otomatik çalıştırmaz. Önce mevcut Docker context/proje, volume'ler, portlar, gerçek veri tabanı ve anahtar deposunu doğrulayın. Üretimde `docker-compose.tls.yml` dahil kullanılan **bütün** override dosyalarını koruyun. Otomatik sistem yalnız mevcut tek API/web/worker/PostgreSQL kurulumunu kabul eder; uzaktaki Docker motoru ve harici PostgreSQL bu sürümde desteklenmez.
+
+### Resmi public checkout için önerilen yol
+
+Resmi repository'nin temiz bir checkout'unda aşağıdaki komut hazırlığın tamamını yapar:
+
+```bash
+./netstudio-update setup
+```
+
+Komut şu kontrolleri ve işlemleri sıralı yapar:
+
+1. `origin` adresinin resmi public repository olduğunu, çalışma ağacının temiz olduğunu ve mevcut commit'in güncel `origin/main` geçmişinde bulunduğunu doğrular. Fork veya yerel/kirli kaynak resmi sürüm etiketi alamaz.
+2. Seçili yerel Docker context'i ve çalışan API container etiketinden gerçek Compose/TLS dosyalarını bulur. Başka proje, uzak Docker endpoint'i veya repository dışı Compose yolu kabul edilmez.
+3. Mevcut `.env` değerlerini koruyup yalnız `NETSTUDIO_BUILD_REVISION` değerini doğrulanmış tam SHA'ya getirir; dosyayı `0600` yapar. Aynı proje ve volume kimlikleriyle `docker compose up --build -d --wait` çalıştırır ve API/web/worker imaj etiketlerinin aynı SHA olduğunu yeniden denetler.
+4. Ayrı `.updater-venv` ortamına yalnız backend paketini kurar. PostgreSQL'in mevcut açık loopback portunu Compose çıktısından doğrular; özel yapılandırmayı `~/.local/state/netstudio-updater/<proje>/config.json` altında `0600`, state/yedek dizinini `0700` oluşturur.
+5. Kullanıcı systemd yöneticisi varsa `netstudio-updater-<proje>.service` birimini etkinleştirir. Kullanıcı systemd'si yoksa ajanı private log/PID ile ayrık süreç olarak başlatır; bu fallback yeniden başlatma sonrası kalıcı değildir ve komutun tekrar çalıştırılması gerekir. Son olarak DB heartbeat üzerinden ajanın gerçekten bağlandığını doğrular.
+
+Bu komut otomatik kurulum politikasını açmaz ve bir güncelleme kuyruğa almaz. Son karar yine superadmin'in risk onayıyla verilir. API, web ve worker'a Docker socket verilmez; Docker yetkisi yalnız açıkça başlatılan host ajanındadır.
+
+İlk kez bu düzeltmeden daha eski bir kurulumdan geliyorsanız repository'yi normal, veri koruyan prosedürünüzle temiz bir resmi commit'e ileri alın ve komutu bir kez çalıştırın. Eski istemci kendi eksik host ajanını tarayıcıdan başlatamaz; bu tek seferlik bootstrap güven sınırıdır.
+
+### Elle/özel kurulum
 
 1. Bu özelliği içeren, gözden geçirilmiş **temiz ve yayınlanmış** commit'i normal bakım prosedürünüzle kurun. Önce mevcut DB ve keyring yedeğini alın; additive `0007_settings_updates` migration'ını çalıştırın. API, collector-worker ve web aynı SHA'dan build edilmelidir. `.env` içinde `NETSTUDIO_BUILD_REVISION=<tam 40 karakter SHA>` kullanın. Bu değişken bir doğrulama imzası değildir: kirli çalışma ağacına HEAD etiketi vermeyin. `unknown` etiketli eski imajlar otomatik kuruluma kabul edilmez. Mevcut cihazları, kullanıcıları veya sırları yeniden oluşturmayın.
 2. Host üzerinde Python 3.11+, Git, Docker CLI/Compose ve bu release'in `backend` paketini ayrı bir virtualenv'e kurun. Agent container içinde değil host üzerinde çalışır. Örneğin operator-owned release dizininde `python3 -m venv .updater-venv`, ardından `.updater-venv/bin/pip install ./backend`. Mevcut uygulama virtualenv'ini veya çalışan container'ları değiştirmez.
