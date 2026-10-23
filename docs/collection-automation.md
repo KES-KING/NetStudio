@@ -2,8 +2,9 @@
 
 Bu belge kaynak kodun uyguladığı sözleşmeyi ve açık kabul kapılarını tanımlar.
 Bir markanın katalogda yer alması bütün modellerinin desteklendiği anlamına gelmez.
-`backend/app/driver_catalog.py` komut/platform/parçalama sürümü/yetki/süre/boyut
-sınırının, `/api/v1/driver-catalog` ise çalışan kurulumun destek durumunun kaynağıdır.
+`backend/app/driver_profiles.py` typed profil/alias/durum kaynağı,
+`backend/app/driver_catalog.py` mevcut kolektörler için geriye uyumlu facade'dır.
+`/api/v1/driver-catalog` çalışan kurulumun katalog sözleşmesini yayımlar.
 
 ## Kullanım
 
@@ -31,12 +32,35 @@ sınırının, `/api/v1/driver-catalog` ise çalışan kurulumun destek durumunu
 | Junos | XML arayüz/lojik arayüz, sayaçlar, IP, routing-engine CPU/RAM, sürüm/chassis/modül, LLDP | Deneysel; fiziksel Juniper kabulü yok |
 | NX-OS | JSON arayüz/sayaçlar, sürüm, sistem kaynakları | Deneysel; diğer tabloların eşleştirilmediği çıktılar parse hatasıdır |
 | Linux | iproute2 JSON, sayaçlar, IP, ARP/NDP, uptime | Mevcut izole SSH sözleşmesi korunur |
-| Aruba AOS-CX/AOS-Switch, Comware, EOS, RouterOS, FortiOS, Dell OS9/10, Extreme | Katalogda planlanan aileler | `available=false`; henüz çalışan sürücü olarak sunulmaz |
+| Aruba AOS-CX/AOS-Switch, Comware, EOS, RouterOS, FortiSwitchOS, Dell OS9/10, Extreme | Katalogda planlanan aileler | `available=false`; henüz çalışan sürücü olarak sunulmaz |
 
 NTC şablonları `ntc-templates==9.3.0` / `textfsm==2.1.0` ile sabittir.
 Sadece katalogdaki salt okunur komutlar çalıştırılır; şablon paketinin bütün
 komutları otomatik çalıştırılmaz. CLI çıktısı log/API/DB'ye yazılmaz. Kalıcı kayıt
 yalnız doğrulanmış alanlar ve güvenli hata kodlarıdır.
+
+### Katalog v2 ve geriye uyumluluk
+
+`GET /api/v1/driver-catalog` additive v2 sözleşmesi döndürür:
+
+- `drivers`, önceki 6 çalışan + 10 planlı kimliği, komutları ve eski alanları
+  aynı değerlerle korur;
+- `profiles`, uyumluluk programındaki 38 kanonik profili ayrı uygulama,
+  doğrulama ve yayın durumlarıyla taşır;
+- `infrastructure_adapters`, `linux_ssh` değerini NOS profillerinden ayrı tutar;
+- `aliases`, otomatik/koşullu eski kimlik kararlarını; `unresolved_aliases` ise
+  hedefi güvenle seçilemeyen kayıtları yayımlar;
+- `acceptance.production_accepted` varsayılan olarak `false` kalır ve fixture/lab
+  sonucundan yükseltilmez.
+
+`fortinet` eski kimliği FortiSwitchOS standalone veya FortiLink profiline
+otomatik çevrilmez; `manual_resolution_required` döner. `catalog_only`, `blocked`
+ve `unsupported_by_protocol` profilleri `available=false` ve `selectable=false`
+kalır. Bu metadata yeni parser veya cihaz desteği eklemez.
+
+Acil cevap uyumluluğu için `NETSTUDIO_DRIVER_CATALOG_V2=0`, yalnız additive v2
+alanlarını kaldırıp önceki katalog JSON biçimini döndürür. Kolektör davranışını,
+cihaz kayıtlarını, sırları veya veritabanını değiştirmez.
 
 ## Veri doğruluğu
 
@@ -171,7 +195,8 @@ sözleşmesini kendiliğinden genişletmez.
 | Plan adımı | Durum |
 | --- | --- |
 | SFP/kısmi tablo düzeltmeleri, atomik grup son-doğru kaydı | Uygulandı; alan bazlı daha ince birleştirme açık |
-| Sürücü kataloğu, Cisco/Huawei ortak akışı, Junos/NX-OS | Uygulandı; deneysel ailelerde ve bazı veri alanlarında kapsam kısmi |
+| Typed registry ve additive katalog v2 | Uygulandı; 38 profil sınıflı, eski 16 katalog kaydı geriye uyumlu |
+| Cisco/Huawei ortak akışı, Junos/NX-OS | Uygulandı; deneysel ailelerde ve bazı veri alanlarında kapsam kısmi |
 | Host key keşfi/onayı, ortak SSH profilleri | Uygulandı; yerel gerçek SSH ve tarayıcı testi |
 | Kalıcı kuyruk, zamanlayıcı, worker, SNMPv3 IF-MIB | Uygulandı; PostgreSQL kilit/lease ve yerel SNMPv3 testi |
 | Arayüz, kalite tanıları, sınırlı geçmiş, saklama | Uygulandı; gerçek tarayıcı ve yerel saklama testleri |

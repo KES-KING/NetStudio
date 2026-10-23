@@ -1,126 +1,224 @@
-"""Versioned read-only command contracts, not a claim of universal model support."""
-from dataclasses import asdict, dataclass
+"""Backward-compatible facade over the typed, code-owned driver registry."""
+from dataclasses import asdict
+import os
 
-VERSION = "2026.10.20.3"
-NTC_VERSION = "9.3.0"
-GROUPS = ("fast", "health", "network", "inventory")
-REFERENCES = {
-    "cisco": "https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst2960x/software/15-2_7_e/command_reference/b_1527_2960x_cr/interface_and_hardware_commands.html",
-    "huawei": "https://info.support.huawei.com/enterprise/en/doc/EDOC1100333403/cdd85713/basic-interface-configuration-commands",
-    "junos": "https://www.juniper.net/documentation/us/en/software/junos/netconf/junos-xml-protocol/topics/task/junos-xml-protocol-rpcs-and-xml-mapping.html",
-    "nxos": "https://www.cisco.com/c/en/us/td/docs/dcn/nx-os/nexus9000/103x/command-reference/show/b_n9k_show_commands_103x/m_show_xml.html",
-}
-
-
-@dataclass(frozen=True)
-class Command:
-    text: str
-    group: str
-    parser: str
-    reference: str
-    required: bool = False
-    privilege: str = "read-only operational; device RBAC may restrict individual commands"
-    timeout_seconds: int = 20
-    max_bytes: int = 2_000_000
-    parser_version: str = VERSION
+from .driver_profiles import (
+    CATALOG_REVISION,
+    DATA_CONTRACT,
+    DRIVER_VERSION,
+    GROUPS,
+    IOS,
+    JUNOS,
+    NTC_VERSION,
+    NXOS,
+    REFERENCES,
+    REGISTRY,
+    VRP,
+    AcceptanceSummary,
+    Command,
+    adapter_catalog_entry,
+    commands,
+    profile_catalog_entry,
+)
 
 
-def commands(reference, rows):
-    return tuple(Command(text, group, parser, REFERENCES[reference], required)
-                 for text, group, parser, required in rows)
+# Public compatibility names used by collectors and existing tests.
+VERSION = DRIVER_VERSION
+CAPABILITIES = DATA_CONTRACT
 
 
-IOS = commands("cisco", [
-    ("show interfaces", "fast", "ios.interfaces", True),
-    ("show interfaces status", "fast", "ios.status", True),
-    ("show processes cpu", "health", "ios.cpu", False),
-    ("show memory statistics", "health", "ios.memory", False),
-    ("show power inline", "health", "ntc.cisco_ios_show_power_inline", False),
-    ("show environment all", "health", "ios.environment", False),
-    ("show ip interface", "network", "ios.ip", False),
-    ("show mac address-table", "network", "ios.fdb", False),
-    ("show arp", "network", "ios.arp", False),
-    ("show interfaces switchport", "network", "ntc.cisco_ios_show_interfaces_switchport", False),
-    ("show etherchannel summary", "network", "ntc.cisco_ios_show_etherchannel_summary", False),
-    ("show lldp neighbors detail", "network", "ntc.cisco_ios_show_lldp_neighbors_detail", False),
-    ("show version", "inventory", "ios.version", True),
-    ("show inventory", "inventory", "ntc.cisco_ios_show_inventory", False),
-])
-VRP = commands("huawei", [
-    ("display interface", "fast", "vrp.interfaces", True),
-    ("display cpu-usage", "health", "vrp.cpu", False),
-    ("display memory-usage", "health", "vrp.memory", False),
-    ("display ip interface brief", "network", "vrp.ip", False),
-    ("display mac-address", "network", "vrp.fdb", False),
-    ("display arp all", "network", "vrp.arp", False),
-    ("display version", "inventory", "vrp.version", True),
-])
-JUNOS = commands("junos", [
-    ("show interfaces extensive | display xml", "fast", "junos.interfaces", True),
-    ("show chassis routing-engine | display xml", "health", "junos.health", False),
-    ("show chassis environment | display xml", "health", "junos.environment", False),
-    ("show lldp neighbors | display xml", "network", "junos.lldp", False),
-    ("show ethernet-switching table | display xml", "network", "junos.fdb", False),
-    ("show arp no-resolve | display xml", "network", "junos.arp", False),
-    ("show version | display xml", "inventory", "junos.version", True),
-    ("show chassis hardware | display xml", "inventory", "junos.hardware", False),
-])
-NXOS = commands("nxos", [
-    ("show interface | json", "fast", "nxos.interfaces", True),
-    ("show system resources | json", "health", "nxos.health", False),
-    ("show lldp neighbors detail | json", "network", "nxos.lldp", False),
-    ("show mac address-table | json", "network", "nxos.fdb", False),
-    ("show version | json", "inventory", "nxos.version", True),
-    ("show inventory | json", "inventory", "nxos.hardware", False),
-])
-DRIVERS = {
-    "cisco_ios": ("Cisco IOS", IOS, ["Catalyst 2960-X / IOS 15.2(7)E sanitized fixtures"], "fixture_tested"),
-    "cisco_iosxe": ("Cisco IOS-XE", IOS, [], "experimental"),
-    "huawei_vrp": ("Huawei VRP", VRP, ["S5700 / VRP V200 sanitized fixtures"], "fixture_tested"),
-    "juniper_junos": ("Juniper Junos (ELS / legacy)", JUNOS, [], "experimental"),
-    "cisco_nxos": ("Cisco NX-OS", NXOS, [], "experimental"),
-    "linux_ssh": ("Linux iproute2", (), ["iproute2 JSON isolated SSH lab"], "lab_validated"),
-}
-PLANNED = {
-    "aruba_aoscx": "Aruba AOS-CX", "hp_procurve": "Aruba AOS-Switch",
-    "hp_comware": "HPE Comware", "arista_eos": "Arista EOS", "mikrotik_routeros": "MikroTik RouterOS",
-    "fortinet": "FortiOS", "dell_force10": "Dell OS9", "dell_os10": "Dell OS10",
-    "extreme_exos": "Extreme Switch Engine", "extreme_vsp": "Extreme Fabric Engine",
-}
-# Explicit missing-field reasons accompany observations. A command existing in a
-# vendor's manual does not mean its output has a validated NetStudio parser.
-CAPABILITIES = {
-    "fast": ["admin_up", "oper_up", "capacity_bps", "duplex", "rx_bps", "tx_bps",
-             "in_octets", "out_octets", "errors", "discards", "tx_errors", "tx_discards"],
-    "health": ["cpu_percent", "memory_percent", "temperature_c", "fan", "power_supply", "poe_watts"],
-    "network": ["addresses", "vrf", "vlan", "lag", "fdb", "arp", "ndp", "lldp", "cdp", "dom"],
-    "inventory": ["model", "serial", "os_version", "chassis", "stack", "modules", "breakout"],
-}
+def _legacy_validation(level: str) -> str:
+    return {
+        "not_tested": "experimental",
+        "unit_verified": "experimental",
+        "fixture_verified": "fixture_tested",
+        "transport_lab_validated": "lab_validated",
+        "physical_validated": "physical_validated",
+    }[level]
+
+
+# Preserve the old order, labels and IDs until persisted collectors move in S02.
+DRIVERS = {}
+PLANNED = {}
+for binding in REGISTRY.legacy_bindings:
+    if not binding.available:
+        PLANNED[binding.id] = binding.label
+        continue
+    if binding.adapter_id:
+        adapter = REGISTRY.adapter(binding.adapter_id)
+        DRIVERS[binding.id] = (
+            binding.label,
+            (),
+            list(adapter.tested_versions),
+            _legacy_validation(adapter.verification_status),
+        )
+        continue
+    profile = REGISTRY.profile(binding.profile_id)
+    DRIVERS[binding.id] = (
+        binding.label,
+        profile.commands,
+        list(profile.tested_versions),
+        _legacy_validation(profile.verification_status),
+    )
+
+
+def _profile_capabilities(profile_id: str) -> dict[str, list[str]]:
+    profile = REGISTRY.profile(profile_id)
+    return {**{group: [] for group in GROUPS}, **{
+        capability.group: list(capability.fields)
+        for capability in profile.capabilities
+    }}
+
+
 SUPPORTED = {
-    "cisco_ios": {"fast": CAPABILITIES["fast"], "health": CAPABILITIES["health"],
-        "network": ["addresses", "vlan", "lag", "fdb", "arp", "lldp"],
-        "inventory": ["model", "serial", "os_version", "chassis", "modules"]},
-    "huawei_vrp": {"fast": CAPABILITIES["fast"], "health": ["cpu_percent", "memory_percent"],
-        "network": ["addresses", "vlan", "fdb", "arp"], "inventory": ["model", "os_version", "chassis"]},
-    "juniper_junos": {"fast": [key for key in CAPABILITIES["fast"] if key not in {"rx_bps", "tx_bps", "duplex"}],
-        "health": ["cpu_percent", "memory_percent"], "network": ["addresses", "lldp"],
-        "inventory": ["model", "serial", "os_version", "chassis", "modules"]},
-    "cisco_nxos": {"fast": CAPABILITIES["fast"], "health": ["cpu_percent", "memory_percent"],
-        "network": [], "inventory": ["model", "serial", "os_version", "chassis"]},
-    "linux_ssh": {"fast": ["admin_up", "oper_up", "in_octets", "out_octets", "rx_bps", "tx_bps"],
-        "health": [], "network": ["addresses", "arp", "ndp"], "inventory": []},
+    "cisco_ios": _profile_capabilities("cisco_ios"),
+    "cisco_iosxe": _profile_capabilities("cisco_iosxe"),
+    "huawei_vrp": _profile_capabilities("huawei_vrp_v200"),
+    "juniper_junos": _profile_capabilities("juniper_junos"),
+    "cisco_nxos": _profile_capabilities("cisco_nxos"),
+    "linux_ssh": {**{group: [] for group in GROUPS}, **{
+        capability.group: list(capability.fields)
+        for capability in REGISTRY.adapter("linux_ssh").capabilities
+    }},
 }
-SUPPORTED["cisco_iosxe"] = SUPPORTED["cisco_ios"]
 
 
-def catalog():
-    return {"version": VERSION, "template_version": NTC_VERSION, "data_contract": CAPABILITIES, "drivers": [
-        {"id": key, "label": name, "available": True, "validation_level": level,
-         "tested_versions": tested, "capabilities": SUPPORTED[key],
-         "commands": [asdict(c) for c in plan]}
-        for key, (name, plan, tested, level) in DRIVERS.items()
-    ] + [
-        {"id": key, "label": name, "available": False, "validation_level": "experimental",
-         "tested_versions": [], "capabilities": {}, "commands": [], "reason": "driver_not_implemented"}
-        for key, name in PLANNED.items()
-    ]}
+def legacy_catalog() -> dict:
+    """Return the pre-v2 response shape byte-for-byte equivalent by value."""
+    return {
+        "version": VERSION,
+        "template_version": NTC_VERSION,
+        "data_contract": CAPABILITIES,
+        "drivers": [
+            {
+                "id": key,
+                "label": name,
+                "available": True,
+                "validation_level": level,
+                "tested_versions": tested,
+                "capabilities": SUPPORTED[key],
+                "commands": [asdict(command) for command in plan],
+            }
+            for key, (name, plan, tested, level) in DRIVERS.items()
+        ] + [
+            {
+                "id": key,
+                "label": name,
+                "available": False,
+                "validation_level": "experimental",
+                "tested_versions": [],
+                "capabilities": {},
+                "commands": [],
+                "reason": "driver_not_implemented",
+            }
+            for key, name in PLANNED.items()
+        ],
+    }
+
+
+def catalog_v2_enabled(value: str | None = None) -> bool:
+    configured = os.getenv("NETSTUDIO_DRIVER_CATALOG_V2", "1") if value is None else value
+    return configured.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def _legacy_v2_metadata(identifier: str) -> dict:
+    adapter = REGISTRY.adapter(identifier)
+    if adapter:
+        entry = adapter_catalog_entry(adapter)
+        return {
+            "profile_kind": "infrastructure_adapter",
+            "profile_schema_version": entry["schema_version"],
+            "canonical_profile_id": None,
+            "profile_revision": entry["revision"],
+            "implementation_status": entry["implementation_status"],
+            "verification_status": entry["verification_status"],
+            "release_status": entry["release_status"],
+            "selectable": entry["selectable"],
+            "runtime_selection_id": entry["runtime_selection_id"],
+            "identity": None,
+            "transports": entry["transports"],
+            "acceptance": entry["acceptance"],
+            "aliases": [],
+            "alias_policies": [],
+        }
+
+    profile = REGISTRY.runtime_profile(identifier)
+    resolution = REGISTRY.resolve(identifier)
+    if profile is None and resolution.canonical_profile_id:
+        profile = REGISTRY.profile(resolution.canonical_profile_id)
+    if profile:
+        entry = profile_catalog_entry(profile)
+        return {
+            "profile_kind": "driver_profile",
+            "profile_schema_version": entry["schema_version"],
+            "canonical_profile_id": profile.id,
+            "profile_revision": entry["profile_revision"],
+            "implementation_status": entry["implementation_status"],
+            "verification_status": entry["verification_status"],
+            "release_status": entry["release_status"],
+            "selectable": identifier in DRIVERS,
+            "runtime_selection_id": profile.runtime_driver_id,
+            "identity": entry["identity"],
+            "transports": entry["transports"],
+            "acceptance": entry["acceptance"],
+            "aliases": entry["aliases"],
+            "alias_policies": entry["alias_policies"],
+            "resolution_status": resolution.status,
+        }
+
+    # The legacy Fortinet value is intentionally not guessed as either
+    # standalone FortiSwitchOS or FortiLink-managed FortiSwitchOS.
+    resolution = REGISTRY.resolve(identifier)
+    return {
+        "profile_kind": "legacy_unresolved",
+        "profile_schema_version": 1,
+        "canonical_profile_id": None,
+        "profile_revision": None,
+        "implementation_status": "catalog_only",
+        "verification_status": "not_tested",
+        "release_status": "hidden",
+        "selectable": False,
+        "runtime_selection_id": None,
+        "identity": None,
+        "transports": {},
+        "acceptance": AcceptanceSummary(highest_level="not_tested").model_dump(mode="json"),
+        "aliases": [],
+        "alias_policies": [],
+        "resolution_status": resolution.status,
+    }
+
+
+def catalog(*, include_v2: bool | None = None) -> dict:
+    legacy = legacy_catalog()
+    enabled = catalog_v2_enabled() if include_v2 is None else include_v2
+    if not enabled:
+        return legacy
+    return {
+        **legacy,
+        "schema_version": 2,
+        "catalog_revision": CATALOG_REVISION,
+        "drivers": [
+            {**entry, **_legacy_v2_metadata(entry["id"])}
+            for entry in legacy["drivers"]
+        ],
+        "profiles": [
+            profile_catalog_entry(profile) for profile in REGISTRY.profiles
+        ],
+        "infrastructure_adapters": [
+            adapter_catalog_entry(adapter) for adapter in REGISTRY.adapters
+        ],
+        "aliases": [alias.model_dump(mode="json") for alias in REGISTRY.aliases],
+        "unresolved_aliases": [
+            alias.model_dump(mode="json")
+            for alias in REGISTRY.aliases
+            if alias.target_profile_id is None
+        ],
+    }
+
+
+__all__ = [
+    "CAPABILITIES", "CATALOG_REVISION", "Command", "DRIVERS", "GROUPS",
+    "IOS", "JUNOS", "NTC_VERSION", "NXOS", "PLANNED", "SUPPORTED", "VERSION",
+    "REFERENCES", "VRP", "catalog", "catalog_v2_enabled", "commands",
+    "legacy_catalog",
+]

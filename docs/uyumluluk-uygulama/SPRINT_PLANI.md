@@ -208,6 +208,13 @@ kırmadan daha zengin katalog sözleşmesi yayımlamak.
   biçimde çalışır.
 - Katalogdaki hiçbir `catalog_only` profil seçilebilir/available değildir.
 
+### Uygulama durumu
+
+**Tamamlandı — 23 Ekim 2026.** S01-01–S01-08 uygulaması ve doğrulama sonuçları
+[`S01_TESLIM_RAPORU.md`](S01_TESLIM_RAPORU.md) içindedir. Typed registry 38
+kanonik profili yayımlar; mevcut 6 çalışan + 10 planlı `drivers` cevabı değer
+olarak korunur. Bu sprint yeni parser, migration veya fiziksel destek eklememiştir.
+
 ### Rollback
 
 Yeni registry facade arkasında kalır; eski katalog cevabı feature flag ile

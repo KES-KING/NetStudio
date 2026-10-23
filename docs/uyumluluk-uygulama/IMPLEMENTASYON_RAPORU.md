@@ -8,7 +8,7 @@
 | Kaynak kapsamı | Backend, frontend, migration, testler ve mevcut teknik belgeler |
 | Girdi matrisi | [`NetStudio_Switch_OS_SSH_SNMP_Uyumluluk_Matrisi.md`](../NetStudio_Switch_OS_SSH_SNMP_Uyumluluk_Matrisi.md) |
 | Çalışan ürün sözleşmesi | [`collection-automation.md`](../collection-automation.md) |
-| Belge durumu | Uygulama tasarımı ve teslim planı; burada önerilen kod henüz uygulanmış değildir |
+| Belge durumu | Uygulama tasarımı ve teslim planı; S00–S01 uygulanmış, sonraki sprintler hedef durumdur |
 | Takvim | `REQUIRES ESTIMATION` |
 | Kapasite iddiaları | `REQUIRES BENCHMARK` |
 
@@ -25,12 +25,12 @@ kod ise aynı kapsamda değildir:
 - SNMP yolu yalnız SNMPv3 `authPriv`, sayısal IF-MIB/IF-X-MIB alanları ve `fast`
   veri grubu için uygulanmıştır. Sistem kimliği, FDB, VLAN, LLDP, ENTITY-MIB ve
   üretici MIB kapsamı SNMP üzerinden genel olarak uygulanmış değildir.
-- Sürücü seçimi hâlen sabit bir `Literal`, statik Python kataloğu ve frontend'de
-  elle yazılmış seçenekler üzerinden ilerler. `os_family`, `management_mode`,
-  profil revizyonu ve kabul kanıtı ayrı sözleşmeler değildir.
-- Katalogda planlı görünen bazı eski kimlikler, hedef matristeki kanonik adlarla
-  uyuşmaz. Özellikle `fortinet` girdisini doğrudan FortiSwitchOS saymak teknik
-  olarak güvenli değildir.
+- S01 ile typed, kod sahipli profil registry'si ve additive katalog v2
+  uygulanmıştır. Cihaz yazma sözleşmesindeki `Collector` ve frontend seçimleri
+  S02 öncesinde geriye uyumluluk için sabit kalır.
+- Eski katalog kimlikleri facade içinde korunur; kanonik alias politikaları ayrı
+  yayımlanır. `fortinet` girdisi doğrudan FortiSwitchOS sayılmaz ve
+  `manual_resolution_required` olarak güvenli biçimde kapanır.
 
 Bu nedenle uygun çözüm, 38 parser'ı doğrudan eklemek değildir. Önce sürücü
 profili, taşıma yeteneği, veri capability'si ve kabul kanıtını birbirinden ayıran
@@ -85,8 +85,9 @@ kabulü, fiziksel tek model testi de bütün OS ailesi desteği değildir.
 
 | Alan | Mevcut kaynak | Kanıtlanan durum |
 |---|---|---|
-| Sürücü kimlikleri | `backend/app/contracts.py` | Collector sabit `Literal`; yeni kimlik kod değişikliği ister |
-| Katalog/komutlar | `backend/app/driver_catalog.py` | Altı çalışabilir, on planlı kayıt; sabit komut, parser, süre ve çıktı sınırları |
+| Sürücü kimlikleri | `backend/app/contracts.py` | Collector sabit `Literal`; S02'ye kadar eski yazma sözleşmesi korunur |
+| Profil registry'si | `backend/app/driver_profiles.py` | 38 kanonik profil, alias/transport/capability/acceptance özeti ve fail-closed doğrulama |
+| Katalog/komutlar | `backend/app/driver_catalog.py` | Altı çalışabilir + on planlı legacy facade; additive v2 ve değişmeyen komut/süre/çıktı sınırları |
 | Ortak SSH okuma | `backend/app/drivers.py` | Allowlist komutları, banner tabanlı sınırlı tanıma, Cisco/Huawei/structured parser dağıtımı |
 | Cisco IOS | `backend/app/cisco.py`, `backend/tests/test_cisco.py` | 2960-X biçimli fixture ve izole legacy SSH/PTY kanıtı; fiziksel kabul yok |
 | Huawei VRP | `backend/app/huawei.py`, `backend/tests/test_huawei.py` | S5700/VRP V200 biçimli fixture ve izole legacy SSH/PTY kanıtı; fiziksel kabul yok |

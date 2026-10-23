@@ -194,19 +194,155 @@ export type DriverCommand = {
   max_bytes: number;
   parser_version: string;
 };
+export type DriverImplementationStatus =
+  | "catalog_only"
+  | "implemented"
+  | "blocked"
+  | "unsupported_by_protocol"
+  | "unsupported_by_policy"
+  | "retired";
+export type DriverVerificationStatus =
+  | "not_tested"
+  | "unit_verified"
+  | "fixture_verified"
+  | "transport_lab_validated"
+  | "physical_validated";
+export type DriverReleaseStatus =
+  | "hidden"
+  | "experimental"
+  | "candidate"
+  | "supported";
+export type DriverAliasPolicy =
+  | "read_compatibility_alias_with_identity_revalidation"
+  | "conditional_identity_match"
+  | "manual_resolution_required";
+export type DriverAlias = {
+  id: string;
+  target_profile_id: string | null;
+  policy: DriverAliasPolicy;
+  automatic: boolean;
+};
+export type DriverIdentitySummary = {
+  vendors: string[];
+  os_families: string[];
+  management_modes: string[];
+  model_patterns: string[];
+  version_constraints: string[];
+};
+export type DriverTransportSummary = {
+  state:
+    | "implemented"
+    | "planned"
+    | "blocked"
+    | "unsupported_by_protocol"
+    | "unsupported_by_policy";
+  security: string[];
+  versions: string[];
+  decision_gate: string | null;
+};
+export type DriverCapabilitySummary = {
+  group: DriverCommand["group"];
+  fields: string[];
+  sources: ("ssh" | "snmp" | "api")[];
+  verification_status: DriverVerificationStatus;
+};
+export type DriverAcceptanceSummary = {
+  highest_level: DriverVerificationStatus;
+  matching_unexpired_records: number;
+  production_accepted: boolean;
+};
+export type DriverProfileCatalogEntry = {
+  schema_version: number;
+  id: string;
+  profile_revision: number;
+  label: string;
+  wave: "P0" | "P1" | "P2" | "P3" | "P4";
+  aliases: string[];
+  alias_policies: DriverAlias[];
+  implementation_status: DriverImplementationStatus;
+  verification_status: DriverVerificationStatus;
+  release_status: DriverReleaseStatus;
+  available: boolean;
+  selectable: boolean;
+  runtime_selection_id: string | null;
+  identity: DriverIdentitySummary;
+  transports: Partial<
+    Record<"ssh" | "snmp" | "api", DriverTransportSummary>
+  >;
+  capabilities: Partial<Record<DriverCommand["group"], string[]>>;
+  capability_summaries: DriverCapabilitySummary[];
+  acceptance: DriverAcceptanceSummary;
+  tested_versions: string[];
+  commands: DriverCommand[];
+  reason?: string;
+};
+export type DriverInfrastructureAdapter = {
+  schema_version: number;
+  id: string;
+  revision: number;
+  label: string;
+  profile_kind: "infrastructure_adapter";
+  role: string;
+  runtime_selection_id: string;
+  implementation_status: "implemented";
+  verification_status: DriverVerificationStatus;
+  release_status: DriverReleaseStatus;
+  available: boolean;
+  selectable: boolean;
+  transports: Partial<
+    Record<"ssh" | "snmp" | "api", DriverTransportSummary>
+  >;
+  capabilities: Partial<Record<DriverCommand["group"], string[]>>;
+  acceptance: DriverAcceptanceSummary;
+  tested_versions: string[];
+  not_equivalent_to: string[];
+  commands: DriverCommand[];
+};
 export type DriverCatalogEntry = {
   id: string;
   label: string;
   available: boolean;
   validation_level: string;
   tested_versions: string[];
+  capabilities?: Partial<Record<DriverCommand["group"], string[]>>;
   commands: DriverCommand[];
   reason?: string;
+  profile_kind?:
+    | "driver_profile"
+    | "infrastructure_adapter"
+    | "legacy_unresolved";
+  profile_schema_version?: number;
+  canonical_profile_id?: string | null;
+  profile_revision?: number | null;
+  implementation_status?: DriverImplementationStatus;
+  verification_status?: DriverVerificationStatus;
+  release_status?: DriverReleaseStatus;
+  selectable?: boolean;
+  runtime_selection_id?: string | null;
+  identity?: DriverIdentitySummary | null;
+  transports?: Partial<
+    Record<"ssh" | "snmp" | "api", DriverTransportSummary>
+  >;
+  acceptance?: DriverAcceptanceSummary;
+  aliases?: string[];
+  alias_policies?: DriverAlias[];
+  resolution_status?:
+    | "canonical"
+    | "alias"
+    | "manual_resolution_required"
+    | "unknown";
 };
 export type DriverCatalog = {
   version: string;
   template_version: string;
+  data_contract?: Partial<Record<DriverCommand["group"], string[]>>;
   drivers: DriverCatalogEntry[];
+  schema_version?: number;
+  catalog_revision?: string;
+  profiles?: DriverProfileCatalogEntry[];
+  infrastructure_adapters?: DriverInfrastructureAdapter[];
+  aliases?: DriverAlias[];
+  unresolved_aliases?: DriverAlias[];
 };
 export type Job = {
   id: string;
