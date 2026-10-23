@@ -162,6 +162,10 @@ test("keyboard focus, form surfaces, escape dismissal and activity table", async
     "font-weight",
     "400",
   );
+  await dialog.locator('select[name="catalog_vendor"]').selectOption("Huawei");
+  await dialog
+    .locator('select[name="configured_profile_id"]')
+    .selectOption("huawei_vrp_v200");
   await dialog
     .getByRole("combobox", { name: "Kimlik doğrulama", exact: true })
     .selectOption("private_key");
@@ -219,8 +223,9 @@ for (const width of [320, 768, 1024, 1920, 2560]) {
     await expectNoPageOverflow(page, width);
     if (width >= 1700) {
       const main = await page.locator(".main-content").boundingBox();
+      const layout = await page.locator(".console-layout").boundingBox();
       expect(main!.x).toBe(232);
-      expect(main!.width).toBe(width - 232);
+      expect(main!.width).toBe(layout!.width - 232);
       await expect(page.locator(".main-content")).toHaveCSS("max-width", "none");
       await page.screenshot({ path: join(evidence, `dashboard-${width}.png`) });
     }

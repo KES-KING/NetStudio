@@ -51,6 +51,7 @@ test("automatic key discovery, explicit trust and polling settings on desktop an
   await dialog.getByLabel("SSH uyumluluk profili").selectOption("advanced");
   await expect(dialog.getByRole("listbox", { name: "Anahtar değişimi", exact: true })).toBeVisible();
   await expect(dialog.getByLabel("Bu cihazda eski SSH algoritmalarına izin ver")).not.toBeChecked();
+  await dialog.getByRole("radio", { name: /SNMPv3/ }).check();
   await dialog.getByText(/İsteğe bağlı SNMPv3/).click();
   await expect(dialog.getByRole("combobox", { name: "Kimlik doğrulama algoritması", exact: true })).toHaveValue("sha256");
   await expect(dialog.getByLabel("SNMP doğrulama parolası")).toHaveValue("");

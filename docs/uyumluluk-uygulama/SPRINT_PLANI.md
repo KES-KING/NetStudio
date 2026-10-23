@@ -325,6 +325,15 @@ Bu sprint cihaz ekleme ve detay kompozisyonunu maddi değiştirirse
 yenilenmelidir. Yalnız mevcut dialog içinde küçük etiket/durum eklenirse `yok`
 gerekçesiyle geçici tarayıcı kanıtı yeterlidir; karar gerçek diff üzerinden verilir.
 
+### Uygulama durumu
+
+**Tamamlandı — 23 Ekim 2026.** S03-01–S03-08 uygulaması, backend seçim
+kapıları, erişilebilir/responsive tarayıcı kanıtı ve doğrulama sınırları
+[`S03_TESLIM_RAPORU.md`](S03_TESLIM_RAPORU.md) içindedir. Gerçek diff cihaz
+ekleme, bağlantı ve detay kompozisyonunu maddi değiştirdiği için
+`Ana tasarım etkisi: var`; üç kanonik README görüntüsü aynı çalışma ağacından
+yenilenmiştir. Fixture/izole SSH kanıtı fiziksel veya production kabulü değildir.
+
 ---
 
 ## S04 — Ortak transport katmanı ve geniş SNMPv3 çekirdeği

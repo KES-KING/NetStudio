@@ -159,7 +159,10 @@ test("detail, topology, inline SSH input, resize, close and logout", async ({
   await page.setViewportSize({ width: 1536, height: 1024 });
   await login(page);
   await useCiscoIdentityForCommandHelp(page);
-  const dashboardMotionId = await page.locator(".device-miniature").first().getAttribute("data-motion-id");
+  const qaRow = page.locator(".device-row-wrapper").filter({
+    has: page.getByRole("link", { name: "QA-Core-01", exact: true }),
+  });
+  const dashboardMotionId = await qaRow.locator(".device-miniature").getAttribute("data-motion-id");
   await page.getByRole("link", { name: "QA-Core-01", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "IP topolojisi", exact: true }),
@@ -469,14 +472,23 @@ test("device create and credential completion preserve secrets", async ({
   await page.getByRole("button", { name: "Cihaz Ekle", exact: true }).click();
   const dialog = page.getByRole("dialog");
   const name = `QA-created-${Date.now()}`;
+  const devices = await (await page.request.get("/api/v1/devices")).json();
+  const fixtureAddress = devices.find(
+    (device: { name: string }) => device.name === "QA-Core-01",
+  ).management_address;
   await dialog.getByLabel("Cihaz adı", { exact: true }).fill(name);
   await dialog
     .getByLabel("Yönetim IP adresi", { exact: true })
-    // Inside the isolated QA CIDR; the missing key must block before network IO.
-    .fill("172.31.255.200");
+    // The exact isolated SSH fixture /32 is allowed; this new device still has
+    // no trusted host key, so policy must block before network I/O.
+    .fill(fixtureAddress);
   await dialog
     .getByLabel("Site", { exact: true })
     .fill("TEST FIXTURE / isolated");
+  await dialog.locator('select[name="catalog_vendor"]').selectOption("Huawei");
+  await dialog
+    .locator('select[name="configured_profile_id"]')
+    .selectOption("huawei_vrp_v200");
   await dialog.getByRole("button", { name: "Cihazı kaydet" }).click();
   await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
   await expect(
@@ -488,7 +500,7 @@ test("device create and credential completion preserve secrets", async ({
   await dialog.getByLabel("SSH kullanıcı adı", { exact: true }).fill("lab");
   await dialog.getByLabel("Cihaz parolası", { exact: true }).fill("lab-secret");
   await dialog
-    .getByRole("button", { name: "Kimlik bilgilerini kaydet", exact: true })
+    .getByRole("button", { name: "SSH kimlik bilgilerini kaydet", exact: true })
     .click();
   await expect(
     dialog.getByText("Kimlik bilgileri şifrelenerek kaydedildi."),

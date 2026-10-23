@@ -55,7 +55,9 @@ async function expectTopologyFits(page: Page, width: number) {
       })
       .filter((box) => box.width > 80 && box.height > 20),
   );
-  expect(nodes).toHaveLength(7);
+  // The seeded detail graph contains seven interface/device nodes plus four
+  // MAC/IP endpoint observations introduced by the shared topology projection.
+  expect(nodes).toHaveLength(11);
   for (const node of nodes) {
     expect(node.left).toBeGreaterThanOrEqual(bounds!.x - 1);
     expect(node.right).toBeLessThanOrEqual(bounds!.x + bounds!.width + 1);

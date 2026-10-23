@@ -22,7 +22,7 @@ Arayüz: Next.js 16 / React 19 / TypeScript, Apache ECharts, xterm.js ve SWR. Ba
 - Taralı Topoloji çalışma alanı: kişisel zone’lar, taşınabilir cihazlar, port bağlantısı çizimi ve kaynak/zaman bilgili MAC/IP uç düğümleri.
 - Apache ECharts ile RX/TX, port durumu ve kapasite gösterimleri; bilinmeyen/eski verinin açık ayrımı.
 - Cihaz detayına entegre SSH terminali; backend tarafında site/rol denetimi ve kayıtlı host key doğrulaması.
-- Harici envanter/telemetri aktarımı; sürümlü Cisco/Huawei/Junos sürücü kataloğu, salt okunur manuel ve zamanlanmış toplama, isteğe bağlı SNMPv3.
+- Harici envanter/telemetri aktarımı; katalog tabanlı üretici/OS/yönetim modu seçimi, cihaz bazlı uyumluluk/kanıt görünümü, salt okunur manuel ve zamanlanmış toplama, isteğe bağlı SNMPv3.
 - Switch SVI ağlarından yönetici onayıyla türetilen, ayrı `NET_RAW` ajanıyla VLAN bilinçli IPv4 ARP eşleştirmesi; [kurulum ve güven sınırları](docs/network-probe.md).
 - Parola göndermeden host key keşfi, bir defalık açık güven onayı ve cihaz bazlı izinle otomatik SSH uyumluluk seçimi.
 - Kişisel profil/avatar/parola yönetimi; `viewer`, `engineer`, `superadmin` rolleri ve yalnız superadmin'e açık kullanıcı yönetimi/ayrıntılı audit.
@@ -41,7 +41,15 @@ Aşağıdaki üç görüntü çalışan uygulamanın izole QA ortamından alınm
 
 **Güncellik kuralı:** Aşağıdaki üç görüntü yalnız kanonik ana sayfa veya SSH kapalı/açık cihaz detayının ana yerleşimi, tema, tipografi, ana navigasyon ya da genel kabuğu maddi biçimde değiştiğinde birlikte yenilenir. Backend/fix, küçük işlevsel UI değişikliği ve bu karelerde görünmeyen yeni alt sayfalar yenilemeyi tetiklemez. İnsanlar ve yapay zekâ için ayrıntılar [rule.md](rule.md#5-ana-tasarım-değişikliğinde-readme-görüntülerini-yenile), ajanların uygulama adımları [agent.md](agent.md) içindedir.
 
-Son set: **21 Ekim 2026, 14:12 TRT**, `netstudio-topology-detail-qa-20261021` izole Docker ortamı (`http://127.0.0.1:13001`), sistem Chrome, 1536 × 1024 viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `a7e10df` üzerine topoloji detaylandırma ve SSH komut yardımcısı değişikliklerini içerir; imajlar `netstudio-api:topology-detail-qa-20261021` ve `netstudio-web:topology-detail-qa-20261021`dir. Üç kare son imajlardan yeniden alınıp görsel olarak incelendi. Detay görüntülerinde `192.0.2.101` filtresiyle arayüz–uç gözlemi ilişkisi ve gerçek QA SSH bağlantısı gösterilir; mevcut kullanıcı kurulumu değiştirilmemiştir.
+Son set: **23 Ekim 2026, 17:44 TRT**, `netstudio-s03-qa-native-20261023`
+izole Docker ortamı (`http://127.0.0.1:13101`), sistem Chrome, 1536 × 1024
+viewport ve tam sayfa yakalama. Test edilen çalışma ağacı `a04f338` üzerine S03
+katalog tabanlı cihaz/uyumluluk arayüzünü içerir; imaj etiketi
+`s03-qa-native-20261023`, kirli çalışma ağacı revision'ı `unknown` olarak
+taşır. Üç kare son imajlardan yeniden alınıp görsel olarak incelendi. Detay
+görüntülerinde katalog profili/transport/capability/acceptance ayrımı,
+`192.0.2.101` filtresiyle arayüz–uç gözlemi ilişkisi ve gerçek izole QA SSH
+bağlantısı gösterilir; mevcut kullanıcı kurulumu değiştirilmemiştir.
 
 ### Ana sayfa
 
@@ -51,7 +59,16 @@ Cihaz filtresi ve zaman aralığıyla aynı kapsamı paylaşan Apache ECharts gr
 
 ### Cihaz detayı — SSH kapalı
 
-Üstte aktif port, RX/TX ve sağlık özeti; ardından tam genişlikte etkileşimli cihaz ön paneli bulunur. Kasa üzerinde envanterdeki cihaz adı/modeli, iki yanda şematik rack montaj delikleri, solda RJ45 ve sağda tek sıra SFP/QSFP grupları gösterilir. İki sıralı RJ45 görünümünde her altı sütundan sonra ölçülü bir banka ayrımı bulunur. Mat grafit/metal yüzeyler marka bağımsızdır; montaj geometrisi ve port yerleşimi üretici kasasının birebir ölçülü çizimi değildir.
+Üstte aktif port, RX/TX ve sağlık özeti; ardından tam genişlikte etkileşimli cihaz
+ön paneli ve **Uyumluluk** paneli bulunur. Uyumluluk paneli yapılandırılan ve
+çözümlenen kanonik profil, management mode, transport/capability durumu,
+redakte kimlik kanıtı ve fiziksel/production kabul ayrımını gösterir. Legacy veya
+belirsiz kayıt yetkili kullanıcıdan açık profil geçiş onayı ister; fixture kanıtı
+production desteği olarak sunulmaz. Kasa üzerinde envanterdeki cihaz adı/modeli,
+iki yanda şematik rack montaj delikleri, solda RJ45 ve sağda tek sıra SFP/QSFP
+grupları gösterilir. İki sıralı RJ45 görünümünde her altı sütundan sonra ölçülü bir
+banka ayrımı bulunur. Mat grafit/metal yüzeyler marka bağımsızdır; montaj
+geometrisi ve port yerleşimi üretici kasasının birebir ölçülü çizimi değildir.
 
 **IP topolojisi**, topoloji sayfasındaki sınırlı SVG çalışma alanı, köşeli ilişki çizgileri, yakınlaştırma/taşıma kontrolleri ve ayrı seçim ayrıntıları yaklaşımını kullanır. Grafik yüksekliği 340 px'tir; düğümler ekranı doldurmak için büyütülmez. Arayüzler ve hedefleri iki kolonda yerleşir; dar ekranda düğüm genişliği uyarlanır, bilgi alanı alta geçer. Düğüm seçimi adres/VRF/VLAN bilgilerini, çizgi seçimi ilişki türü ve kaynağın bildirdiği kanıtı açar. Arama ve seçili fiziksel portun açık envanter eşlemeleriyle filtreleme desteklenir. Büyük grafikte en fazla 80 düğüm çizilir; kalan düğümlere arama veya seçim listesinden erişilir. Ok tuşlarıyla kaydırma, Enter/Space ile seçim ve Escape ile seçimi temizleme mümkündür. Dokunmatik kaydırma varsayılan olarak sayfayı kaydırır; grafiği taşımak için **Taşıma modu** açılır. Bu görünüm kaydedilmiş topoloji yerleşimini değiştirmez; ECharts istatistik grafikleri korunur.
 
@@ -450,6 +467,35 @@ Playwright Chromium kurulu değilse `npx playwright install chromium` çalışt�
 Mevcut QA projesi kullanılıyorsa veya test hesabı değiştirilmişse hesabı sıfırlamayın. Yeni `COMPOSE_PROJECT_NAME` ve boşta olan PostgreSQL/API/web portlarıyla ayrı proje açın. QA SSH anahtar servisinin portu `NETSTUDIO_TEST_SSH_KEY_PORT` ile ayrılabilir. Seed sırasında `NETSTUDIO_TEST_ORIGIN`, `NETSTUDIO_TEST_SSH_KEY_URL`, `NETSTUDIO_TEST_SSH_CONTAINER` ve `NETSTUDIO_TEST_DATABASE_URL` değerlerini **aynı yeni projeyi** gösterecek şekilde verin; testlerde de `PLAYWRIGHT_BASE_URL` bu origin olmalıdır. Seed varsayılanları sırasıyla `http://127.0.0.1:13000`, `http://127.0.0.1:12223`, `netstudio-redesign-qa-ssh-lab-1` adresleridir. Seed seçili Docker context'i kullanır; gerekirse `NETSTUDIO_TEST_DOCKER_CONTEXT` ile aynı QA projesinin context'ini açıkça belirtin. Seed HTTP endpoint'leri yalnız loopback olabilir.
 
 Tarayıcı testleri masaüstü/mobil yerleşim, filtre kapsamı, ECharts, klavye ile port seçimi, form akışı, boş sır alanı, inline SSH giriş/kopyalama/yapıştırma/resize/kapanış, cihaz bazlı komut yardımcısını açma-kapatma/kopyalama ve logout senaryolarını gerçek API/gateway üzerinden denetler. Ayrıca sayfa kimliği, framework hata katmanı, konsol ve cookie güvenlik nitelikleri kontrol edilir. Girişten önceki `/session/me` 401 yanıtı beklenen davranıştır. Ekran görüntüleri işletim sisteminin geçici dizinindeki `netstudio-qa/` altına, başarısız test izleri `netstudio-playwright/` altına yazılır; otomatik olarak repository'ye eklenmez. Ana tasarım değişikliklerinde [görüntü yenileme kuralına](rule.md#5-ana-tasarım-değişikliğinde-readme-görüntülerini-yenile) göre incelenmiş üç README görüntüsü ayrıca `docs/screenshots/` altına alınır ve aynı değişiklikle teslim edilir; küçük işlevsel UI değişikliklerinde geçici tarayıcı kanıtı yeterlidir. Bunlar **sentetik QA envanteridir; fiziksel cihaz kanıtı değildir**.
+
+### Katalog tabanlı uyumluluk arayüzü doğrulaması — 2026-10-23
+
+- S03-01–S03-08 ile cihaz ekleme formu canlı katalogdan üretici → işletim
+  sistemi profili → yönetim modu akışına taşındı. Planlı, engelli ve protokolce
+  desteklenmeyen profil/transportlar açıklamasıyla görünür fakat seçilemez;
+  backend aynı kuralı doğrudan profil ve legacy alias yazma yollarında uygular.
+- Cihaz detayındaki yeni **Uyumluluk** paneli profil revision/çözüm durumunu,
+  transport ve capability kanıtını, redakte kimliği ve acceptance kapsamını
+  gösterir. Viewer görünümü salt okunurdur; yetkili profil geçişi açık onay
+  ister. Fixture ve izole SSH kanıtı fiziksel ya da production destek etiketi
+  üretmez; production kabulü ayrı ve `false` kalır.
+- Backend tam paketinde 248 test geçti, ayrı PostgreSQL koşulu isteyen 3 test
+  atlandı. Frontend lint, TypeScript, 11 dosyada 63 Vitest ve 12 route'lu
+  production build geçti. Playwright'ın 52 senaryosu güvenlik amaçlı 40 login/5 dakika
+  sınırı korunarak gruplar halinde çalıştırıldı: 51 geçti, yalnız açık
+  `NETSTUDIO_LIVE_GITHUB=1` isteyen public GitHub kontrolü atlandı. Katalog
+  durumları, legacy geçişi, viewer/superadmin ayrımı, sırların boş açılması,
+  320/390 px, kısa viewport, klavye odağı, reduced-motion, modal/menü sınırları
+  ve gerçek izole SSH oturumu kapsandı.
+- `netstudio-s03-qa-native-20261023` projesi loopback portları, ayrı PostgreSQL
+  ve volume'lerle kullanıldı. Yalnız izole API süreci test grupları arasında
+  login sayacını sıfırlamak için yeniden başlatıldı; güvenlik limiti
+  gevşetilmedi, veri/volume silinmedi ve başka Docker projesine dokunulmadı.
+- `Ana tasarım etkisi: var`. Üç kanonik görüntü aynı son çalışma ağacından
+  1536×1024 viewport ve tam sayfa yakalamayla yeniden üretildi, açılıp görsel
+  olarak incelendi. SSH açık kare gerçek izole SSH bağlantısıdır. Fiziksel
+  switch, Safari/Firefox, production rollout ve kapasite kabulü yapılmadı;
+  ayrıntılı kanıt ve sınırlar [S03 teslim raporundadır](docs/uyumluluk-uygulama/S03_TESLIM_RAPORU.md).
 
 **Tarihsel kayıt notu:** Aşağıdaki önceki QA bölümlerinde marka, ortam değişkeni ve proje/dizin yazımları yeni NetStudio terminolojisine uyarlanmıştır; bunlar eski runtime kaynaklarının yeniden adlandırıldığı veya testlerin tekrar çalıştırıldığı anlamına gelmez. Bu ad geçişinin güncel test sonuçları ayrıca en sonda raporlanır.
 

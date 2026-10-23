@@ -57,6 +57,15 @@ class HostKey(StrictModel):
     replace_existing: bool = False
 
 
+def selectable_profile(profile_id: str):
+    profile = REGISTRY.profile(profile_id)
+    if profile is None:
+        fail("unknown_driver_profile", 422)
+    if profile.implementation_status != "implemented":
+        fail("driver_profile_not_selectable", 409)
+    return profile
+
+
 def create_app(store=None, key_file=None):
     @asynccontextmanager
     async def lifespan(app):
@@ -312,8 +321,7 @@ def create_app(store=None, key_file=None):
             fail("legacy_ssh_confirmation_required", 422)
         collector = value.collector
         if value.configured_profile_id:
-            if REGISTRY.profile(value.configured_profile_id) is None:
-                fail("unknown_driver_profile", 422)
+            selectable_profile(value.configured_profile_id)
             if "collector" in value.model_fields_set and not collector_matches_profile(
                 collector, value.configured_profile_id
             ):
@@ -329,6 +337,10 @@ def create_app(store=None, key_file=None):
             resolution = resolve_profile(
                 collector, value.management_mode, source="legacy_alias"
             )
+            if resolution.configured_profile_id:
+                profile = REGISTRY.profile(resolution.configured_profile_id)
+                if profile and profile.implementation_status != "implemented":
+                    fail("driver_profile_not_selectable", 409)
         device_id = str(uuid4())
         device = ManagedDevice(id=device_id, name=value.name, management_address=value.management_address, site=value.site,
             vendor=value.vendor, platform=collector, model=value.model, serial="", os_version="", support_status="generic_readonly",
@@ -378,8 +390,11 @@ def create_app(store=None, key_file=None):
                 prior_binding["configured_profile_id"] if prior_binding and collector == device.collector else None
             )
             if profile_id:
-                if REGISTRY.profile(profile_id) is None:
-                    fail("unknown_driver_profile", 422)
+                # Existing pre-S03 catalog-only bindings remain readable and
+                # maintainable, but a client cannot create a new selection by
+                # posting the disabled identifier directly.
+                if explicit_profile:
+                    selectable_profile(profile_id)
                 if not collector_matches_profile(collector, profile_id):
                     fail("driver_profile_collector_conflict", 409)
                 resolution = resolve_profile(profile_id, mode, source="manual")
@@ -387,6 +402,8 @@ def create_app(store=None, key_file=None):
                     fail("driver_profile_management_mode_conflict", 409)
             else:
                 resolution = resolve_profile(collector, mode, source="legacy_alias")
+                if collector != device.collector and resolution.configured_profile_id:
+                    selectable_profile(resolution.configured_profile_id)
             before = device.model_dump(mode="json", include={"collector", "ssh_profile", "allow_legacy_ssh", "ssh_algorithms"}) | {
                 "configured_profile_id": prior_binding["configured_profile_id"] if prior_binding else None,
                 "management_mode": prior_binding["management_mode"] if prior_binding else "unknown",
@@ -429,9 +446,7 @@ def create_app(store=None, key_file=None):
         auth, device = device_for(
             request, device_id, Permission.INVENTORY_MANAGE, True
         )
-        profile = REGISTRY.profile(value.configured_profile_id)
-        if profile is None:
-            fail("unknown_driver_profile", 422)
+        profile = selectable_profile(value.configured_profile_id)
         resolution = resolve_profile(
             profile.id, value.management_mode, source="manual"
         )

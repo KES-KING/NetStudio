@@ -66,6 +66,7 @@ const messages: Record<string, string> = {
   collector_platform_unsupported: "Cihazın işletim sistemi bu sürücüde desteklenmiyor. Sürücü seçimini ve destek matrisini kontrol edin.",
   driver_profile_collector_conflict: "Seçilen kanonik profil ile eski veri toplayıcı ayarı çelişiyor.",
   driver_profile_management_mode_conflict: "Seçilen yönetim modu bu cihaz profiliyle uyuşmuyor.",
+  driver_profile_not_selectable: "Bu profil henüz uygulanmadığı veya politika tarafından engellendiği için seçilemez.",
   unknown_driver_profile: "Seçilen cihaz profili katalogda bulunamadı.",
   snmp_read_failed: "SNMPv3 okuması başarısız. Cihaz erişimini ve salt okunur SNMP ayarlarını kontrol edin.",
   snmp_authentication_failed: "SNMPv3 kimlik doğrulaması başarısız; otomatik kanal duraklatıldı.",

@@ -54,8 +54,9 @@ durum, güvenli reason code, zaman, expiry ve digest saklar.
 - Eski create/update payload'ları kanonik alan göndermeden çalışır.
 - Kanonik profil ile açıkça çelişen legacy `collector`, `409
   driver_profile_collector_conflict` ile reddedilir.
-- Katalog-only profil envanterde seçilebilir fakat çalışan driver'a dönüşmez;
-  runtime collector güvenli biçimde `external` kalır.
+- S02 veri modeli katalog-only binding'i temsil edebilir. S03 seçim kapısı yeni
+  cihaz/profil değişiminde bu profili reddeder; S03 öncesi kayıtlar okunabilir ve
+  profil değiştirmeyen bağlantı bakımı için geriye uyumlu kalır.
 - Uyumluluk okuması cihazın site kapsamını kullanır. Profil değişimi
   `inventory.manage` ister.
 - `identity_evidence`, `validation_level` veya `acceptance` HTTP yazma alanı

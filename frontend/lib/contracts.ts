@@ -244,7 +244,7 @@ export type DriverAlias = {
 export type DriverIdentitySummary = {
   vendors: string[];
   os_families: string[];
-  management_modes: string[];
+  management_modes: DeviceManagementMode[];
   model_patterns: string[];
   version_constraints: string[];
 };
@@ -275,7 +275,15 @@ export type DeviceCapabilityObservation = {
   profile_revision: number;
   transport: "ssh" | "snmp" | "api";
   capability_id: string;
-  status: string;
+  status:
+    | "ok"
+    | "partial"
+    | "unknown"
+    | "unsupported"
+    | "permission_denied"
+    | "parse_error"
+    | "timeout"
+    | "error";
   reason_code: string | null;
   checked_at: string;
   expires_at: string;

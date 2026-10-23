@@ -3,7 +3,16 @@ import {
   canonicalDriverProfiles,
   findDriverProfile,
 } from "../lib/driver-catalog";
+import {
+  blankCredentialDraft,
+  catalogVendors,
+  implementedTransports,
+  needsExplicitProfileChoice,
+  profilesForVendor,
+  supportPresentation,
+} from "../lib/compatibility";
 import type {
+  DeviceCompatibility,
   DriverCatalog,
   DriverProfileCatalogEntry,
 } from "../lib/contracts";
@@ -56,6 +65,43 @@ describe("additive driver catalog v2 contract", () => {
     });
   });
 
+  it("derives vendor and enabled/disabled profile choices only from catalog v2", () => {
+    const planned = {
+      ...profile,
+      id: "huawei_vrp_v600",
+      label: "Huawei VRP V600",
+      implementation_status: "catalog_only",
+      verification_status: "not_tested",
+      release_status: "hidden",
+      available: false,
+      selectable: false,
+      runtime_selection_id: null,
+      aliases: [],
+    } satisfies DriverProfileCatalogEntry;
+    const catalog = {
+      ...legacy,
+      schema_version: 2,
+      profiles: [planned, profile],
+    } satisfies DriverCatalog;
+    expect(catalogVendors(catalog)).toEqual(["Huawei"]);
+    expect(
+      profilesForVendor(catalog, "Huawei").map((entry) => [
+        entry.id,
+        entry.selectable,
+      ]),
+    ).toEqual([
+      ["huawei_vrp_v200", true],
+      ["huawei_vrp_v600", false],
+    ]);
+    expect(implementedTransports({
+      ...profile,
+      transports: {
+        ssh: { state: "implemented", security: [], versions: [], decision_gate: null },
+        api: { state: "blocked", security: [], versions: [], decision_gate: "ADR" },
+      },
+    })).toEqual(["ssh"]);
+  });
+
   it("resolves canonical and compatibility alias entries", () => {
     const catalog = {
       ...legacy,
@@ -101,6 +147,42 @@ describe("additive driver catalog v2 contract", () => {
     expect(findDriverProfile(catalog, "fortinet")).toEqual({
       status: "manual_resolution_required",
       profile: null,
+    });
+    expect(needsExplicitProfileChoice("manual_resolution_required")).toBe(true);
+  });
+
+  it("does not label a supported profile when the exact acceptance scope misses", () => {
+    const supported = { ...profile, release_status: "supported" } satisfies DriverProfileCatalogEntry;
+    const compatibility = {
+      acceptance: {
+        highest_level: "fixture_verified",
+        matching_unexpired_records: 0,
+        production_accepted: false,
+      },
+    } as DeviceCompatibility;
+    expect(supportPresentation(supported, compatibility)).toEqual({
+      tone: "warning",
+      label: "Bu cihaz tuple’ı kabul kapsamı dışında",
+    });
+    expect(supportPresentation(supported, {
+      ...compatibility,
+      acceptance: {
+        highest_level: "physical_validated",
+        matching_unexpired_records: 1,
+        production_accepted: false,
+      },
+    })).toEqual({
+      tone: "success",
+      label: "Destekleniyor · fiziksel kapsam eşleşti",
+    });
+  });
+
+  it("never derives credential field values from the device read model", () => {
+    expect(blankCredentialDraft({ credential_configured: true })).toEqual({
+      username: "",
+      password: "",
+      private_key: "",
+      passphrase: "",
     });
   });
 });

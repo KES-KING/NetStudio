@@ -46,19 +46,27 @@ def test_old_and_canonical_device_payloads_coexist(system):
     assert "configured_profile_id" not in payload
     assert "management_mode" not in payload
 
+    explicit_external = client.post("/api/v1/devices", json={
+        "name": "External mismatch", "management_address": "127.0.0.3",
+        "site": "lab", "collector": "external",
+        "configured_profile_id": "cisco_ios",
+        "management_mode": "standalone",
+    })
+    assert explicit_external.status_code == 409
+    assert explicit_external.json()["detail"]["code"] == "driver_profile_collector_conflict"
+
     catalog_only_response = client.post("/api/v1/devices", json={
         "name": "Catalog only", "management_address": "127.0.0.2",
         "site": "lab", "configured_profile_id": "aruba_aoss",
     })
-    assert catalog_only_response.status_code == 201, catalog_only_response.text
-    catalog_only = catalog_only_response.json()
-    assert catalog_only["collector"] == "external"
-    assert catalog_only["configured_profile_id"] == "aruba_aoss"
-    catalog_compatibility = client.get(
-        f"/api/v1/devices/{catalog_only['id']}/compatibility"
-    ).json()
-    assert catalog_compatibility["implementation_status"] == "catalog_only"
-    assert catalog_compatibility["runtime_collection_ready"] is False
+    assert catalog_only_response.status_code == 409
+    assert catalog_only_response.json()["detail"]["code"] == "driver_profile_not_selectable"
+    legacy_catalog_only = client.post("/api/v1/devices", json={
+        "name": "Legacy bypass", "management_address": "127.0.0.2",
+        "site": "lab", "collector": "hp_procurve",
+    })
+    assert legacy_catalog_only.status_code == 409
+    assert legacy_catalog_only.json()["detail"]["code"] == "driver_profile_not_selectable"
 
     conflict = client.post("/api/v1/devices", json={
         "name": "Conflict", "management_address": "127.0.0.1", "site": "lab",
@@ -100,6 +108,23 @@ def test_compatibility_is_site_scoped_and_profile_mutation_is_strict(system):
     assert client.get(path + "/compatibility").status_code == 404
 
     login(client)
+    not_selectable = client.put(path + "/driver-profile", json={
+        "configured_profile_id": "fortinet_fortiswitchos"
+    })
+    assert not_selectable.status_code == 409
+    assert not_selectable.json()["detail"]["code"] == "driver_profile_not_selectable"
+    connection_bypass = client.put(path + "/connection-settings", json={
+        "collector": "fortinet",
+        "configured_profile_id": "fortinet_fortiswitchos",
+        "management_mode": "standalone",
+    })
+    assert connection_bypass.status_code == 409
+    assert connection_bypass.json()["detail"]["code"] == "driver_profile_not_selectable"
+    legacy_connection_bypass = client.put(path + "/connection-settings", json={
+        "collector": "hp_procurve",
+    })
+    assert legacy_connection_bypass.status_code == 409
+    assert legacy_connection_bypass.json()["detail"]["code"] == "driver_profile_not_selectable"
     for injected in (
         {"identity_evidence": {"vendor": "Fortinet"}},
         {"validation_level": "physical_validated"},
@@ -152,6 +177,21 @@ def test_profile_change_revisions_fences_jobs_revokes_ssh_and_audits(system, mon
     assert repeated.status_code == 200
     assert store.get_device(device["id"]).connection_revision == after.connection_revision
     assert revoked == [{"device_id": device["id"]}]
+
+
+def test_profile_change_from_external_selects_the_implemented_runtime(system):
+    client, store, _, _ = system
+    login(client)
+    device = add_device(client, collector="external")
+    response = client.put(f"/api/v1/devices/{device['id']}/driver-profile", json={
+        "configured_profile_id": "huawei_vrp_v200",
+        "management_mode": "standalone",
+    })
+    assert response.status_code == 200, response.text
+    updated = store.get_device(device["id"])
+    assert updated.collector == "huawei_vrp"
+    assert updated.configured_profile_id == "huawei_vrp_v200"
+    assert updated.connection_revision == device["connection_revision"] + 1
 
 
 def test_acceptance_reads_are_redacted_and_do_not_promote_catalog_release(

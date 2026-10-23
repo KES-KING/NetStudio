@@ -791,6 +791,30 @@ h3 {
 .device-detail-sections { display: grid; gap: 18px; margin-top: 18px; min-width: 0; }
 .device-detail-sections > * { min-width: 0; }
 .device-detail-sections .panel-heading p { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+.compatibility-body { display: grid; gap: 18px; padding: 20px; min-width: 0; }
+.compatibility-loading { padding: 20px; color: var(--muted); }
+.compatibility-summary-grid, .compatibility-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; min-width: 0; }
+.compatibility-summary-grid > dl, .compatibility-release, .compatibility-columns > section, .compatibility-conflicts, .compatibility-evidence, .compatibility-profile-editor { min-width: 0; margin: 0; padding: 16px; border: 1px solid var(--border); background: var(--surface); }
+.compatibility-summary-grid dl, .compatibility-evidence dl { margin: 0; }
+.compatibility-summary-grid dl > div, .compatibility-evidence dl > div { display: grid; grid-template-columns: minmax(130px, .75fr) minmax(0, 1.25fr); gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.compatibility-summary-grid dl > div:last-child, .compatibility-evidence dl > div:last-child { border-bottom: 0; }
+.compatibility-summary-grid dt, .compatibility-evidence dt { color: var(--muted); font-size: var(--ui-type-small); }
+.compatibility-summary-grid dd, .compatibility-evidence dd { margin: 0; text-align: right; }
+.compatibility-release h3, .compatibility-columns h3 { margin: 0 0 12px; font-size: 14px; }
+.compatibility-release p { margin: 8px 0; overflow-wrap: anywhere; }
+.compatibility-support { padding: 10px 12px; border-left: 3px solid var(--ui-control-line); background: var(--secondary); font-weight: 600; }
+.compatibility-support.is-warning { border-left-color: #b47400; }
+.compatibility-support.is-success { border-left-color: var(--green); }
+.compatibility-conflicts { border-left: 3px solid var(--red); }
+.compatibility-conflicts ul { margin-bottom: 0; }
+.compatibility-status-list { display: grid; gap: 8px; padding: 0; margin: 0; list-style: none; }
+.compatibility-status-list li { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(130px, 1fr); gap: 4px 14px; padding: 12px; border: 1px solid var(--border); min-width: 0; }
+.compatibility-status-list li > span { text-align: right; overflow-wrap: anywhere; }
+.compatibility-status-list small { grid-column: 1 / -1; color: var(--muted); overflow-wrap: anywhere; }
+.compatibility-evidence summary, .compatibility-profile-editor > summary { cursor: pointer; font-weight: 600; }
+.compatibility-evidence[open] summary, .compatibility-profile-editor[open] > summary { margin-bottom: 14px; }
+.compatibility-profile-editor form { display: grid; gap: 14px; }
+.profile-migration-confirmation { padding: 12px; border-left: 3px solid #b47400; background: #fff8e8; }
 .device-ip-panel .topology-controls { background: var(--ui-soft); padding: 12px; border-bottom: 1px solid var(--border); }
 .device-ip-panel .topology-controls input, .device-ip-panel .topology-controls select { width: 100%; margin-top: 4px; }
 .device-ip-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 270px; }
@@ -2135,7 +2159,9 @@ html[data-ssh-transition-engine="fallback"][data-ssh-transition="exit-fullscreen
 }
 .dialog {
   width: min(720px, calc(100% - 32px));
-  max-height: 90vh;
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--ui-control-line);
   padding: 0;
   color: var(--text);
@@ -2159,6 +2185,22 @@ html[data-ssh-transition-engine="fallback"][data-ssh-transition="exit-fullscreen
   grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
+.profile-flow { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.profile-selection-status { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; margin-top: 14px; padding: 12px; border-left: 3px solid var(--accent); background: var(--secondary); overflow-wrap: anywhere; }
+.profile-selection-status span { color: var(--muted); font-size: var(--ui-type-small); }
+.unavailable-profiles { margin-top: 14px; }
+.unavailable-profiles summary { cursor: pointer; font-size: var(--ui-type-small); }
+.unavailable-profiles ul { display: grid; gap: 6px; margin-bottom: 0; padding-left: 20px; font-size: var(--ui-type-small); }
+.transport-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.transport-option { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; min-width: 0; margin: 0; padding: 12px; border: 1px solid var(--ui-control-line); font-weight: 400; cursor: pointer; }
+.transport-option:has(input:checked) { border-left: 3px solid var(--accent); background: var(--secondary); }
+.transport-option.is-disabled { color: var(--muted); cursor: not-allowed; }
+.transport-option input { flex: 0 0 auto; width: 16px; min-height: 16px; margin-top: 2px; accent-color: var(--accent); }
+.transport-option span, .transport-option strong, .transport-option small { display: block; min-width: 0; overflow-wrap: anywhere; }
+.transport-option small { margin-top: 4px; color: var(--muted); }
+.source-mode-selector > label { max-width: 100%; }
+.ssh-policy-grid { grid-template-columns: minmax(0, 1fr); }
+.form-error-summary:focus { outline: 3px solid color-mix(in srgb, var(--red) 35%, transparent); outline-offset: 2px; }
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -2382,6 +2424,8 @@ tbody tr:last-child td {
   }
   .detail-lower,
   .profile-grid,
+  .compatibility-summary-grid,
+  .compatibility-columns,
   .device-workspace.with-terminal {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2493,6 +2537,7 @@ tbody tr:last-child td {
   .sidebar-backdrop {
     position: fixed;
     inset: 0;
+    width: 100vw;
     background: rgb(23 26 31 / 38%);
     z-index: 30;
   }
@@ -2690,6 +2735,14 @@ tbody tr:last-child td {
   .form-grid {
     grid-template-columns: 1fr;
   }
+  .profile-flow, .transport-options { grid-template-columns: minmax(0, 1fr); }
+  .compatibility-body { padding: 12px; }
+  .compatibility-summary-grid > dl, .compatibility-release, .compatibility-columns > section, .compatibility-conflicts, .compatibility-evidence, .compatibility-profile-editor { padding: 12px; }
+  .compatibility-summary-grid dl > div, .compatibility-evidence dl > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .compatibility-summary-grid dd, .compatibility-evidence dd { text-align: left; }
+  .compatibility-status-list li { grid-template-columns: minmax(0, 1fr); }
+  .compatibility-status-list li > span { text-align: left; }
+  .compatibility-status-list small { grid-column: auto; }
   .dialog-body {
     padding: 16px;
   }
@@ -2833,7 +2886,7 @@ tbody tr:last-child td {
   margin: 0;
   padding: 0;
   border: 0;
-  width: 100%;
+  width: 100vw;
   height: 100dvh;
   max-width: none;
   max-height: none;

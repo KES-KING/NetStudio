@@ -2,9 +2,14 @@
 
 ## Mevcut cihazı etkinleştirme
 
-1. Engineer veya superadmin olarak cihaz detayındaki **Bağlantı bilgileri** ekranını açın.
-2. **Veri kaynağı → Huawei VRP · salt okunur SSH** seçin.
-3. Modern SSH ile çalışıyorsa **Standart** profili koruyun. S5700S-28P-LI-AC / VRP 5.120 gibi yalnız eski algoritmalarla bağlanılan cihazda **Eski VRP** seçin ve risk onayını işaretleyin. **Bağlantı ayarlarını kaydet** düğmesine basın.
+1. Engineer veya superadmin olarak cihaz detayındaki **Uyumluluk** panelini açın.
+2. Üretici olarak **Huawei**, kanonik profil olarak **Huawei VRP V200** ve
+   cihazın gerçek yönetim modunu seçin. Legacy/belirsiz kayıt uyarısındaki açık
+   geçiş onayını tamamlayıp **Kanonik profili kaydet** düğmesine basın.
+3. **Bağlantı bilgileri** ekranını açın ve SSH kanalını seçin. Modern SSH ile
+   çalışıyorsa **Standart** profili koruyun. S5700S-28P-LI-AC / VRP 5.120 gibi
+   yalnız eski algoritmalarla bağlanılan cihazda **Eski VRP** seçin, cihaz bazlı
+   risk onayını işaretleyin ve **SSH güvenlik profilini kaydet** düğmesine basın.
 4. Kimlik bilgilerini tamamlayın; **Anahtarı bul ve bağlantıyı hazırla** ile host anahtarını alın. SHA256 fingerprint'i bağımsız güvenilir kaynaktan karşılaştırıp bir kez onaylayın. Sırlar geri okunmaz; boş sır alanı mevcut kaydı korur. Otomatik ilk güven yoktur.
 5. **Bağlantıyı test et**, ardından **Veri topla** kullanın. İş sonucu ve son gözlem zamanını kontrol edin. **SSH** aynı cihaz profilini kullanır.
 
@@ -12,7 +17,11 @@ Cihazın yetkili envanter kaydı kendi yönetim IP/SSH portunun onayıdır; ciha
 
 ## Uyumluluk profili
 
-Yeni cihaz formunda `auto` varsayılandır; eski kayıtların `standard` / `huawei_legacy` değerleri korunur. `huawei_legacy`, yalnız seçilen cihazın bağlantısına aşağıdakileri **ekler**, diğer cihazların varsayılanlarını değiştirmez:
+Yeni cihaz formunda üretici → **Huawei VRP V200** → yönetim modu akışı katalogdan
+gelir; SSH kanalı seçildiğinde güvenlik profili `auto` başlar. Eski kayıtların
+`standard` / `huawei_legacy` değerleri korunur. `huawei_legacy`, yalnız seçilen
+cihazın bağlantısına aşağıdakileri **ekler**, diğer cihazların varsayılanlarını
+değiştirmez:
 
 - KEX: `diffie-hellman-group-exchange-sha1`, `diffie-hellman-group1-sha1`.
 - Sunucu host imzası: `ssh-rsa`.

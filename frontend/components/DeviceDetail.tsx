@@ -25,6 +25,7 @@ import { SSHWorkspace, type SSHWorkspaceView } from "./SSHWorkspace";
 import { CollectionControls } from "./CollectionControls";
 import { DeviceFacts, DeviceInterfaces, DeviceSummary } from "./DeviceFacts";
 import { CommandHelper } from "./CommandHelper";
+import { CompatibilityPanel } from "./CompatibilityPanel";
 
 export default function DeviceDetail({ id }: { id: string }) {
   const session = useSession();
@@ -408,6 +409,7 @@ export default function DeviceDetail({ id }: { id: string }) {
         />
       )}
       <div className="device-detail-sections">
+        <CompatibilityPanel device={device} onChanged={() => mutate()} />
         <IPTopology row={row} port={selected} />
         <DeviceFacts row={row} />
         <DeviceInterfaces row={row} />

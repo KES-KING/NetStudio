@@ -7,10 +7,21 @@ import {
   type ReactNode,
 } from "react";
 import { api, errorMessage } from "../lib/api";
-import type { Device } from "../lib/contracts";
+import type {
+  Device,
+  DeviceManagementMode,
+  DriverCatalog,
+} from "../lib/contracts";
+import {
+  blankCredentialDraft,
+  implementedTransports,
+  profileForDevice,
+  type TransportKind,
+} from "../lib/compatibility";
 import { useSession } from "./ConsoleShell";
 import useSWR from "swr";
 import { HostDiscovery, SNMPSettings } from "./CollectionControls";
+import { CatalogProfileFields, TransportPicker } from "./DriverProfileFields";
 
 export function Dialog({
   title,
@@ -26,6 +37,9 @@ export function Dialog({
     const dialog = ref.current;
     const trigger = document.activeElement;
     dialog?.showModal();
+    dialog
+      ?.querySelector<HTMLElement>("[data-dialog-initial-focus]")
+      ?.focus({ preventScroll: true });
     return () => {
       dialog?.close();
       // React can detach the dialog before the passive cleanup runs, so the
@@ -53,8 +67,9 @@ export function Dialog({
   );
 }
 
-function CredentialFields({ optional = false }: { optional?: boolean }) {
+function CredentialFields({ optional = false, device }: { optional?: boolean; device?: Device }) {
   const [method, setMethod] = useState("password");
+  const blank = blankCredentialDraft(device);
   return (
     <fieldset>
       <legend>SSH kimlik bilgileri{optional ? " · isteğe bağlı" : ""}</legend>
@@ -63,6 +78,7 @@ function CredentialFields({ optional = false }: { optional?: boolean }) {
           SSH kullanıcı adı
           <input
             name="ssh_username"
+            defaultValue={blank.username}
             autoComplete="off"
             maxLength={128}
             required={!optional}
@@ -85,6 +101,7 @@ function CredentialFields({ optional = false }: { optional?: boolean }) {
           Cihaz parolası
           <input
             name="password"
+            defaultValue={blank.password}
             type="password"
             autoComplete="new-password"
             maxLength={32768}
@@ -96,6 +113,7 @@ function CredentialFields({ optional = false }: { optional?: boolean }) {
             Özel anahtar
             <textarea
               name="private_key"
+              defaultValue={blank.private_key}
               rows={5}
               autoComplete="off"
               spellCheck={false}
@@ -105,7 +123,8 @@ function CredentialFields({ optional = false }: { optional?: boolean }) {
           <label>
             Anahtar parolası (varsa)
             <input
-              name="passphrase"
+            name="passphrase"
+            defaultValue={blank.passphrase}
               type="password"
               autoComplete="new-password"
             />
@@ -131,8 +150,7 @@ function credentials(data: FormData) {
 
 function connectionSettings(data: FormData) {
   return {
-    collector: data.get("collector"),
-    ssh_profile: data.get("ssh_profile"),
+    ssh_profile: data.get("ssh_profile") ?? "standard",
     legacy_ssh_confirmed: data.get("legacy_ssh_confirmed") === "on",
     allow_legacy_ssh: data.get("allow_legacy_ssh") === "on" || data.get("legacy_ssh_confirmed") === "on",
     ssh_algorithms: Object.fromEntries(["kex_algs", "server_host_key_algs", "signature_algs", "encryption_algs", "mac_algs"]
@@ -145,21 +163,12 @@ function ConnectionFields({ device }: { device?: Device }) {
   const { data: catalog } = useSWR<{ algorithms: Record<string, { id: string; legacy: boolean }[]> }>("/api/v1/ssh-profiles", api);
   return (
     <fieldset>
-      <legend>Veri toplama ve SSH uyumluluğu</legend>
-      <div className="form-grid">
-        <label>
-          Veri kaynağı
-          <select name="collector" aria-label="Veri kaynağı" defaultValue={device?.collector ?? "auto"}>
-            <option value="auto">Otomatik sürücü seçimi</option>
-            <option value="external">Harici toplayıcı / envanter aktarımı</option>
-            <option value="linux_ssh">Linux · salt okunur SSH</option>
-            <option value="huawei_vrp">Huawei VRP · salt okunur SSH</option>
-            <option value="cisco_ios">Cisco IOS · Catalyst 2960-X salt okunur SSH</option>
-            <option value="cisco_iosxe">Cisco IOS-XE · deneysel</option>
-            <option value="cisco_nxos">Cisco NX-OS · JSON · deneysel</option>
-            <option value="juniper_junos">Juniper Junos · XML · deneysel</option>
-          </select>
-        </label>
+      <legend>SSH güvenlik profili</legend>
+      <p className="field-help">
+        Kanonik cihaz profili Uyumluluk panelinden yönetilir. Buradaki seçim
+        yalnız SSH algoritma politikasını değiştirir.
+      </p>
+      <div className="form-grid ssh-policy-grid">
         <label>
           SSH uyumluluk profili
           <select name="ssh_profile" aria-label="SSH uyumluluk profili" value={profile} onChange={(event) => setProfile(event.target.value)}>
@@ -213,6 +222,41 @@ export function AddDevice({
   const session = useSession();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  const { data: driverCatalog, error: catalogError } = useSWR<DriverCatalog>(
+    "/api/v1/driver-catalog",
+    api,
+  );
+  const [sourceMode, setSourceMode] = useState("profile");
+  const [vendor, setVendor] = useState("");
+  const [profileId, setProfileId] = useState("");
+  const [managementMode, setManagementMode] = useState<DeviceManagementMode>("unknown");
+  const [credentialTransport, setCredentialTransport] = useState<TransportKind | "">("");
+  const selectedProfile = driverCatalog?.profiles?.find(
+    (profile) => profile.id === profileId,
+  ) ?? null;
+
+  function selectProfile(id: string) {
+    setProfileId(id);
+    const profile = driverCatalog?.profiles?.find((candidate) => candidate.id === id);
+    setCredentialTransport(implementedTransports(profile)[0] ?? "");
+  }
+
+  function changeSourceMode(mode: string) {
+    setSourceMode(mode);
+    setError(null);
+    if (mode === "profile") {
+      setCredentialTransport(implementedTransports(selectedProfile)[0] ?? "");
+      return;
+    }
+    const adapterId = mode.startsWith("adapter:") ? mode.slice(8) : null;
+    const adapter = driverCatalog?.infrastructure_adapters?.find(
+      (candidate) => candidate.id === adapterId,
+    );
+    const adapterSSH = adapter?.transports.ssh?.state === "implemented";
+    setCredentialTransport(mode === "auto" || adapterSSH ? "ssh" : "");
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -220,16 +264,27 @@ export function AddDevice({
     setBusy(true);
     setError(null);
     const creds = credentials(data);
+    const profileMode = sourceMode === "profile";
+    const collector = sourceMode.startsWith("adapter:")
+      ? sourceMode.slice(8)
+      : sourceMode;
     const payload = {
       name: data.get("name"),
       management_address: data.get("management_address"),
       site: data.get("site"),
       device_type: data.get("device_type"),
-      vendor: data.get("vendor"),
+      vendor: profileMode ? vendor : data.get("vendor"),
       model: data.get("model"),
       ssh_port: Number(data.get("ssh_port")),
       ...connectionSettings(data),
-      credentials: creds.username ? creds : null,
+      ...(profileMode
+        ? {
+            configured_profile_id: profileId,
+            management_mode: managementMode,
+          }
+        : { collector, management_mode: "unknown" }),
+      credentials:
+        credentialTransport === "ssh" && creds.username ? creds : null,
     };
     try {
       const device = await api<Device>("/api/v1/devices", {
@@ -240,17 +295,32 @@ export function AddDevice({
       onSaved(device);
     } catch (e) {
       setError(errorMessage(e));
+      requestAnimationFrame(() => errorRef.current?.focus());
     } finally {
       setBusy(false);
     }
   }
   return (
     <Dialog title="Cihaz Ekle" onClose={onClose}>
-      <form onSubmit={submit} className="dialog-body">
+      <form
+        onSubmit={submit}
+        onInvalid={(event) => {
+          event.preventDefault();
+          setError("Zorunlu alanları ve seçilebilir profil adımlarını tamamlayın.");
+          requestAnimationFrame(() => errorRef.current?.focus());
+        }}
+        className="dialog-body device-create-form"
+      >
         <div className="form-grid">
           <label>
             Cihaz adı
-            <input name="name" required maxLength={160} autoFocus />
+            <input
+              name="name"
+              required
+              maxLength={160}
+              autoFocus
+              data-dialog-initial-focus
+            />
           </label>
           <label>
             Yönetim IP adresi
@@ -283,10 +353,6 @@ export function AddDevice({
             </select>
           </label>
           <label>
-            Üretici (biliniyorsa)
-            <input name="vendor" maxLength={120} />
-          </label>
-          <label>
             Model (biliniyorsa)
             <input name="model" maxLength={160} />
           </label>
@@ -302,10 +368,76 @@ export function AddDevice({
             />
           </label>
         </div>
-        <ConnectionFields />
-        <CredentialFields optional />
+        <fieldset className="source-mode-selector">
+          <legend>Profil kaynağı</legend>
+          <label>
+            Cihazı nasıl tanımlayacaksınız?
+            <select
+              aria-label="Profil kaynağı"
+              value={sourceMode}
+              onChange={(event) => changeSourceMode(event.target.value)}
+            >
+              <option value="profile">Üretici ve OS profilini seç</option>
+              <option value="auto">SSH üzerinden otomatik kimlik algılama</option>
+              <option value="external">Harici toplayıcı / yalnız envanter</option>
+              {driverCatalog?.infrastructure_adapters?.filter((adapter) => adapter.selectable).map((adapter) => (
+                <option key={adapter.id} value={`adapter:${adapter.id}`}>{adapter.label} · altyapı adaptörü</option>
+              ))}
+            </select>
+          </label>
+        </fieldset>
+        {sourceMode === "profile" ? (
+          <>
+            {catalogError && <p className="notice error" role="alert">{errorMessage(catalogError)}</p>}
+            <CatalogProfileFields
+              catalog={driverCatalog}
+              vendor={vendor}
+              profileId={profileId}
+              managementMode={managementMode}
+              onVendorChange={setVendor}
+              onProfileChange={selectProfile}
+              onManagementModeChange={setManagementMode}
+            />
+            <TransportPicker
+              profile={selectedProfile}
+              value={credentialTransport}
+              onChange={setCredentialTransport}
+            />
+          </>
+        ) : (
+          <fieldset>
+            <legend>Kimlik bilgisi</legend>
+            <label>
+              Üretici (biliniyorsa)
+              <input name="vendor" maxLength={120} />
+            </label>
+            <p className="field-help">
+              {sourceMode === "external"
+                ? "Harici mod cihaz bağlantısı kurmaz; SSH, SNMP veya API sırrı istenmez."
+                : "Kimlik, ilk başarılı ve güvenli toplama sonrasında kanonik profile çözümlenir."}
+            </p>
+          </fieldset>
+        )}
+        {credentialTransport === "ssh" && (
+          <>
+            <ConnectionFields />
+            <CredentialFields optional />
+          </>
+        )}
+        {credentialTransport === "snmp" && (
+          <p className="notice" role="status">
+            Cihaz kaydedildikten sonra Bağlantı bilgileri ekranından SNMPv3
+            authPriv hesabını ekleyin. Sır alanları API cevabından doldurulmaz.
+          </p>
+        )}
+        {credentialTransport === "api" && (
+          <p className="notice warning" role="status">
+            Bu sürümde browser üzerinden vendor API sırrı kaydı açılmamıştır.
+          </p>
+        )}
         {error && (
-          <p role="alert" className="notice error">
+          <p ref={errorRef} role="alert" tabIndex={-1} className="notice error form-error-summary">
+            Form kaydedilemedi. Aşağıdaki hatayı düzeltip yeniden deneyin:<br />
             {error}
           </p>
         )}
@@ -335,6 +467,20 @@ export function ConnectionSettings({
     [error, setError] = useState<string | null>(null),
     [message, setMessage] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const { data: driverCatalog } = useSWR<DriverCatalog>(
+    "/api/v1/driver-catalog",
+    api,
+  );
+  const currentProfile = profileForDevice(driverCatalog, device);
+  const availableTransports = currentProfile
+    ? implementedTransports(currentProfile)
+    : device.collector === "external"
+      ? []
+      : (["ssh"] as TransportKind[]);
+  const [requestedTransport, setRequestedTransport] = useState<TransportKind>("ssh");
+  const selectedTransport = availableTransports.includes(requestedTransport)
+    ? requestedTransport
+    : availableTransports[0] ?? "";
   async function saveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -345,7 +491,7 @@ export function ConnectionSettings({
       await api(`/api/v1/devices/${device.id}/connection-settings`, {
         method: "PUT", body: JSON.stringify(connectionSettings(data)),
       });
-      setMessage("Veri kaynağı ve SSH profili kaydedildi. Değişiklik varsa açık SSH oturumları sonlandırıldı.");
+      setMessage("SSH güvenlik profili kaydedildi. Değişiklik varsa açık SSH oturumları sonlandırıldı.");
       onSaved();
     } catch (e) {
       setError(errorMessage(e));
@@ -422,51 +568,64 @@ export function ConnectionSettings({
   return (
     <Dialog title={`${device.name} · Bağlantı bilgileri`} onClose={onClose}>
       <div className="dialog-body">
-        <form onSubmit={saveSettings}>
-          <ConnectionFields key={`${device.id}:${device.collector}:${device.ssh_profile}`} device={device} />
-          <div className="form-actions">
-            <button className="primary" disabled={busy}>Bağlantı ayarlarını kaydet</button>
-          </div>
-        </form>
-        <p className="notice">
-          {device.credential_configured
-            ? "Kimlik bilgisi tanımlı. Sır alanını boş bırakmak kayıtlı bilgileri korur."
-            : "Kimlik bilgisi tanımlı değil."}
-        </p>
-        <form onSubmit={saveCredentials}>
-          <CredentialFields />
-          <div className="form-actions">
-            <button className="primary" disabled={busy}>
-              Kimlik bilgilerini kaydet
-            </button>
-          </div>
-        </form>
-        {device.credential_configured && (
-          <div className="credential-delete">
-            {confirmDelete ? (
-              <>
-                <p>
-                  Kimlik bilgileri silinecek ve açık SSH oturumları kapanacak.
-                </p>
-                <button
-                  className="danger"
-                  disabled={busy}
-                  onClick={removeCredentials}
-                >
-                  Silme işlemini onayla
-                </button>
-                <button onClick={() => setConfirmDelete(false)}>Vazgeç</button>
-              </>
-            ) : (
-              <button onClick={() => setConfirmDelete(true)}>
-                Kayıtlı kimlik bilgilerini sil
-              </button>
-            )}
-          </div>
+        {currentProfile ? (
+          <TransportPicker
+            profile={currentProfile}
+            value={selectedTransport}
+            onChange={setRequestedTransport}
+          />
+        ) : (
+          <p className={`notice ${device.collector === "external" ? "" : "warning"}`}>
+            {device.collector === "external"
+              ? "Harici toplayıcı modunda cihaz sırrı istenmez. Önce Uyumluluk panelinden uygulanmış bir profil seçebilirsiniz."
+              : "Cihaz henüz kanonik profile çözülmedi. Yalnız mevcut legacy SSH bağlantı yolu gösteriliyor."}
+          </p>
         )}
-        <HostDiscovery device={device} onSaved={onSaved} />
-        <SNMPSettings device={device} onSaved={onSaved} />
-        <details><summary>Gelişmiş · host anahtarını elle gir</summary><form onSubmit={saveKey}>
+        {selectedTransport === "ssh" && <>
+          <form onSubmit={saveSettings}>
+            <ConnectionFields key={`${device.id}:${device.ssh_profile}`} device={device} />
+            <div className="form-actions">
+              <button className="primary" disabled={busy}>SSH güvenlik profilini kaydet</button>
+            </div>
+          </form>
+          <p className="notice">
+            {device.credential_configured
+              ? "SSH kimlik bilgisi tanımlı. Sır alanları güvenlik nedeniyle boş açılır; boş gönderim kayıtlı bilgileri korur."
+              : "SSH kimlik bilgisi tanımlı değil."}
+          </p>
+          <form onSubmit={saveCredentials}>
+            <CredentialFields device={device} />
+            <div className="form-actions">
+              <button className="primary" disabled={busy}>
+                SSH kimlik bilgilerini kaydet
+              </button>
+            </div>
+          </form>
+          {device.credential_configured && (
+            <div className="credential-delete">
+              {confirmDelete ? (
+                <>
+                  <p>
+                    SSH kimlik bilgileri silinecek ve açık oturumlar kapanacak.
+                  </p>
+                  <button
+                    className="danger"
+                    disabled={busy}
+                    onClick={removeCredentials}
+                  >
+                    Silme işlemini onayla
+                  </button>
+                  <button onClick={() => setConfirmDelete(false)}>Vazgeç</button>
+                </>
+              ) : (
+                <button onClick={() => setConfirmDelete(true)}>
+                  Kayıtlı SSH kimlik bilgilerini sil
+                </button>
+              )}
+            </div>
+          )}
+          <HostDiscovery device={device} onSaved={onSaved} />
+          <details><summary>Gelişmiş · host anahtarını elle gir</summary><form onSubmit={saveKey}>
           <fieldset>
             <legend>SSH host anahtarı</legend>
             <p className="field-help">
@@ -509,7 +668,17 @@ export function ConnectionSettings({
               <button disabled={busy}>Host anahtarını kaydet</button>
             </div>
           </fieldset>
-        </form></details>
+          </form></details>
+        </>}
+        {selectedTransport === "snmp" && (
+          <SNMPSettings device={device} onSaved={onSaved} />
+        )}
+        {selectedTransport === "api" && (
+          <p className="notice warning">
+            Bu profil için browser tabanlı API credential kaydı henüz uygulanmadı;
+            token veya parola alanı gösterilmiyor.
+          </p>
+        )}
         {message && (
           <p role="status" className="notice success">
             {message}

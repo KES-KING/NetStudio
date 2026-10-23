@@ -8,9 +8,13 @@ Bir markanın katalogda yer alması bütün modellerinin desteklendiği anlamın
 
 ## Kullanım
 
-1. Cihazı kaydedin. Yeni cihaz formunda otomatik sürücü ve otomatik SSH seçilidir;
-   eski algoritma izni kapalıdır. Eski API istemcilerinin açık olmayan tercihleri
-   için mevcut `external` / `standard` varsayılanı korunmuştur.
+1. Yeni cihaz formunda kaynak modunu seçin. Kanonik sürücü kullanacaksanız canlı
+   katalogdan sırasıyla üretici, işletim sistemi profili ve yönetim modunu seçin;
+   planlı/engelli profiller açıklamasıyla görünür fakat seçilemez. Profilin
+   uyguladığı SSH/SNMP/API kanallarından birini seçin. Otomatik çözüm açık kanıt
+   ister; harici toplayıcı ve altyapı adaptörü ayrı modlardır. Eski API
+   istemcilerinin açık olmayan tercihleri için `external` / `standard` okuma
+   uyumluluğu korunmuştur.
 2. Bağlantı bilgilerinde **Anahtarı bul ve bağlantıyı hazırla** eylemini kullanın.
    Parola gönderilmeden public host anahtarı ve SHA256 fingerprint alınır.
    Fingerprint'i konsol/kurum kaydı üzerinden karşılaştırıp bir kez onaylayın.
@@ -87,6 +91,21 @@ collector/parser sonucu resolved profili günceller. Capability tablosu ham ciha
 çıktısı veya hata metni değil; typed durum/reason, zaman, expiry ve SHA-256 digest
 saklar. Acceptance kaydı yoksa katalog veya cihaz görünümü destek seviyesini
 kendiliğinden yükseltmez.
+
+### Katalog tabanlı arayüz
+
+Cihaz detayındaki **Uyumluluk** paneli yapılandırılan/çözümlenen profili,
+management mode'u, transport ve capability durumlarını, redakte kimlik kanıtını
+ve acceptance kapsamını birlikte gösterir. `partial`, `unsupported`, yetki,
+parse, timeout, genel hata ve stale kanıt birbirinden ayrılır. Viewer bu alanı
+salt okunur görür; `inventory.manage` yetkili kullanıcı legacy/belirsiz kaydı
+açık onayla kanonik profile taşıyabilir.
+
+Katalog release değeri `supported` olsa bile cihazın tam tuple'ına uyan,
+süresi geçmemiş fiziksel kabul kaydı olmadan arayüz cihazı **Destekleniyor** diye
+etiketlemez. Fixture veya izole SSH/SNMP laboratuvarı production kabulü değildir.
+Backend, istemci manipülasyonuna karşı `selectable=false` profili bütün cihaz
+oluşturma/profil değiştirme yollarında reddeder.
 
 ## Veri doğruluğu
 

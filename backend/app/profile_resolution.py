@@ -290,13 +290,10 @@ def runtime_collector_for_profile(profile_id: str) -> str:
 
 
 def collector_matches_profile(collector: str, profile_id: str) -> bool:
-    if collector == "external":
-        return True
-    if collector == "auto":
-        return False
-    if collector == "linux_ssh":
-        return False
-    return canonical_profile_for_collector(collector) == profile_id
+    # A canonical selection is operational only when its actual runtime
+    # collector is selected. Catalog-only profiles intentionally resolve to
+    # ``external``; implemented profiles must never remain there silently.
+    return collector == runtime_collector_for_profile(profile_id)
 
 
 def binding_values(

@@ -124,7 +124,10 @@ test("mobile drawer contains focus, closes by escape, backdrop and navigation, a
     await expect(page.locator("main")).not.toHaveAttribute("inert");
     await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
     await menu.click();
-    await page.locator(".sidebar-backdrop").click({ position: { x: width - 12, y: 40 } });
+    const backdrop = page.locator(".sidebar-backdrop");
+    const backdropBox = await backdrop.boundingBox();
+    const drawerBox = await drawer.boundingBox();
+    await backdrop.click({ position: { x: (backdropBox!.width + drawerBox!.width) / 2, y: 40 } });
     await expect(page.locator(".sidebar")).toBeHidden();
     await menu.click();
     await drawer.getByRole("link", { name: "İş geçmişi", exact: true }).click();
