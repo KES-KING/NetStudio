@@ -6,6 +6,8 @@
 **NetStudio kaynak deposu:** https://github.com/KES-KING/NetStudio  
 **Mevcut ürün sözleşmesi:** https://github.com/KES-KING/NetStudio/blob/main/docs/collection-automation.md
 
+**Uygulama paketi:** [Implementasyon raporu, sprint planı ve kabul izlenebilirliği](uyumluluk-uygulama/README.md)
+
 > **Not:** Bu tablo üretici yazılımının SSH/SNMP kabiliyetini gösterir; NetStudio'da o platformun tüm modellerinin desteklendiğini iddia etmez. Sürüm, lisans, model, yönetim modu ve yapılandırmaya göre özellikler değişebilir. SSH/SNMP genellikle güvenlik nedeniyle cihaz üzerinde ayrıca etkinleştirilmelidir. Bir marka tek bir işletim sistemi kullanmaz.
 
 ## Durum anahtarı

@@ -163,6 +163,11 @@ gerekebilir; bu işlerde sonradan kullanıcı yetkisi uydurulmaz.
 
 Bu teslim bütün planın tamamlandığı anlamına gelmez:
 
+Üretici/işletim sistemi kapsamını genişletmek için kaynak uyumluluk matrisiyle
+eşleştirilmiş [implementasyon raporu, sprintler ve kabul kapıları](uyumluluk-uygulama/README.md)
+ayrı uygulama paketinde izlenir. Oradaki hedefler bu bölümdeki çalışan ürün
+sözleşmesini kendiliğinden genişletmez.
+
 | Plan adımı | Durum |
 | --- | --- |
 | SFP/kısmi tablo düzeltmeleri, atomik grup son-doğru kaydı | Uygulandı; alan bazlı daha ince birleştirme açık |

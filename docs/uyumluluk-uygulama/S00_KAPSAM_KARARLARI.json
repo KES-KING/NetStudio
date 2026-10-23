@@ -1,0 +1,444 @@
+{
+  "schema_version": 1,
+  "document_type": "s00_governance_scope_not_runtime_manifest",
+  "baseline": {
+    "source_revision": "fa1a40f3476e2207599d2b62415d9fc25b423d02",
+    "captured_at": "2026-10-23",
+    "driver_catalog_version": "2026.10.20.3",
+    "ntc_template_version": "9.3.0",
+    "migration_head": "0009_probe_auto_enroll",
+    "runtime_catalog_entries": 16,
+    "runtime_available_entries": 6,
+    "runtime_planned_entries": 10,
+    "collector_literal_values": 18,
+    "frontend_selectable_values": 8
+  },
+  "non_profile_matrix_tokens": [
+    "iproute2",
+    "snmpd",
+    "vendor"
+  ],
+  "taxonomies": {
+    "implementation": [
+      "catalog_only",
+      "implemented",
+      "blocked",
+      "unsupported_by_protocol",
+      "unsupported_by_policy",
+      "retired"
+    ],
+    "verification": [
+      "not_tested",
+      "unit_verified",
+      "fixture_verified",
+      "transport_lab_validated",
+      "physical_validated"
+    ],
+    "release": [
+      "hidden",
+      "experimental",
+      "candidate",
+      "supported"
+    ]
+  },
+  "release_invariants": {
+    "supported_requires": [
+      "implemented",
+      "physical_validated",
+      "matching_unexpired_acceptance_record"
+    ],
+    "production_accepted_default": false,
+    "fixture_or_lab_may_not_assert_physical": true
+  },
+  "profiles": [
+    {
+      "id": "cisco_ios",
+      "wave": "P0",
+      "current_runtime_id": "cisco_ios",
+      "implementation_status": "implemented",
+      "verification_status": "fixture_verified",
+      "release_status": "experimental"
+    },
+    {
+      "id": "cisco_iosxe",
+      "wave": "P0",
+      "current_runtime_id": "cisco_iosxe",
+      "implementation_status": "implemented",
+      "verification_status": "not_tested",
+      "release_status": "experimental"
+    },
+    {
+      "id": "cisco_nxos",
+      "wave": "P0",
+      "current_runtime_id": "cisco_nxos",
+      "implementation_status": "implemented",
+      "verification_status": "unit_verified",
+      "release_status": "experimental"
+    },
+    {
+      "id": "huawei_vrp_v200",
+      "wave": "P0",
+      "current_runtime_id": "huawei_vrp",
+      "implementation_status": "implemented",
+      "verification_status": "fixture_verified",
+      "release_status": "experimental"
+    },
+    {
+      "id": "juniper_junos",
+      "wave": "P0",
+      "current_runtime_id": "juniper_junos",
+      "implementation_status": "implemented",
+      "verification_status": "unit_verified",
+      "release_status": "experimental"
+    },
+    {
+      "id": "aruba_aoscx",
+      "wave": "P1",
+      "current_runtime_id": "aruba_aoscx",
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "aruba_aoss",
+      "wave": "P1",
+      "current_runtime_id": "hp_procurve",
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "arista_eos",
+      "wave": "P1",
+      "current_runtime_id": "arista_eos",
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "hpe_comware",
+      "wave": "P1",
+      "current_runtime_id": "hp_comware",
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "h3c_comware7",
+      "wave": "P1",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "mikrotik_routeros",
+      "wave": "P1",
+      "current_runtime_id": "mikrotik_routeros",
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "dell_os10",
+      "wave": "P2",
+      "current_runtime_id": "dell_os10",
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "dell_os9",
+      "wave": "P2",
+      "current_runtime_id": "dell_force10",
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "dell_os6",
+      "wave": "P2",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "extreme_exos",
+      "wave": "P2",
+      "current_runtime_id": "extreme_exos",
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "extreme_fabric_engine",
+      "wave": "P2",
+      "current_runtime_id": "extreme_vsp",
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "extreme_slxos",
+      "wave": "P2",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "fortinet_fortiswitchos",
+      "wave": "P2",
+      "current_runtime_id": "fortinet",
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "fortinet_fortiswitch_fortilink",
+      "wave": "P2",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "tplink_omada_managed",
+      "wave": "P2",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "tplink_omada_pro",
+      "wave": "P2",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "ubiquiti_unifi_switch",
+      "wave": "P2",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "ubiquiti_unifi_no_snmp",
+      "wave": "P2",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "ubiquiti_edgeswitch",
+      "wave": "P2",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "h3c_comware5",
+      "wave": "P3",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "h3c_comware9",
+      "wave": "P3",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "huawei_vrp_v600",
+      "wave": "P3",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "juniper_junos_evolved",
+      "wave": "P3",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "dell_sonic",
+      "wave": "P3",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "nvidia_cumulus_linux",
+      "wave": "P3",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "nvidia_onyx",
+      "wave": "P3",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "sonic_nos",
+      "wave": "P3",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "cisco_business",
+      "wave": "P3",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "mikrotik_swos",
+      "wave": "P4",
+      "current_runtime_id": null,
+      "implementation_status": "blocked",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "cisco_meraki_ms",
+      "wave": "P4",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "aruba_instant_on",
+      "wave": "P4",
+      "current_runtime_id": null,
+      "implementation_status": "catalog_only",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "tplink_easy_smart",
+      "wave": "P4",
+      "current_runtime_id": null,
+      "implementation_status": "unsupported_by_protocol",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    },
+    {
+      "id": "unmanaged_switch",
+      "wave": "P4",
+      "current_runtime_id": null,
+      "implementation_status": "unsupported_by_protocol",
+      "verification_status": "not_tested",
+      "release_status": "hidden"
+    }
+  ],
+  "infrastructure_adapters": [
+    {
+      "id": "linux_ssh",
+      "role": "generic_read_only_infrastructure_adapter",
+      "current_runtime_id": "linux_ssh",
+      "verification_status": "transport_lab_validated",
+      "not_equivalent_to": [
+        "dell_sonic",
+        "nvidia_cumulus_linux",
+        "sonic_nos"
+      ]
+    }
+  ],
+  "selection_modes": [
+    "auto",
+    "external"
+  ],
+  "legacy_id_decisions": [
+    {
+      "legacy_id": "huawei_vrp",
+      "target_profile_id": "huawei_vrp_v200",
+      "resolution": "conditional_identity_match",
+      "automatic": false
+    },
+    {
+      "legacy_id": "hp_procurve",
+      "target_profile_id": "aruba_aoss",
+      "resolution": "read_compatibility_alias_with_identity_revalidation",
+      "automatic": true
+    },
+    {
+      "legacy_id": "hp_comware",
+      "target_profile_id": "hpe_comware",
+      "resolution": "read_compatibility_alias_with_identity_revalidation",
+      "automatic": true
+    },
+    {
+      "legacy_id": "dell_force10",
+      "target_profile_id": "dell_os9",
+      "resolution": "conditional_identity_match",
+      "automatic": false
+    },
+    {
+      "legacy_id": "extreme_vsp",
+      "target_profile_id": "extreme_fabric_engine",
+      "resolution": "conditional_identity_match",
+      "automatic": false
+    },
+    {
+      "legacy_id": "fortinet",
+      "target_profile_id": null,
+      "resolution": "manual_resolution_required",
+      "automatic": false
+    }
+  ],
+  "accepted_adrs": [
+    "ADR-COMPAT-001",
+    "ADR-COMPAT-002",
+    "ADR-COMPAT-005",
+    "ADR-COMPAT-006"
+  ],
+  "pending_decision_gates": [
+    {
+      "id": "ADR-COMPAT-003",
+      "topic": "SNMPv2c opt-in policy",
+      "owner_roles": [
+        "security_owner",
+        "backend_transport_owner"
+      ],
+      "deadline_milestone": "before_S10_definition_of_ready",
+      "blocks": "S10",
+      "does_not_block": "S01"
+    },
+    {
+      "id": "ADR-COMPAT-004",
+      "topic": "controller and cloud API target and TLS trust model",
+      "owner_roles": [
+        "security_owner",
+        "backend_api_adapter_owner"
+      ],
+      "deadline_milestone": "before_S08_definition_of_ready",
+      "blocks": "S08",
+      "does_not_block": "S01"
+    }
+  ]
+}
