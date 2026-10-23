@@ -1,133 +1,195 @@
-"""SNMPv3 authPriv only, registered IPs, bounded IF-MIB numeric OIDs."""
-import asyncio
-from uuid import uuid4
+"""Standard-MIB SNMPv3 authPriv collection orchestration."""
+from __future__ import annotations
 
-from pysnmp.hlapi.v3arch import asyncio as snmp
-from pysnmp.proto.rfc1905 import EndOfMibView, NoSuchInstance, NoSuchObject
 import sqlalchemy as sa
 
 from .collection import ReadResult, metadata
-from .contracts import InterfaceSample
-from . import cisco, huawei
-from .ssh import ConnectionPolicyError, target_allowed
-
-SYS_UPTIME = "1.3.6.1.2.1.1.3.0"
-IF = "1.3.6.1.2.1.2.2.1."
-IFX = "1.3.6.1.2.1.31.1.1.1."
-COLUMNS = {
-    "name": IFX + "1", "admin_up": IF + "7", "oper_up": IF + "8",
-    "capacity": IFX + "15", "in_octets": IFX + "6", "out_octets": IFX + "10",
-    "in32": IF + "10", "out32": IF + "16", "errors": IF + "14",
-    "discards": IF + "13", "tx_errors": IF + "20", "tx_discards": IF + "19",
-    "discontinuity": IFX + "19",
-}
+from .contracts import EndpointCollection, Health
+from .driver_catalog import GROUPS
+from .snmp_mappers import (
+    BRIDGE_COLUMNS, ENTITY_COLUMNS, IF_COLUMNS, LLDP_COLUMNS, QBRIDGE_COLUMNS,
+    SENSOR_COLUMNS, SYSTEM_SCALARS, SYS_UPTIME, parse_bridge_mib,
+    parse_entity_mib, parse_if_mib, parse_lldp_mib, parse_system_mib,
+)
+from .snmp_mappers.common import column_map
+from .snmp_transport import BoundedSNMPReader, PysnmpV3Session, SNMPLimits
+from .ssh import ConnectionPolicyError
+from .transport import TransportContext
 
 
-def parse_if_mib(device, columns, uptime, previous=None):
-    previous = previous or {}
-    epoch = previous.get("snmp_epoch") or str(uuid4())
-    if uptime < previous.get("snmp_uptime_ticks", 0):
-        epoch = str(uuid4())
-    canonical = huawei.canonical if (device.resolved_collector or device.collector) == "huawei_vrp" else cisco.canonical
-    names = {canonical(i.name): i for i in device.interfaces}
-    seen, samples = set(), []
-    for index, name in columns.get("name", {}).items():
-        interface = names.get(canonical(str(name)))
-        if not interface:
-            continue  # ifIndex is never used as the persistent identity.
-        if interface.id in seen:
-            raise ConnectionPolicyError("snmp_ambiguous_interface")
-        seen.add(interface.id)
-        def value(key):
-            result = columns.get(key, {}).get(index)
-            return int(result) if result is not None else None
-        incoming, outgoing = value("in_octets"), value("out_octets")
-        bits = 64
-        if incoming is None or outgoing is None:
-            incoming, outgoing, bits = value("in32"), value("out32"), 32
-        disc = value("discontinuity")
-        capacity = value("capacity")
-        samples.append(InterfaceSample(interface_id=interface.id,
-            admin_up={1: True, 2: False, 3: False}.get(value("admin_up")),
-            oper_up={1: True, 2: False, 3: False, 4: False, 5: False, 6: False, 7: False}.get(value("oper_up")),
-            capacity_bps=capacity * 1_000_000 if capacity else None,
-            in_octets=incoming, out_octets=outgoing, counter_bits=bits, source="snmp", vrf_known=False,
-            discontinuity=f"{epoch}:{index}:{disc}", counter_epoch_known=disc is not None,
-            errors=value("errors"), discards=value("discards"), tx_errors=value("tx_errors"), tx_discards=value("tx_discards")))
-    if not samples:
-        raise ConnectionPolicyError("snmp_interface_identity_missing")
-    complete = {i.id for i in device.interfaces if i.kind == "ethernet"}.issubset(seen)
-    return {"interfaces": [s.model_dump(mode="json") for s in samples],
-            "snmp_epoch": epoch, "snmp_uptime_ticks": uptime}, complete
+# Backwards-compatible imports used by earlier tests and integrations.
+COLUMNS = IF_COLUMNS
+ALL_ROOTS = tuple({
+    *SYSTEM_SCALARS, *IF_COLUMNS.values(), *BRIDGE_COLUMNS.values(),
+    *QBRIDGE_COLUMNS.values(), *LLDP_COLUMNS.values(), *ENTITY_COLUMNS.values(),
+    *SENSOR_COLUMNS.values(),
+})
 
 
-async def collect_snmp(store, vault, device, authorize=lambda: None):
-    authorize()
-    target_allowed(store, device)
+def _one_index(bindings, prefix):
+    result = {}
+    for suffix, value in column_map(bindings, prefix).items():
+        if len(suffix) != 1:
+            raise ConnectionPolicyError("snmp_malformed_oid")
+        result[suffix[0]] = value
+    return result
+
+
+async def _columns(reader, definitions, *, tuple_indices=False):
+    values = {}
+    for name, prefix in definitions.items():
+        bindings = await reader.walk(prefix)
+        raw = column_map(bindings, prefix)
+        values[name] = raw if tuple_indices else _one_index(bindings, prefix)
+    return values
+
+
+def _quality(complete, has_payload):
+    return "ok" if complete else "partial" if has_payload else "unsupported"
+
+
+async def collect_snmp(store, vault, device, authorize=lambda: None, groups=("fast",), *,
+                       transport_context: TransportContext | None = None,
+                       limits: SNMPLimits = SNMPLimits()):
+    requested = set(groups) & set(GROUPS)
+    if not requested:
+        return ReadResult(device)
+    context = transport_context or TransportContext.create(
+        store, vault, device, authorize, timeout_seconds=25
+    )
+    context.checkpoint()
     credentials = vault.get_protocol(device.id, "snmp")
-    engine = snmp.SnmpEngine()
+    session = None
     try:
-        user = snmp.UsmUserData(credentials["username"], credentials["auth_password"], credentials["privacy_password"],
-            authProtocol=snmp.USM_AUTH_HMAC192_SHA256 if credentials["auth_protocol"] == "sha256" else snmp.USM_AUTH_HMAC96_SHA,
-            privProtocol=snmp.USM_PRIV_CFB128_AES)
-        transport_cls = snmp.Udp6TransportTarget if ":" in device.management_address else snmp.UdpTransportTarget
-        target = await transport_cls.create((device.management_address, credentials["port"]), timeout=2, retries=0)
-        context = snmp.ContextData(contextName=credentials.get("context", ""))
-        requests = 0
-
-        async def request(oid, bulk=False):
-            nonlocal requests
-            authorize()
-            target_allowed(store, device)
-            requests += 1
-            if requests > 128:
-                raise ConnectionPolicyError("snmp_request_limit")
-            obj = snmp.ObjectType(snmp.ObjectIdentity(tuple(int(n) for n in oid.split("."))))
-            args = (engine, user, target, context)
-            result = await (snmp.bulk_cmd(*args, 0, 40, obj, lookupMib=False) if bulk else snmp.get_cmd(*args, obj, lookupMib=False))
-            indication, status, _, bindings = result
-            if indication or status:
-                # Error text may contain usernames/engine details; never expose it.
-                auth_errors = {"authenticationFailure", "unknownUserName", "wrongDigest", "decryptionError",
-                               "unsupportedSecurityLevel", "authorizationError"}
-                name = getattr(indication, "__class__", type(None)).__name__
-                error = "snmp_authentication_failed" if name[0:1].lower() + name[1:] in auth_errors or int(status or 0) == 16 else "snmp_read_failed"
-                raise ConnectionPolicyError(error)
-            return bindings
-
-        async with asyncio.timeout(25):
-            uptime_bindings = await request(SYS_UPTIME)
-            uptime = int(uptime_bindings[0][1])
-            columns = {}
-            for name, prefix in COLUMNS.items():
-                values, cursor = {}, prefix
-                while True:
-                    bindings = await request(cursor, True)
-                    done = False
-                    for oid, value in bindings:
-                        key = ".".join(str(n) for n in oid)
-                        if isinstance(value, (EndOfMibView, NoSuchInstance, NoSuchObject)) or not key.startswith(prefix + "."):
-                            done = True
-                            break
-                        if tuple(oid) <= tuple(int(n) for n in cursor.split(".")):
-                            raise ConnectionPolicyError("snmp_non_increasing_oid")
-                        index = int(key[len(prefix) + 1:])
-                        values[index] = str(value) if name == "name" else int(value)
-                        cursor = key
-                        if len(values) > 4096:
-                            raise ConnectionPolicyError("snmp_output_limit")
-                    if done or not bindings:
-                        break
-                columns[name] = values
+        session = await PysnmpV3Session(context, credentials).open()
+        reader = BoundedSNMPReader(context, session, ALL_ROOTS, limits)
+        identity = parse_system_mib(await reader.get(*SYSTEM_SCALARS))
+        result = ReadResult(device)
         with store.engine.connect() as conn:
-            previous = conn.execute(sa.select(store.collection_groups.c.payload).where(
-                store.collection_groups.c.device_id == device.id, store.collection_groups.c.group_name == "fast")).scalar_one_or_none()
-        payload, complete = parse_if_mib(device, columns, uptime, previous)
-        return ReadResult(device, payloads={"fast": payload}, reboot_detected=bool(previous and
-            previous.get("snmp_epoch") and previous["snmp_epoch"] != payload["snmp_epoch"]),
-            metadata={"fast": metadata("fast", "snmp_if_mib",
-            source="snmp", quality="ok" if complete else "partial", complete=complete,
-            reason=None if complete else "snmp_missing_interfaces")})
+            previous_fast = conn.execute(sa.select(store.collection_groups.c.payload).where(
+                store.collection_groups.c.device_id == device.id,
+                store.collection_groups.c.group_name == "fast",
+            )).scalar_one_or_none()
+
+        # Network tables also need the IF-MIB identity bridge, but need not
+        # collect every high-frequency counter when fast was not requested.
+        interface_payload, interface_complete = ({}, False)
+        if requested & {"fast", "network"}:
+            definitions = IF_COLUMNS if "fast" in requested else {"name": IF_COLUMNS["name"]}
+            interface_columns = await _columns(reader, definitions)
+            interface_payload, interface_complete = parse_if_mib(
+                device, interface_columns, identity.sys_uptime_ticks, previous_fast
+            )
+        if "fast" in requested:
+            result.payloads["fast"] = interface_payload
+            samples = interface_payload["interfaces"]
+            field_names = (
+                "admin_up", "oper_up", "capacity_bps", "in_octets", "out_octets",
+                "errors", "discards", "tx_errors", "tx_discards",
+            )
+            fields = {name: (
+                "ok" if all(sample.get(name) is not None for sample in samples)
+                else "partial" if any(sample.get(name) is not None for sample in samples)
+                else "unsupported"
+            ) for name in field_names}
+            fast_complete = interface_complete and all(status == "ok" for status in fields.values())
+            result.metadata["fast"] = metadata(
+                "fast", "snmp_if_ifx", source="snmp",
+                quality="ok" if fast_complete else "partial",
+                complete=fast_complete,
+                reason=None if fast_complete else "snmp_if_mib_partial",
+                fields=fields,
+            )
+
+        entity_payload, entity_complete = ({"entities": [], "sensors": []}, False)
+        if requested & {"inventory", "health"}:
+            entity_columns = await _columns(reader, ENTITY_COLUMNS)
+            sensor_columns = await _columns(reader, SENSOR_COLUMNS)
+            entity_payload, entity_complete = parse_entity_mib(entity_columns, sensor_columns)
+
+        if "network" in requested:
+            bridge_columns = await _columns(reader, {**BRIDGE_COLUMNS, **QBRIDGE_COLUMNS})
+            bridge, bridge_complete = parse_bridge_mib(
+                interface_payload.get("if_index_map", {}),
+                bridge_columns["port_ifindex"], bridge_columns["vlan_fid"],
+                bridge_columns["pvid"],
+            )
+            lldp_columns = await _columns(reader, LLDP_COLUMNS, tuple_indices=True)
+            neighbors, lldp_complete = parse_lldp_mib(
+                device, lldp_columns["local_port"], lldp_columns["remote_chassis"],
+                lldp_columns["remote_port"], lldp_columns["remote_name"],
+            )
+            payload = {
+                **bridge, "neighbors": neighbors,
+                "endpoints": EndpointCollection(status="unknown").model_dump(mode="json"),
+            }
+            result.payloads["network"] = payload
+            result.metadata["network"] = metadata(
+                "network", "snmp_bridge_lldp", source="snmp",
+                quality=_quality(False, bridge_complete or lldp_complete),
+                # Standard VLAN/LLDP is not the entire network group (for
+                # example FDB/ARP/address data). It must merge, never replace.
+                complete=False,
+                reason="snmp_standard_mib_partial",
+                fields={
+                    "vlan": "ok" if bridge_complete else "unsupported",
+                    "lldp": "ok" if lldp_complete else "unsupported",
+                },
+            )
+
+        if "inventory" in requested:
+            payload = {
+                "system_identity": identity.model_dump(mode="json"),
+                "entities": entity_payload["entities"],
+            }
+            result.payloads["inventory"] = payload
+            result.metadata["inventory"] = metadata(
+                "inventory", "snmp_system_entity", source="snmp",
+                quality="partial", complete=False,
+                reason="snmp_standard_mib_partial" if entity_complete else "snmp_entity_partial",
+                fields={"system_identity": "ok", "modules": "ok" if entity_complete else "partial"},
+            )
+
+        if "health" in requested:
+            temperatures = [value["value"] for value in entity_payload["sensors"]
+                            if value["sensor_type"] == "celsius" and value["status"] == "ok"
+                            and value["value"] is not None and -100 <= value["value"] <= 250]
+            health = Health(
+                uptime_seconds=identity.sys_uptime_ticks // 100,
+                temperature_c=temperatures[0] if temperatures else None,
+            )
+            result.payloads["health"] = {
+                "health": health.model_dump(mode="json"),
+                "sensors": entity_payload["sensors"],
+                "interfaces": [],
+            }
+            sensor_ok = bool(entity_payload["sensors"]) and entity_complete
+            result.metadata["health"] = metadata(
+                "health", "snmp_system_entity_sensor", source="snmp",
+                quality="partial", complete=False,
+                reason="snmp_standard_mib_partial" if sensor_ok else "snmp_entity_sensor_partial",
+                fields={"uptime_seconds": "ok", "temperature_c": "ok" if temperatures else "unsupported"},
+            )
+
+        result.reboot_detected = bool(
+            previous_fast and previous_fast.get("snmp_epoch")
+            and previous_fast["snmp_epoch"] != interface_payload.get("snmp_epoch")
+        )
+        context.checkpoint()
+        return result
     finally:
-        credentials.clear()
-        engine.close_dispatcher()
+        if session is not None:
+            session.close()
+        else:
+            credentials.clear()
+
+
+class SNMPTransportAdapter:
+    kind = "snmp"
+
+    async def collect(self, context: TransportContext, groups: set[str]) -> ReadResult:
+        context = context.bounded(25)
+        return await collect_snmp(
+            context.store, context.vault, context.device, context.checkpoint,
+            groups, transport_context=context,
+        )

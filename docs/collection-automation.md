@@ -117,10 +117,10 @@ oluşturma/profil değiştirme yollarında reddeder.
 - `collection.py` cihaz kilidi ve iş sahipliği kontrolünden sonra envanter,
   grup projeksiyonları ve sayısal örnekleri aynı transaction içinde yazar.
   Ağ beklerken veritabanı kilidi tutulmaz.
-- Bir grubun başarısız veya kısmi yenilemesi önceki tamamlanmış grubun değerini ve
-  ölçüm zamanını korur; son deneme zamanı ayrıca yenilenir. İlk kısmi okumada
-  bilinen alt küme kısmi işaretiyle saklanabilir. Grup bazlı koruma konservatiftir:
-  bir alt komut başarısızsa aynı gruptaki eski alanların zamanı da yenilenmez.
+- Bir grubun başarısız veya kısmi yenilemesi önceki tamamlanmış alanları silmez;
+  başarılı capability alanı kendi `field_sources` ve `field_observed_at` kanıtıyla
+  birleşirken başarısız alanın son-doğru değeri/kaynağı/saati korunur. Grup saati
+  tam yenileme gerçekleşene kadar ilerletilmez; son deneme zamanı ayrıca tutulur.
 - SNMP sayaçlarında kaynak, bit genişliği, `sysUpTime`, arayüz adı/ifIndex değişimi
   ve `ifCounterDiscontinuityTime` yeni başlangıç örneği gerektirir. Reset/wrap
   anında negatif fark veya sahte yüksek hız üretilmez.
@@ -179,7 +179,8 @@ Başlangıç dağıtılır; aralığa %10'a kadar sapma eklenir. Minimum/duty-cy
 sınırı negatif sapmayı kısaltabilir. Gözlenen süre ×5 alt sınırı %20 çalışma
 oranını korur. İki yeni CPU okuması %80 üstündeyse aralık büyür; beş sağlıklı
 okuma kademeli toparlanır. Hata beklemesi en fazla 30 dakikadır. Kaçırılmış
-döngüler biriktirilmez. Yanlış kimlik/anahtar hatası politikayı duraklatır.
+Döngüler biriktirilmez. SSH ve SNMP kimlik/transport hataları yalnız ilgili
+kanalda bounded backoff oluşturur; başarılı diğer kanal toplamaya devam eder.
 Hedef/etkin aralık farklı alanlardır.
 
 ## Saklama ve API
@@ -239,11 +240,11 @@ sözleşmesini kendiliğinden genişletmez.
 
 | Plan adımı | Durum |
 | --- | --- |
-| SFP/kısmi tablo düzeltmeleri, atomik grup son-doğru kaydı | Uygulandı; alan bazlı daha ince birleştirme açık |
+| SFP/kısmi tablo düzeltmeleri, atomik grup ve alan bazlı son-doğru kaydı | Uygulandı; capability kaynak/saat provenance korunur |
 | Typed registry ve additive katalog v2 | Uygulandı; 38 profil sınıflı, eski 16 katalog kaydı geriye uyumlu |
 | Cisco/Huawei ortak akışı, Junos/NX-OS | Uygulandı; deneysel ailelerde ve bazı veri alanlarında kapsam kısmi |
 | Host key keşfi/onayı, ortak SSH profilleri | Uygulandı; yerel gerçek SSH ve tarayıcı testi |
-| Kalıcı kuyruk, zamanlayıcı, worker, SNMPv3 IF-MIB | Uygulandı; PostgreSQL kilit/lease ve yerel SNMPv3 testi |
+| Kalıcı kuyruk, zamanlayıcı, worker, standard MIB SNMPv3 çekirdeği | Uygulandı; ortak fencing/deadline, bounded reader ve yerel gerçek UDP testi |
 | Arayüz, kalite tanıları, sınırlı geçmiş, saklama | Uygulandı; gerçek tarayıcı ve yerel saklama testleri |
 | Fiziksel pilot, 100 cihaz gerçek 24 saat kabulü | Çalıştırılmadı; kapasite/üretim kabulü değildir |
 | Sonraki üretici dalgaları | Planlandı; çalışan sürücü değil |
@@ -256,17 +257,19 @@ sözleşmesini kendiliğinden genişletmez.
 - Sonraki dalga sürücüler, bütün modellerin sürüm çıktıları, tam VRF/NDP/CDP,
   breakout, DOM ve üreticiye özgü fan/PSU biçimleri henüz evrensel kapsama sahip
   değildir; katalog/grup alanları eksikliği gösterir.
-- SNMPv3 IF-MIB ayrıştırma ve sır saklama yerel testlidir. Geçici yerel agent ile
-  gerçek UDP/SHA-256/AES-128 GET/GETBULK ve bilinmeyen kullanıcı reddi test edilir;
-  fiziksel vendor agent ve üretici MIB sağlık ölçümleri ayrıca kabul gerektirir.
+- SNMPv3 system, IF/IF-X, BRIDGE/Q-BRIDGE, LLDP ve temel ENTITY/ENTITY-SENSOR
+  mapper'ları ile sır saklama yerel testlidir. Geçici yerel agent gerçek
+  UDP/SHA-256/AES-128 GET/GETNEXT/GETBULK, auth/context negatifleri ve büyük
+  tablo sınırlarını doğrular; fiziksel vendor agent ve üretici MIB sağlık
+  ölçümleri ayrıca kabul gerektirir.
 - SNMP uptime/counter epoch değişimi envanteri öne alır. SNMP kimlik hatası yalnız
   SNMP kanalını duraklatır; otomatik kaynak seçimi SSH ile devam edebilir ve bunu
   grup tanısında belirtir. Açık SNMP tercihinde başarısız hızlı ölçümün yerine
   SSH ölçümü SNMP etiketiyle yazılmaz.
-- Grup bazlı korumadan daha ince alan bazlı son-doğru birleştirme ve tüm CLI
-  platformlarında reboot/donanım değişikliğinin erken tespiti açık iyileştirmelerdir.
-- SSH kimlik/host hatası şu anda cihaz politikasını duraklatır; SNMP'nin bu
-  durumda bağımsız sürmesi için SSH kanalına özel duraklatma ayrımı açık iştir.
+- Alan bazlı son-doğru birleştirme uygulanmıştır. Tüm CLI platformlarında
+  reboot/donanım değişikliğinin erken tespiti açık iyileştirmedir.
+- SSH ve SNMP kanal pause/recovery state'i ayrıdır; bir kanalın kimlik hatası
+  diğer kanalı durdurmaz ve retry süresi dolunca yalnız hatalı kanal yeniden denenir.
 
 ## Üretici/standart referansları
 

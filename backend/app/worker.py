@@ -13,14 +13,14 @@ import sqlalchemy as sa
 
 from .legacy_compat import getenv
 from .auth import Auth
-from .collection import ReadResult, metadata, persist, upsert
+from .collection import ReadResult, merge_read_results, metadata, persist, upsert
 from .database import Store, now
 from .driver_catalog import GROUPS
-from .drivers import collect
 from . import queue, scheduler
 from .security import Permission, has_permission
 from .ssh import ConnectionPolicyError, connect, discover_host_key, error_code, target_allowed
 from .ssh_profiles import target_signature
+from .transport import SSHTransportAdapter, TransportContext
 from .vault import CredentialVault
 
 
@@ -101,7 +101,7 @@ class Worker:
                     raise ConnectionPolicyError("session_revoked")
 
         status, result, error, cpu = "succeeded", None, None, None
-        channel_pause, reboot = None, False
+        channel_outcomes, reboot = {}, False
         try:
             authorize()
             if job.kind == "ssh_discovery":
@@ -118,50 +118,69 @@ class Worker:
                     authorize()
                 result = {"reachable": True, "source": "ssh"}
             else:
-                groups = context["groups"]
+                groups = set(context["groups"])
                 with self.store.engine.connect() as conn:
                     policy_row = conn.execute(sa.select(self.store.polling).where(self.store.polling.c.device_id == device.id)).mappings().first()
                     policy = policy_row["settings"] if policy_row else {}
-                    channel_pause = (policy_row["state"].get("channels", {}).get("snmp") if policy_row else None)
-                snmp_read = None
-                snmp_error = None
+                    channel_state = policy_row["state"] if policy_row else {}
+                snmp_read = ssh_read = None
+                snmp_error = ssh_error = None
                 preference = policy.get("preferred_source", "auto")
-                if "fast" in groups and device.snmp_configured and policy.get("preferred_source", "auto") != "ssh" and device.interfaces:
-                    from .snmp import collect_snmp
+                transport_context = TransportContext.create(
+                    self.store, self.vault, device, authorize, timeout_seconds=180
+                )
+                if groups and device.snmp_configured and preference != "ssh" and scheduler.channel_ready(channel_state, "snmp"):
+                    from .snmp import SNMPTransportAdapter
                     try:
-                        if channel_pause:
-                            raise ConnectionPolicyError(channel_pause)
-                        snmp_read = await collect_snmp(self.store, self.vault, device, authorize)
+                        snmp_read = await SNMPTransportAdapter().collect(transport_context, groups)
+                        channel_outcomes["snmp"] = None
                     except ConnectionPolicyError as exc:
                         snmp_error = str(exc)
                         if snmp_error in {"device_connection_changed", "worker_lease_lost", "session_revoked", "collection_policy_changed"}:
                             raise
-                        if snmp_error == "snmp_authentication_failed":
-                            channel_pause = snmp_error
-                    except TimeoutError:
-                        snmp_error = "snmp_timeout"
-                    if snmp_read or preference == "snmp":
-                        groups = [g for g in groups if g != "fast"]
-                    if not snmp_read and preference == "snmp":
-                        snmp_read = ReadResult(device, metadata={"fast": metadata("fast", "snmp_if_mib", source="snmp",
-                            quality="error", complete=False, reason=snmp_error)})
-                elif "fast" in groups and preference == "snmp" and not device.snmp_configured:
-                    groups = [g for g in groups if g != "fast"]
-                    snmp_read = ReadResult(device, metadata={"fast": metadata("fast", "snmp_if_mib", source="snmp",
-                        quality="error", complete=False, reason="snmp_credentials_missing")})
-                read = await collect(self.store, self.vault, device, groups, authorize) if groups else ReadResult(device)
-                if preference == "snmp" and "fast" not in context["groups"]:
-                    read.metadata.pop("fast", None)
-                    read.payloads.pop("fast", None)
-                if snmp_read:
-                    if "fast" not in snmp_read.payloads:
-                        read.payloads.pop("fast", None)
-                    read.metadata.update(snmp_read.metadata)
-                    read.payloads.update(snmp_read.payloads)
-                    reboot = snmp_read.reboot_detected
-                elif snmp_error and "fast" in read.metadata:
-                    read.metadata["fast"].diagnostics["snmp"] = snmp_error
-                    read.metadata["fast"].reason = "snmp_failed_using_ssh"
+                        channel_outcomes["snmp"] = snmp_error
+                elif preference == "snmp" and not device.snmp_configured:
+                    snmp_error = "snmp_credentials_missing"
+                    channel_outcomes["snmp"] = snmp_error
+
+                ssh_ready = device.credential_configured and device.host_key_fingerprint
+                if groups and preference != "snmp" and ssh_ready and scheduler.channel_ready(channel_state, "ssh"):
+                    try:
+                        ssh_read = await SSHTransportAdapter().collect(transport_context, groups)
+                        channel_outcomes["ssh"] = None
+                    except Exception as exc:
+                        ssh_error = error_code(exc)
+                        if ssh_error in {"device_connection_changed", "worker_lease_lost", "session_revoked", "collection_policy_changed"}:
+                            raise
+                        channel_outcomes["ssh"] = ssh_error
+                elif preference == "ssh" and not ssh_ready:
+                    ssh_error = "credentials_missing" if not device.credential_configured else "host_key_required"
+                    channel_outcomes["ssh"] = ssh_error
+
+                reads = [value for value in (ssh_read, snmp_read) if value]
+                if reads:
+                    read = merge_read_results(*reads)
+                    reboot = bool(snmp_read and snmp_read.reboot_detected)
+                    for channel, channel_error in (("snmp", snmp_error), ("ssh", ssh_error)):
+                        if channel_error:
+                            failed_source = "snmp" if channel == "snmp" else "ssh"
+                            read.capability_evidence.extend((group, metadata(
+                                group, f"{channel}_transport", source=failed_source,
+                                quality="error", complete=False, reason=channel_error,
+                            )) for group in groups)
+                            for details in read.metadata.values():
+                                details.diagnostics[channel] = channel_error
+                                if details.quality == "ok":
+                                    details.quality = "partial"
+                                details.reason = f"{channel}_failed_using_alternate"
+                else:
+                    source = "snmp" if preference == "snmp" or (snmp_error and not ssh_error) else "ssh"
+                    reason = snmp_error if source == "snmp" else ssh_error
+                    read = ReadResult(device, metadata={group: metadata(
+                        group, f"{source}_transport", source=source,
+                        quality="error", complete=False,
+                        reason=reason or f"{source}_channel_paused",
+                    ) for group in groups})
                 authorize()
                 data = persist(self.store, device, read, fence=lambda conn: queue.owned(self.store, job, self.owner, conn))
                 cpu = read.payloads.get("health", {}).get("health", {}).get("cpu_percent")
@@ -175,7 +194,7 @@ class Worker:
                 if fast and fast.quality not in {"ok", "partial"}:
                     error = fast.reason or "collector_parse_failed"
                 if all(m.quality not in {"ok", "partial"} for m in read.metadata.values()):
-                    error = "collector_parse_failed"
+                    error = error or "collector_parse_failed"
                     status = "failed"
         except asyncio.CancelledError:
             # Lease expiry reconciles an interrupted job. Do not mark all queued
@@ -197,7 +216,8 @@ class Worker:
             queue.finish(self.store, job, self.owner, status=status, result=result, error=error)
             if job.kind == "inventory_read" and status != "cancelled":
                 scheduler.completed(self.store, device, context["groups"], time.monotonic() - started,
-                    error=error, cpu=cpu, policy_version=context["policy_version"], channel_pause=channel_pause, reboot=reboot)
+                    error=error, cpu=cpu, policy_version=context["policy_version"],
+                    channel_outcomes=channel_outcomes, reboot=reboot)
         except ConnectionPolicyError:
             pass  # New owner has the lease; this worker has no write authority.
 

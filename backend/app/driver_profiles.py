@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 DRIVER_VERSION = "2026.10.20.3"
-CATALOG_REVISION = "2026.10.23.1"
+CATALOG_REVISION = "2026.10.23.2"
 NTC_VERSION = "9.3.0"
 GROUPS = ("fast", "health", "network", "inventory")
 DATA_CONTRACT = {
@@ -310,10 +310,11 @@ SNMP_V2C_BLOCKED = _transport(
 
 def _capabilities(
     groups: dict[str, list[str]], verification: VerificationStatus,
+    sources: tuple[TransportKind, ...],
 ) -> tuple[CapabilitySummary, ...]:
     return tuple(
         CapabilitySummary(
-            group=group, fields=tuple(groups.get(group, ())), sources=("ssh",),
+            group=group, fields=tuple(groups.get(group, ())), sources=sources,
             verification_status=verification,
         )
         for group in GROUPS
@@ -346,7 +347,10 @@ def _profile(
         release_status=release,
         identity=identity,
         transports=transports,
-        capabilities=_capabilities(capability_groups or {}, verification),
+        capabilities=_capabilities(
+            capability_groups or {}, verification,
+            tuple(transport.kind for transport in transports if transport.state == "implemented"),
+        ),
         acceptance=AcceptanceSummary(highest_level=verification),
         runtime_driver_id=runtime_driver_id,
         adapter=adapter,
@@ -467,7 +471,7 @@ LINUX_SSH = InfrastructureAdapter(
     verification_status="transport_lab_validated",
     release_status="experimental",
     transports=(SSH_IMPLEMENTED,),
-    capabilities=_capabilities(LINUX_CAPABILITIES, "transport_lab_validated"),
+    capabilities=_capabilities(LINUX_CAPABILITIES, "transport_lab_validated", ("ssh",)),
     tested_versions=("iproute2 JSON isolated SSH lab",),
     not_equivalent_to=("dell_sonic", "nvidia_cumulus_linux", "sonic_nos"),
 )

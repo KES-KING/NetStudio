@@ -383,6 +383,16 @@ verilerini typed capability olarak sunmak.
 - Fiziksel vendor MIB desteği iddia edilmez; generic SNMP en fazla
   `transport_lab_validated` olur.
 
+### Uygulama durumu
+
+**Tamamlandı — 23 Ekim 2026.** S04-01–S04-10 ortak transport context'i,
+bounded SNMPv3 reader, standard MIB mapper'ları, alan-bazlı provenance/last-good
+birleştirmesi ve kanal bazlı pause/recovery ile uygulanmıştır. Gerçek loopback
+UDP ve tam backend regresyon sonuçları
+[`S04_TESLIM_RAPORU.md`](S04_TESLIM_RAPORU.md) içindedir. Kanıt düzeyi generic
+transport laboratuvarıyla sınırlıdır; fiziksel vendor veya production kabulü
+değildir. `Ana tasarım etkisi: yok`; README ekran görüntüleri yenilenmemiştir.
+
 ---
 
 ## S05 — P0: Mevcut sürücüleri kanonik profillere ayırma ve sertleştirme

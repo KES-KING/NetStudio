@@ -337,6 +337,10 @@ class GroupObservation(StrictModel):
     reason: str | None = Field(default=None, max_length=160)
     diagnostics: dict[str, str] = Field(default_factory=dict, max_length=100)
     fields: dict[str, CollectionQuality] = Field(default_factory=dict, max_length=100)
+    field_sources: dict[str, Literal["ssh", "snmp", "netconf", "manual"]] = Field(
+        default_factory=dict, max_length=100
+    )
+    field_observed_at: dict[str, datetime] = Field(default_factory=dict, max_length=100)
     complete: bool = False
 
 

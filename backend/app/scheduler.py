@@ -12,6 +12,39 @@ from .telemetry import timestamp
 
 PAUSE = {"authentication_failed", "host_key_changed", "host_key_required", "host_key_not_trusted", "credentials_missing",
          "credential_decryption_failed"}
+CHANNEL_ERRORS = PAUSE | {
+    "snmp_authentication_failed", "snmp_context_mismatch", "snmp_timeout",
+    "snmp_read_failed", "connection_timeout", "connection_failed",
+}
+
+
+def channel_ready(state, channel, at=None):
+    """A paused channel is retried after its bounded backoff, not forever."""
+    at = at or now()
+    value = state.get("channels", {}).get(channel)
+    if not value or isinstance(value, str):
+        return True  # Legacy string pauses recover on the first S04 scheduler pass.
+    retry_at = value.get("retry_at")
+    return not retry_at or timestamp(retry_at) <= at
+
+
+def _channel_state(state, outcomes, at):
+    channels = {**state.get("channels", {})}
+    for channel, error in outcomes.items():
+        if not error:
+            channels.pop(channel, None)
+            continue
+        previous = channels.get(channel)
+        failures = (previous.get("failures", 0) if isinstance(previous, dict) else 0) + 1
+        delay = min(1800, 30 * 2 ** min(failures - 1, 6))
+        channels[channel] = {
+            "reason": error if error in CHANNEL_ERRORS else "transport_failed",
+            "failures": failures,
+            "last_error_at": at.isoformat(),
+            "retry_at": (at + timedelta(seconds=delay)).isoformat(),
+        }
+    state["channels"] = channels
+    return state
 
 
 def ensure_policy(store, device, actor="system:collector", conn=None):
@@ -80,11 +113,28 @@ def schedule(store):
         by_id = {d.id: d for d in devices}
         for row in rows:
             device = by_id.get(row["device_id"])
-            if not device or not row["settings"]["enabled"] or row["paused_reason"]:
+            if not device or not row["settings"]["enabled"]:
+                continue
+            if row["paused_reason"]:
+                if row["paused_reason"] in PAUSE:
+                    migrated = _channel_state(row["state"], {"ssh": row["paused_reason"]}, at)
+                    retry_at = migrated["channels"]["ssh"]["retry_at"]
+                    conn.execute(store.polling.update().where(store.polling.c.device_id == device.id).values(
+                        state=migrated, paused_reason=None, due_at=timestamp(retry_at), updated_at=at))
                 continue
             if device.collector not in {"auto", *DRIVERS}:
                 continue
-            if not device.credential_configured or not device.host_key_fingerprint:
+            preference = row["settings"].get("preferred_source", "auto")
+            ssh_ready = device.credential_configured and device.host_key_fingerprint and channel_ready(row["state"], "ssh", at)
+            snmp_ready = device.snmp_configured and channel_ready(row["state"], "snmp", at)
+            if ((preference == "ssh" and not ssh_ready)
+                    or (preference == "snmp" and not snmp_ready)
+                    or (preference == "auto" and not (ssh_ready or snmp_ready))):
+                retries = [value.get("retry_at") for value in row["state"].get("channels", {}).values()
+                           if isinstance(value, dict) and value.get("retry_at")]
+                if retries:
+                    conn.execute(store.polling.update().where(store.polling.c.device_id == device.id)
+                        .values(due_at=min(timestamp(value) for value in retries)))
                 continue
             groups = [g for g in GROUPS if g not in row["state"].get("next", {})
                       or timestamp(row["state"]["next"][g]) <= at]
@@ -94,7 +144,8 @@ def schedule(store):
                     .values(due_at=at + timedelta(seconds=10)))
 
 
-def completed(store, device, groups, duration, error=None, cpu=None, policy_version=None, channel_pause=None, reboot=False):
+def completed(store, device, groups, duration, error=None, cpu=None, policy_version=None,
+              channel_pause=None, channel_outcomes=None, reboot=False):
     with transaction(store) as conn:
         row = conn.execute(sa.select(store.polling).where(store.polling.c.device_id == device.id).with_for_update()).mappings().first()
         if not row or (policy_version is not None and row["version"] != policy_version):
@@ -105,11 +156,21 @@ def completed(store, device, groups, duration, error=None, cpu=None, policy_vers
             store.collection_groups.c.device_id == device.id, store.collection_groups.c.group_name == "fast")).scalar_one_or_none()
         if fast and fast.get("source") == "snmp":
             legacy = False
-        state = advance(row["settings"], row["state"], groups, duration, error, cpu, legacy, seed=device.id)
+        channel_outcomes = dict(channel_outcomes or {})
+        channel_failures = {value for value in channel_outcomes.values() if value}
+        channel_scoped = bool(channel_failures) and (error in channel_failures or error == "collector_parse_failed")
+        state = advance(row["settings"], row["state"], groups, duration,
+                        None if channel_scoped else error, cpu, legacy, seed=device.id)
+        if channel_scoped:
+            state["last_error"] = error
         if channel_pause:
-            state["channels"] = {**state.get("channels", {}), "snmp": channel_pause}
+            channel_outcomes.setdefault("snmp", channel_pause)
+        state = _channel_state(state, channel_outcomes, now())
         if reboot:
             state["next"]["inventory"] = now().isoformat()
         due = min(timestamp(t) for t in state["next"].values()) if state["next"] else now()
+        # Transport authentication is channel-local.  A failed SSH credential
+        # must not disable a healthy SNMP path and vice versa.
+        global_pause = error if error in PAUSE and not channel_outcomes else None
         conn.execute(store.polling.update().where(store.polling.c.device_id == device.id).values(
-            state=state, due_at=due, paused_reason=error if error in PAUSE else None, updated_at=now()))
+            state=state, due_at=due, paused_reason=global_pause, updated_at=now()))

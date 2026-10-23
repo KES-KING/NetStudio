@@ -23,7 +23,7 @@ Cihaz sırları, şifreleme anahtarları, kullanıcı oturumları ve site bazlı
 - Eski SSH algoritmaları varsayılan olarak açılmaz. Cihaz bazlı açık izin audit edilir; otomatik profil yalnız bu izin kapsamında en fazla dört el sıkışması/30 saniye deneyebilir. Yanlış parola, host key değişimi veya yetki hatası algoritma deneme gerekçesi değildir. Uyumluluk seçimi host key, oturum veya rol/site kontrolünü kaldırmaz.
 - Host key keşfi kimlik bilgisi göndermez; keşif güven onayı değildir. Tek kullanımlık, 10 dakika geçerli aday kullanıcıya/cihaza/bağlantı sürümüne bağlanır. Değiştirme açık kullanıcı onayı gerektirir.
 - Zamanlanmış işler etkin cihaz politikasının sürümüne bağlı sistem kimliğiyle; manuel işler güncel kullanıcı/site yetkisiyle çalışır. Worker lease kaybında ağ işlemleri durmalı ve eski sonuç envanteri ezememelidir.
-- SNMP yalnız kayıtlı IP'de v3 authPriv ile, sınırlı GET/GETBULK okumaları yapar. SNMP sırları protokol ayrımlı AAD ile şifrelenir; v1/v2c veya SET kullanılmaz.
+- SNMP yalnız kayıtlı IP'de v3 authPriv ile, sayısal OID allowlist'i içindeki sınırlı GET/GETNEXT/GETBULK okumaları yapar. SNMP sırları protokol ayrımlı AAD ile şifrelenir; v1/v2c veya SET kullanılmaz.
 - Cihaz sırları okuma API'lerine, frontend kalıcı depolarına veya genel loglara sızmamalıdır.
 - Eksik anahtar, geçersiz oturum veya yetki kaybında ilgili işlem güvenli biçimde reddedilmelidir.
 

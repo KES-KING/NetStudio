@@ -1,5 +1,6 @@
 """Atomic last-good group projections. Network IO never occurs in transactions."""
 from dataclasses import dataclass, field
+from copy import deepcopy
 from hashlib import sha256
 import json
 from uuid import uuid4
@@ -19,16 +20,155 @@ class ReadResult:
     device: ManagedDevice
     payloads: dict = field(default_factory=dict)
     metadata: dict[str, GroupObservation] = field(default_factory=dict)
+    capability_evidence: list[tuple[str, GroupObservation]] = field(default_factory=list)
     inventory_complete: bool = False
     reboot_detected: bool = False
 
 
 def metadata(group, driver, *, quality="ok", reason=None, complete=True, source="ssh", diagnostics=None, fields=None):
     at = now()
+    fields = fields or {}
+    current = {name for name, status in fields.items() if status in {"ok", "partial"}}
     return GroupObservation(quality=quality, attempted_at=at, observed_at=at if quality in {"ok", "partial"} else None,
         source=source, driver=driver, parser_version=VERSION, reason=reason, complete=complete,
         stale_after_seconds={"fast": 120, "health": 480, "network": 1200, "inventory": 14400}[group],
-        diagnostics=diagnostics or {}, fields=fields or {})
+        diagnostics=diagnostics or {}, fields=fields,
+        field_sources={name: source for name in current},
+        field_observed_at={name: at for name in current})
+
+
+SOURCE_PRIORITY = {
+    "fast": {"manual": 0, "ssh": 1, "netconf": 2, "snmp": 3},
+    "network": {"manual": 0, "ssh": 1, "netconf": 2, "snmp": 3},
+    "health": {"manual": 0, "snmp": 1, "ssh": 2, "netconf": 3},
+    "inventory": {"manual": 0, "snmp": 1, "ssh": 2, "netconf": 3},
+}
+
+
+def _merge_keyed_rows(current, proposed):
+    """Merge typed rows without treating an omitted row as deletion."""
+    rows = deepcopy(current or [])
+    positions = {}
+    for position, row in enumerate(rows):
+        if isinstance(row, dict):
+            key = row.get("id") or row.get("interface_id") or row.get("index") or row.get("entity_index")
+            if key is not None:
+                positions[key] = position
+    for row in proposed or []:
+        if not isinstance(row, dict):
+            if row not in rows:
+                rows.append(deepcopy(row))
+            continue
+        key = row.get("id") or row.get("interface_id") or row.get("index") or row.get("entity_index")
+        if key is None or key not in positions:
+            rows.append(deepcopy(row))
+            if key is not None:
+                positions[key] = len(rows) - 1
+            continue
+        target = rows[positions[key]]
+        for name, value in row.items():
+            if value is not None:
+                target[name] = deepcopy(value)
+    return rows
+
+
+def _merge_dict(current, proposed):
+    result = deepcopy(current or {})
+    for key, value in (proposed or {}).items():
+        if value is None:
+            continue
+        if isinstance(value, dict) and isinstance(result.get(key), dict):
+            result[key] = _merge_dict(result[key], value)
+        elif isinstance(value, list) and isinstance(result.get(key), list):
+            result[key] = _merge_keyed_rows(result[key], value)
+        else:
+            result[key] = deepcopy(value)
+    return result
+
+
+def merge_group_payload(group, current, proposed, fields, *, replace=False):
+    """Field-aware merge used both across transports and against last-good."""
+    if replace:
+        return deepcopy(proposed)
+    current, proposed = current or {}, proposed or {}
+    result = deepcopy(current)
+    ok = {name for name, status in fields.items() if status in {"ok", "partial"}}
+    if group == "fast" and ok:
+        result["interfaces"] = _merge_keyed_rows(current.get("interfaces"), proposed.get("interfaces"))
+        for key in ("snmp_epoch", "snmp_uptime_ticks", "if_index_map"):
+            if key in proposed:
+                result[key] = deepcopy(proposed[key])
+    elif group == "network":
+        if ok & {"addresses", "vrf", "vlan", "lag", "dom"}:
+            result["interfaces"] = _merge_keyed_rows(current.get("interfaces"), proposed.get("interfaces"))
+        if fields.get("lldp") == "ok" and "neighbors" in proposed:
+            result["neighbors"] = deepcopy(proposed["neighbors"])
+        if ok & {"fdb", "arp", "ndp"} and proposed.get("endpoints", {}).get("status") in {"ok", "partial"}:
+            result["endpoints"] = deepcopy(proposed["endpoints"])
+        if fields.get("vlan") == "ok":
+            for key in ("bridge_ports", "vlans"):
+                if key in proposed:
+                    result[key] = deepcopy(proposed[key])
+    elif group == "health" and ok:
+        result["health"] = _merge_dict(current.get("health"), proposed.get("health"))
+        result["interfaces"] = _merge_keyed_rows(current.get("interfaces"), proposed.get("interfaces"))
+        if "sensors" in proposed:
+            result["sensors"] = _merge_keyed_rows(current.get("sensors"), proposed["sensors"])
+    elif group == "inventory" and ok:
+        result = _merge_dict(current, proposed)
+    return result
+
+
+def merge_read_results(*results: ReadResult) -> ReadResult:
+    """Merge concurrent transport evidence by capability-specific priority."""
+    available = [result for result in results if result is not None]
+    if not available:
+        raise ValueError("collection_result_missing")
+    merged = ReadResult(available[0].device)
+    merged.inventory_complete = any(result.inventory_complete for result in available)
+    merged.reboot_detected = any(result.reboot_detected for result in available)
+    for group in {name for result in available for name in result.metadata}:
+        candidates = [(result, result.metadata[group]) for result in available if group in result.metadata]
+        merged.capability_evidence.extend((group, details) for _, details in candidates)
+        candidates.sort(key=lambda pair: SOURCE_PRIORITY[group].get(pair[1].source, -1))
+        payload, chosen = {}, candidates[-1][1]
+        fields, sources, clocks, diagnostics = {}, {}, {}, {}
+        complete = False
+        observed = None
+        for result, details in candidates:
+            proposed = result.payloads.get(group, {})
+            payload = merge_group_payload(group, payload, proposed, details.fields,
+                                          replace=details.complete and not payload)
+            for name, status in details.fields.items():
+                if status in {"ok", "partial"} or name not in fields:
+                    fields[name] = status
+            sources.update(details.field_sources)
+            clocks.update(details.field_observed_at)
+            diagnostics.update({
+                (f"{details.source}:{key}" if len(candidates) > 1 else key): value
+                for key, value in details.diagnostics.items()
+            })
+            if len(candidates) > 1 and details.quality not in {"ok", "partial"} and details.reason:
+                diagnostics[details.source] = details.reason
+            complete = complete or details.complete
+            if details.observed_at and (observed is None or details.observed_at > observed):
+                observed = details.observed_at
+        quality = "ok" if complete and not diagnostics else "partial" if payload else chosen.quality
+        merged.payloads[group] = payload
+        merged.metadata[group] = chosen.model_copy(update={
+            "quality": quality, "complete": complete,
+            "reason": None if quality == "ok" else chosen.reason or "transport_evidence_partial",
+            "diagnostics": diagnostics, "fields": fields,
+            "field_sources": sources, "field_observed_at": clocks,
+            "observed_at": observed,
+            "driver": "evidence_merge" if len(candidates) > 1 else chosen.driver,
+        })
+    # SSH/structured inventory remains authoritative for device-level identity
+    # until a later sprint has vendor-specific SNMP identity acceptance.
+    for result in available:
+        if any(meta.source == "ssh" for meta in result.metadata.values()):
+            merged.device = result.device
+    return merged
 
 
 def upsert(conn, table, condition, values):
@@ -89,23 +229,45 @@ def persist(store, original, result, *, fence=lambda conn: None):
                     digest = sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
                     groups[name] = dict(device_id=device.id, group_name=name, payload=payload, metadata=details, content_hash=digest)
                     conn.execute(store.collection_groups.insert().values(**groups[name]))
+        evidence = result.capability_evidence or list(result.metadata.items())
+        for capability_id, evidence_meta in evidence:
+            save_capability_observation(store, binding, capability_id, evidence_meta, conn)
         for name, meta in result.metadata.items():
-            save_capability_observation(store, binding, name, meta, conn)
             prior = groups.get(name, {})
             details = meta.model_dump(mode="json")
             good = meta.quality == "ok" and meta.complete
-            # Partial replacements would silently erase fields/ports. Retain the
-            # complete previous group until a complete read succeeds.
             if good or not prior.get("payload"):
-                payload = result.payloads.get(name, {})
+                payload = deepcopy(result.payloads.get(name, {}))
             else:
-                payload = prior["payload"]
+                # A partial mapper may refresh explicit capabilities, but an
+                # omitted/failed field is never deletion evidence.
+                payload = merge_group_payload(
+                    name, prior["payload"], result.payloads.get(name, {}), meta.fields
+                )
                 details["observed_at"] = prior["metadata"].get("observed_at")
                 # Metadata describes the retained values, not the failed
                 # replacement channel. Keep the attempt provenance separately.
                 for key in ("source", "driver", "parser_version"):
                     details["attempted_" + key] = details[key]
                     details[key] = prior["metadata"].get(key, details[key])
+                successful = {
+                    field for field, status in meta.fields.items()
+                    if status in {"ok", "partial"}
+                }
+                details["fields"] = {
+                    **prior["metadata"].get("fields", {}),
+                    **{field: meta.fields[field] for field in successful},
+                }
+                details["field_sources"] = {
+                    **prior["metadata"].get("field_sources", {}),
+                    **{field: meta.field_sources[field] for field in successful
+                       if field in meta.field_sources},
+                }
+                details["field_observed_at"] = {
+                    **prior["metadata"].get("field_observed_at", {}),
+                    **{field: meta.field_observed_at[field].isoformat() for field in successful
+                       if field in meta.field_observed_at},
+                }
             if not result.payloads.get(name):
                 details["observed_at"] = prior.get("metadata", {}).get("observed_at")
             if name == "network":
@@ -118,11 +280,10 @@ def persist(store, original, result, *, fence=lambda conn: None):
                         "observed_at": meta.observed_at.isoformat(),
                         "stale_after_seconds": meta.stale_after_seconds, "source": meta.source}}
                 if meta.fields.get("lldp") == "ok" and meta.quality in {"ok", "partial"} and meta.observed_at:
-                    neighbors = result.payloads.get(name, {}).get("neighbors")
-                    if neighbors:
-                        payload = {**payload, "neighbors": [{**neighbor,
-                            "observed_at": meta.observed_at.isoformat(), "stale_after_seconds": meta.stale_after_seconds}
-                            for neighbor in neighbors]}
+                    neighbors = result.payloads.get(name, {}).get("neighbors", [])
+                    payload = {**payload, "neighbors": [{**neighbor,
+                        "observed_at": meta.observed_at.isoformat(), "stale_after_seconds": meta.stale_after_seconds}
+                        for neighbor in neighbors]}
             digest = sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
             values = dict(device_id=device.id, group_name=name, payload=payload, metadata=details, content_hash=digest)
             upsert(conn, store.collection_groups,
