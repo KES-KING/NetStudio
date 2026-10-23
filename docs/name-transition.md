@@ -1,6 +1,6 @@
 # NetStudio adına geçiş
 
-Kanonik depo: [KES-KING/NetStudio](https://github.com/KES-KING/NetStudio). Yeni kurulum, paket, Docker imajı, browser başlığı ve ayar adları NetStudio kullanır. Kaynak dizinini yeniden adlandırmak gerekmez; IDE, bind mount ve host güncelleyici yolları kendiliğinden değiştirilmez.
+Kanonik depo: [KES-KING/NetStudio](https://github.com/KES-KING/NetStudio). Yeni kurulum, paket, Docker imajı, browser başlığı ve ayar adları NetStudio kullanır. Kaynak dizinini yeniden adlandırmak gerekmez; IDE ve bind mount yolları kendiliğinden değiştirilmez.
 
 ## Mevcut kurulum: önce veriyi koruyun
 
@@ -13,7 +13,7 @@ Bu bir yeniden kurulum veya veritabanı taşıma işlemi değildir. `.env` dosya
    docker --context MEVCUT_CONTEXT inspect --format '{{range .Mounts}}{{println .Destination .Name}}{{end}}' POSTGRES_CONTAINER API_CONTAINER
    ```
 
-2. Mevcut DB, anahtar dosyası, özel `.env` ve bütün Compose/TLS override dosyalarının korumalı yedeğini alın. Sırları terminale/loglara dökmeyin. Eski immutable imaj kimliklerini kaydedin. Host güncelleyiciyi duraklatın. `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` ve `DATABASE_URL` değerlerini **aynı bırakın**.
+2. Mevcut DB, anahtar dosyası, özel `.env` ve bütün Compose/TLS override dosyalarının korumalı yedeğini alın. Sırları terminale/loglara dökmeyin. Eski immutable imaj kimliklerini kaydedin. Varsa eski host güncelleyiciyi duraklatın. `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` ve `DATABASE_URL` değerlerini **aynı bırakın**.
 
 3. Mevcut `.env` içindeki `STOCC_` önekli ayarların adlarını `NETSTUDIO_` olarak değiştirin; **değerlerini değiştirmeyin**. Özellikle production kipi, izinli origin, CIDR sınırı, TLS dizini ve güncelleme ayarı korunmalıdır. Backend doğrudan eski ortamla başlatılırsa eski adları okuyabilir; yeni Compose yalnız yeni adları aktarır. Hem eski hem yeni ad varsa yeni ad (boş değer dahil) önceliklidir.
 
@@ -24,10 +24,9 @@ Bu bir yeniden kurulum veya veritabanı taşıma işlemi değildir. `.env` dosya
    NETSTUDIO_POSTGRES_VOLUME=MEVCUT_VERITABANI_VOLUME_ADI
    NETSTUDIO_KEYRING_VOLUME=MEVCUT_ANAHTAR_VOLUME_ADI
    NETSTUDIO_EXTERNAL_VOLUMES=true
-   NETSTUDIO_CONFIG_VERSION=1
    ```
 
-   Bu onay işareti olmadan yeni Compose yapılandırması durur. Yeni kurulumda `.env.example` bu işareti içerir. Bind mount / harici PostgreSQL kullanan kurulumlarda mevcut override'ı koruyup bağları ayrıca doğrulayın; yukarıdaki named-volume örneğini doğrudan uygulamayın.
+   Bind mount / harici PostgreSQL kullanan kurulumlarda mevcut override'ı koruyup bağları ayrıca doğrulayın; yukarıdaki named-volume örneğini doğrudan uygulamayın. Yeni `netstudio-updater-state` volume’ü yalnız updater’ın özel yapılandırma/yedekleri içindir ve mevcut veri volume’lerinin yerine geçmez.
 
 5. Mevcut override dosyalarının eski servis ortamı, imaj veya volume anahtarlarını yeni Compose sözleşmesine uyarlayın; fiziksel hedefleri değiştirmeyin. Aynı context/proje ve **bütün** mevcut `-f` seçenekleriyle `docker compose config --quiet` çalıştırın. Render edilmiş yapılandırma sır içerebilir; paylaşmayın. Her iki volume ve DB hedefinin eskisiyle aynı olduğunu doğrulamadan `up` çalıştırmayın. Sonrasında aynı proje üzerinde `up --build -d --wait` uygulanabilir. Bu kaynak değişikliği çalışan kurulumlarda bu adımı kendiliğinden çalıştırmaz.
 

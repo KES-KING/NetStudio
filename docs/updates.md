@@ -1,138 +1,180 @@
-# Ayarlar, canlı bildirimler ve güncelleme işletimi
+# Ayarlar, bildirimler ve Docker güncelleyicisi
 
-> NetStudio adlandırmasına geçen kurulumlarda önce [ad geçişi rehberini](name-transition.md) izleyin. Compose sözleşmesi değiştiğinden bu sürüme geçiş otomatik host güncellemesine bırakılmaz; mevcut volume/DB/anahtar bağları korunarak operatör tarafından yapılır.
+> Bu Compose sözleşmesini içermeyen eski bir kurulum önce repository’yi veri
+> koruyan normal prosedürüyle bu sürüme getirmeli ve bir kez `docker compose up
+> --build -d --wait` çalıştırmalıdır. `--build`, eski `local` imajlarının yeni
+> kaynakla karıştırılmasını önler. Eski kod henüz var olmayan updater
+> container’ını kendi kendine oluşturamaz. NetStudio ad geçişi yapılmadıysa önce
+> [ad geçişi rehberini](name-transition.md) uygulayın; volume, veritabanı,
+> kullanıcı veya anahtarları yeniden oluşturmayın.
+
+## Sıfır hazırlıklı ilk kurulum
+
+Resmî repository’nin temiz Git checkout’unda veya GitHub’dan indirilmiş değişmemiş
+kaynak ZIP/tar arşivinde gereken uygulama komutları yalnızca:
+
+```bash
+docker compose up -d --wait
+docker compose exec api python -m app.admin create-user --username admin --role superadmin --site '*'
+```
+
+`.env` kopyalamak, commit SHA yazmak, Python virtualenv hazırlamak, systemd unit
+kurmak veya ayrı bootstrap scripti çalıştırmak gerekmez. `.env.example` yalnız
+isteğe bağlı port/TLS/veritabanı/ağ özelleştirmeleri içindir. Docker Compose
+2.37.2 veya üzeri gerekir.
+
+İlk komutla ayrı `updater` servisi de başlar. Servis:
+
+1. Kendi container etiketlerinden gerçek Compose proje adını, çalışma dizinini
+   ve kullanılan base/TLS override dosyalarını bulur.
+2. Salt okunur bağlanan Git checkout’un kirli olmadığını, `origin` adresinin
+   resmî repository olduğunu ve HEAD commit’inin güncel `origin/main` geçmişinde
+   bulunduğunu doğrular. `.git` içermeyen GitHub arşivinde ise ignore edilmeyen
+   dosya yolu/içeriklerinin tamamını `origin/main` commit ağaçlarıyla karşılaştırır;
+   yalnız birebir eşleşen resmî commit kabul edilir.
+3. Kaynak `.env` dosyası varsa değiştirmeden özel state volume’üne kopyalar;
+   yoksa Compose varsayılanlarından özel bir runtime env üretir. Doğrulanmış SHA
+   ve proje adı yalnız bu `0600` dosyaya yazılır.
+4. İlk build’in `unknown` etiketli imajlarını doğrulanmış SHA ile eşlerken üç
+   immutable image ID’sini özel state volume’üne bağlar. Yalnız kaynak klasörünü
+   ileri almak bu bağı değiştirmez; imajların da rebuild edilmesi gerekir.
+5. PostgreSQL migration’ı ve API/web/worker sağlık kontrollerinden sonra kurulu
+   SHA’yı kaydeder ve kalıcı güncelleme kuyruğunu dinler.
+
+Özel durum, yedekler ve salt-okunur container’ın ihtiyaç duyduğu özel Docker
+istemci çalışma dizini `${COMPOSE_PROJECT_NAME}_netstudio-updater-state`
+volume’ündedir. `docker compose stop` veya normal `down` bunu silmez. Normal
+işletimde `down -v` kullanmayın.
 
 ## Kullanıcı akışı
 
-Yan menüde **Ayarlar** bulunur:
+**Ayarlar → Güncellemeler** ekranı kurulu/main commit’i, GitHub’daki son 30
+commit’i, kontrol zamanlarını, updater bağlantısını ve son 20 kurulum işlemini
+gösterir. Üst bardaki güncelleme işareti bu sayfayı açar.
 
-- **Hesabım:** mevcut profil, avatar ve parola işlemleri. Eski `/account` bağlantıları çalışmaya devam eder.
-- **Kullanıcılar:** yalnız superadmin için hesap oluşturma, rol/site atama, düzenleme ve silme. Mevcut son-superadmin koruması ve oturum iptali korunur.
-- **Güncellemeler:** kurulu/main commit, GitHub bağlantılı son 30 commit ve açıklamaları, kontrol zamanları, sunucu güncelleyicisinin durumu ve son 20 kurulum.
+Public commit kontrolü varsayılan açıktır. Yeni kodu otomatik **kurma** ise
+varsayılan kapalıdır. Yalnız superadmin:
 
-Üst barın sol bağlam alanındaki güncelleme işareti `/settings/updates` adresini açar. Kurulu SHA bilinmiyorsa sistem kendisini güncel saymaz; güncelleme karşılaştırması ve kurulum engellenir. Bildirim düğmesi 180 ms aşağı açılan bir paneldir; Escape, dış alana tıklama ve sayfa değişimi kapatır. Azaltılmış hareket tercihinde animasyon yoktur.
+- **Güncellemeleri kontrol et** ile public metadata kontrolü yapabilir.
+- Risk metnini onaylayıp tek güncellemeyi kurabilir.
+- Aynı açık onayla otomatik kurulumu açıp kapatabilir.
 
-Commitlerin görünüp **Güncellemeyi kur** düğmesinin ilerlememesi çoğunlukla iki bağımsız önkoşuldan kaynaklanır: standart geliştirme build'inin `NETSTUDIO_BUILD_REVISION=unknown` olması veya host güncelleyicisinin bağlı olmaması. Güncelleme ekranı artık eksik olan koşulu ayrı gösterir ve resmi checkout için tek seferlik hazırlık komutunu verir.
+Otomatik politika açılınca tarayıcı kapalı olsa da yeni commit kalıcı kuyruğa
+alınır. Yetkilendiren hesap devre dışı kalır veya superadmin rolünü kaybederse
+bekleyen/çalışan iş güvenli biçimde durdurulur. Başarısız aynı SHA otomatik
+döngüye alınmaz.
 
-Bildirimler sunucu audit olaylarının izinli bir izdüşümüdür: yetkili sitelerdeki cihaz olayları, kişinin kendi hesap/SSH olayları ve global güncelleme olayları. Superadmin hesap yönetimi olaylarını da görür. Ham audit ayrıntıları, terminal verisi ve sırlar aktarılmaz. Son 7 gün/30 olay gösterilir; okunmamış sayaç 100 ile sınırlıdır (`99+`). Okunma işareti kullanıcı başına sunucuda kalıcıdır. SSE her 3 saniyede değişiklikleri gönderir; bağlantı 60 saniyede yenilenir ve her çevrimde oturum/yetki yeniden doğrulanır. Sınır API süreci başına kullanıcıda 3, toplamda 100 açık akıştır. Bu bir sınırsız olay arşivi değildir; tam denetim geçmişi ayrı audit ekranındadır.
+## Güven sınırı
 
-## Güven sınırı ve varsayılanlar
+`use_api_socket: true`, seçili yerel Docker Engine socket’ini yalnız `updater`
+container’ına aktarır. Compose’un sunduğu host registry kimlik bilgileri update
+işleminde yeniden kullanılmaz; Docker/BuildKit public imajlar için updater’ın
+özel state volume’ündeki temiz ve yazılabilir istemci dizinini kullanır. Engine
+socket’i pratikte Docker motoru üzerinde yönetici yetkisidir. API, web,
+collector-worker ve network probe bu socket’i veya updater state volume’ünü
+mount etmez. HTTP istekleri repository, komut, dosya yolu veya environment
+belirleyemez; yalnız önceden GitHub’dan doğrulanmış `main` SHA’sını kuyruğa
+alabilir.
 
-**Otomatik kurulum varsayılan kapalıdır.** `NETSTUDIO_UPDATES_CHECK_ENABLED=1` yalnız public commit metadata kontrolünü açar; kurulum yapmaz. Kapalıysa zamanlanmış kontrol yapılmaz, superadmin manuel kontrol yapabilir. Kontrol tüm API süreçleri için DB lease ile birleştirilir, 10 dakikadan sık yapılmaz. ETag/304 kullanılır; GitHub hız sınırında bekleme artırılır. Hata halinde son başarılı liste korunur. Sabit hedef `https://api.github.com/repos/KES-KING/NetStudio/commits?sha=main&per_page=30`; yönlendirmeler izlenmez, repository taşınırsa kod/operatör müdahalesi gerekir. [GitHub commits API](https://docs.github.com/en/rest/commits/commits#list-commits), [GitHub REST iyi uygulamalar](https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api).
+Updater container’ı ayrıca salt-okunur root filesystem, `no-new-privileges` ve
+tüm Linux capability’leri düşürülmüş biçimde çalışır. Engine socket yetkisi bu
+önlemlerle daraltılamaz; updater imajı ve resmî repository yazma yetkileri yüksek
+güven sınırıdır. `main` koduna güvenmek, bu repository’ye yazabilen kişilerin
+sunucuda uygulama ve migration kodu çalıştırabilmesine güvenmek demektir. Public
+repository olması tek başına güvenlik kanıtı değildir; branch protection,
+inceleme ve CI politikasını ayrıca yönetin.
 
-**main koduna otomatik güvenmek, o repository'ye yazabilen kişilere sunucuda uygulama/migration çalıştırma yetkisi vermektir.** Branch protection, inceleme ve CI politikasını ayrıca yönetin. Bu sürüm imza veya CI check sonucu doğrulamaz; main bir stabil sürüm kanalı olarak kabul edilmez. Arayüz bunun için açık risk onayı ister. Public repository olması kodun güvenli olduğunu kanıtlamaz.
+Yalnız yerel Unix-socket Docker context ve aynı Compose projesindeki tek
+API/web/worker/PostgreSQL kurulumu kabul edilir. Uzak Docker motoru, Windows
+container engine ve harici PostgreSQL otomatik yolun kapsamı dışındadır. Özel
+kurulumlar `python -m app.updater --config ...` host işletimini kullanabilir,
+ancak standart kullanıcı için bu adım gerekmez.
 
-API içinde `git pull`, Docker komutu veya shell çalışmaz; Docker socket API/web/worker'a bağlanmaz. Kurulum ayrı Linux host sürecidir (`python -m app.updater`). Operatörün özel dosyası açık Docker context, proje, Compose/TLS dosyaları, `.env` ve mevcut loopback PostgreSQL bağlantısını belirler. HTTP isteği repository, komut, path veya environment alamaz. Host agent Docker yetkisiyle çalışır; bu hesabı yüksek ayrıcalıklı kabul edin. Agent'ın kendisi bu mekanizma tarafından değiştirilmez; güncel host sürümü ayrıca işletilir.
+## Commit doğrulaması ve kurulum sırası
 
-## Bir defalık host hazırlığı
+İlk yerel Compose build’inde Git SHA build argümanı bulunmayabilir. Updater bu
+`unknown` üçlü imajı yalnız şu koşulların tamamında doğrulanmış checkout HEAD’i
+ile bağlar: runtime container’ları aynı Compose projesindedir, API/web/worker
+sağlıklıdır, checkout temizdir, origin resmîdir ve SHA `origin/main` geçmişinde
+yer alır. Karışık veya kısmen etiketli runtime reddedilir. Updater’ın hazırladığı
+sonraki aday imajların üçünde de tam SHA OCI etiketi zorunludur.
 
-Bu adımlar operatör içindir; geliştirme testi bunları mevcut kullanıcı kurulumunda otomatik çalıştırmaz. Önce mevcut Docker context/proje, volume'ler, portlar, gerçek veri tabanı ve anahtar deposunu doğrulayın. Üretimde `docker-compose.tls.yml` dahil kullanılan **bütün** override dosyalarını koruyun. Otomatik sistem yalnız mevcut tek API/web/worker/PostgreSQL kurulumunu kabul eder; uzaktaki Docker motoru ve harici PostgreSQL bu sürümde desteklenmez.
-
-### Resmi public checkout için önerilen yol
-
-Resmi repository'nin temiz bir checkout'unda aşağıdaki komut hazırlığın tamamını yapar:
-
-```bash
-./netstudio-update setup
-```
-
-Komut şu kontrolleri ve işlemleri sıralı yapar:
-
-1. `origin` adresinin resmi public repository olduğunu, çalışma ağacının temiz olduğunu ve mevcut commit'in güncel `origin/main` geçmişinde bulunduğunu doğrular. Fork veya yerel/kirli kaynak resmi sürüm etiketi alamaz.
-2. Seçili yerel Docker context'i ve çalışan API container etiketinden gerçek Compose/TLS dosyalarını bulur. Başka proje, uzak Docker endpoint'i veya repository dışı Compose yolu kabul edilmez.
-3. Mevcut `.env` değerlerini koruyup yalnız `NETSTUDIO_BUILD_REVISION` değerini doğrulanmış tam SHA'ya getirir; dosyayı `0600` yapar. Aynı proje ve volume kimlikleriyle `docker compose up --build -d --wait` çalıştırır ve API/web/worker imaj etiketlerinin aynı SHA olduğunu yeniden denetler.
-4. Ayrı `.updater-venv` ortamına yalnız backend paketini kurar. PostgreSQL'in mevcut açık loopback portunu Compose çıktısından doğrular; özel yapılandırmayı `~/.local/state/netstudio-updater/<proje>/config.json` altında `0600`, state/yedek dizinini `0700` oluşturur.
-5. Kullanıcı systemd yöneticisi varsa `netstudio-updater-<proje>.service` birimini etkinleştirir. Kullanıcı systemd'si yoksa ajanı private log/PID ile ayrık süreç olarak başlatır; bu fallback yeniden başlatma sonrası kalıcı değildir ve komutun tekrar çalıştırılması gerekir. Son olarak DB heartbeat üzerinden ajanın gerçekten bağlandığını doğrular.
-
-Bu komut otomatik kurulum politikasını açmaz ve bir güncelleme kuyruğa almaz. Son karar yine superadmin'in risk onayıyla verilir. API, web ve worker'a Docker socket verilmez; Docker yetkisi yalnız açıkça başlatılan host ajanındadır.
-
-İlk kez bu düzeltmeden daha eski bir kurulumdan geliyorsanız repository'yi normal, veri koruyan prosedürünüzle temiz bir resmi commit'e ileri alın ve komutu bir kez çalıştırın. Eski istemci kendi eksik host ajanını tarayıcıdan başlatamaz; bu tek seferlik bootstrap güven sınırıdır.
-
-### Elle/özel kurulum
-
-1. Bu özelliği içeren, gözden geçirilmiş **temiz ve yayınlanmış** commit'i normal bakım prosedürünüzle kurun. Önce mevcut DB ve keyring yedeğini alın; additive `0007_settings_updates` migration'ını çalıştırın. API, collector-worker ve web aynı SHA'dan build edilmelidir. `.env` içinde `NETSTUDIO_BUILD_REVISION=<tam 40 karakter SHA>` kullanın. Bu değişken bir doğrulama imzası değildir: kirli çalışma ağacına HEAD etiketi vermeyin. `unknown` etiketli eski imajlar otomatik kuruluma kabul edilmez. Mevcut cihazları, kullanıcıları veya sırları yeniden oluşturmayın.
-2. Host üzerinde Python 3.11+, Git, Docker CLI/Compose ve bu release'in `backend` paketini ayrı bir virtualenv'e kurun. Agent container içinde değil host üzerinde çalışır. Örneğin operator-owned release dizininde `python3 -m venv .updater-venv`, ardından `.updater-venv/bin/pip install ./backend`. Mevcut uygulama virtualenv'ini veya çalışan container'ları değiştirmez.
-3. Operatöre ait, modu `0600` olan bir JSON yapılandırması oluşturun. Aşağıdaki yollar/değerler **örnektir**; mevcut kurulumu keşfetmeden kopyalayıp çalıştırmayın. DB parolasını kaynak depoya koymayın. State dizini `0700`, aynı kullanıcıya ait olmalı; yedekler için yeterli disk alanı ayırın.
-
-```json
-{
-  "project": "netstudio-installation",
-  "docker_context": "default",
-  "installation_dir": "/srv/netstudio",
-  "compose_files": ["/srv/netstudio/docker-compose.yml", "/srv/netstudio/docker-compose.tls.yml"],
-  "env_file": "/srv/netstudio/.env",
-  "state_dir": "/var/lib/netstudio-updater",
-  "database_url": "postgresql+psycopg://netstudio:REPLACE_LOCALLY@127.0.0.1:5432/netstudio",
-  "drain_timeout": 900
-}
-```
-
-PostgreSQL URL, mevcut Compose PostgreSQL servisinin loopback yayın portu, DB adı ve uygulama kullanıcı adı ile eşleşmelidir. Docker context yerel `unix://` endpoint olmalı. Kurulum dizini ve özel yedek dizini ayrıdır. İlgisiz kabuk değişkenleri Compose yapılandırmasını değiştirmesin diye agent yalnız sınırlı bir environment listesi aktarır; **kurulumun bütün Compose parametreleri `env_file` içinde olmalıdır**. Shell'de verilen mevcut parametreleri dosyaya taşırken sırları terminale dökmeyin.
-
-4. Dosya izinlerini doğruladıktan sonra host sürecini başlatın:
-
-```bash
-/srv/netstudio/.updater-venv/bin/python -m app.updater --config /etc/netstudio/updater.json
-```
-
-Bu açık komut hazırsa kuyruktaki kurulumu işleyebilir. `--once` de gerçek kuyruk işi işler; dry-run değildir. Kalıcılık için aynı komutu operatörün servis yöneticisinde çalıştırın. Örnek systemd unit (kullanıcı/yolları kendi kurulumunuzla değiştirin; Docker context o kullanıcıya ait olmalı):
-
-```ini
-[Unit]
-Description=NetStudio host updater
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=netstudio-updater
-WorkingDirectory=/srv/netstudio
-ExecStart=/srv/netstudio/.updater-venv/bin/python -m app.updater --config /etc/netstudio/updater.json
-Restart=on-failure
-RestartSec=15
-UMask=0077
-NoNewPrivileges=true
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Servis kullanıcısına mevcut **doğru** Docker motoruna erişim ve özel dosyalara okuma/yazma yetkisi operatör tarafından sağlanır; bu doküman otomatik hesap/yetki oluşturmuyor.
-
-5. Ayarlar → Güncellemeler'de **Sunucu güncelleyicisi: Bağlı**, doğrulanmış kurulu SHA ve kontrol sonucunu görün. Risk kutusunu okuyup **Otomatik kurulumu aç** seçin. Bundan sonra tarayıcı kapalı olsa da yeni main commit'leri kalıcı kuyruğa alınır. Açma anında hazır güncelleme varsa o da sıraya girer. Yalnız superadmin bu politikayı/manuel kurulumu değiştirebilir; yetkisi kaldırılan hesabın bekleyen otomatik işleri çalıştırılmaz.
-
-## Kurulum sırası ve koruma
+Kurulum evreleri:
 
 `queued → building → draining → backing_up → migrating → deploying → verifying → succeeded`
 
-- Agent tekil dosya kilidi ve DB sahipliği/heartbeat kullanır. Aynı kurulum isteği birleştirilir. Ağ/derleme sırasında DB transaction/kilidi açık tutulmaz.
-- Otomatik politikayı kapatmak yeni/bekleyen ve henüz bakım aşamasına girmemiş işleri durdurur; bakım aşamasına girmiş migration'ı yarıda kesmez. Yetkilendiren hesabın devre dışı kalması veya superadmin yetkisinin kaldırılması ise her aşamada kontrol edilir.
-- Yeni özel staging dizinine sabit public repository klonlanır. SHA tam olarak pinlenir; mevcut SHA → seçili SHA → origin/main ancestry doğrulanır. Force-push/geri sürüm engellenir. Root Compose/TLS veya `deploy/` değişmişse **elle geçiş** gerekir; imaj değiştirerek yeni dağıtım sözleşmesi tahmin edilmez.
-- API ve web imajları yeni SHA etiketleriyle hazırlanır. Eski çalışan imajlar üzerine build edilmez; başarısız build uygulamayı durdurmaz.
-- Bakım kipinde yeni kalıcı değişiklikler/SSH açma/toplama istekleri durur; okuma, login/logout, okundu işaretleme, otomatik politikayı kapatma ve SSH kapatma kullanılabilir. Worker yeni iş almaz. API varlığı, aktif değişiklikler, açık/bekleyen SSH ve çalışan toplama işleri sessizleşmeden ilerlenmez. Varsayılan bekleme en çok 15 dakikadır; oturumlar zorla kesilmez.
-- Özel staging dizininde `database.dump` (PostgreSQL custom format) ve `keyring.json` alınır. Dump katalog yapısı `pg_restore --list` ile; keyring biçimi/anahtar uzunluğu doğrulanır. Bu, tam restore provası değildir. Deployment girdi dosyaları ve önceki image ID'leri de özel dizinde saklanır. Yedekler API'den sunulmaz. **DB yedeği ve keyring birlikte hassastır.** Bu sürüm yedek/release dizinlerini otomatik silmez; saklama/disk kapasitesi operatör sorumluluğudur.
-- Doğrulanmış Compose yapılandırmasıyla yalnız aday migration container'ı, sonra `api`, `web`, `collector-worker` servisleri değiştirilir. `--no-deps --no-build --wait` kullanılır; PostgreSQL, gateway ve secrets-init yeniden oluşturulmaz. İmaj SHA, sağlık ve named-volume kimlikleri tekrar kontrol edilir. [Compose up](https://docs.docker.com/reference/cli/docker/compose/up/).
-- Başarılı kurulumun tam imaj seçimi özel release dizinindeki `candidate-compose.json` dosyasında saklanır. Docker restart politikası mevcut container imajlarını korur. Sonradan elle `compose up` çalıştırırken bu override'ı aynı temel Compose/TLS dosyalarına son `-f` olarak ekleyin; eski `.env` içindeki `IMAGE_TAG` ile çıplak `up`, eski imaja döndürebilir. Agent operatörün `.env` dosyasını değiştirmez.
-- Başarısız aynı SHA otomatik döngüye girmez. Operatör nedeni düzeltip açıkça tekrar isteyebilir; yeni SHA ayrı değerlendirilebilir. Migration öncesi hata bakım kipini kaldırır. Migration belirsiz/yarım kaldıysa ya da schema değiştiyse otomatik DB downgrade/restore **yapılmaz**: `recovery_required` olur ve bakım sürer. Schema değişmeden runtime geçişi başarısızsa önceki immutable imajlar geri başlatılıp sağlık kontrolü yapılır.
+- Hedef SHA geçici özel dizine sabitlenmiş public klonla alınır. Kurulu SHA →
+  hedef SHA → `origin/main` ancestry zinciri doğrulanır; geri sürüm/force-push
+  kabul edilmez.
+- Compose/TLS/deploy veya updater’ın kendi güven sözleşmesi değişmişse otomatik
+  imaj değiştirme yapılmaz ve `deployment_contract_changed` döner. Bu tür sürüm
+  `git pull --ff-only` sonrası `docker compose up --build -d --wait` komutuyla
+  operatör tarafından uygulanır.
+- API ve web aday imajları kesin SHA etiketiyle hazırlanır. Derleme başarısızsa
+  çalışan uygulama durdurulmaz.
+- Bakım kipinde yeni kalıcı mutasyonlar, SSH açma ve toplama istekleri durur.
+  Açık oturumlar ve çalışan işler zorla kesilmez; en fazla 15 dakika beklenir.
+- Özel release dizinine PostgreSQL custom dump, keyring, deployment girdileri ve
+  önceki immutable image ID’leri alınır. Dump kataloğu ve keyring biçimi
+  doğrulanır; bu tam restore provası değildir. DB yedeği ile keyring birlikte
+  hassastır ve API’den sunulmaz.
+- Yalnız migration adayı ile `api`, `web`, `collector-worker` değiştirilir.
+  PostgreSQL, gateway, secrets-init, volume kimlikleri ve kullanıcı verileri
+  korunur. Son imaj SHA’ları ve sağlık tekrar doğrulanır. Başarılı adaylar temel
+  Compose imaj etiketlerine de bağlanır; sonraki düz `docker compose up` eski
+  ilk-build imajına dönmez. Başarısız geri dönüşte eski alias’lar da geri alınır.
+
+Migration başlamadan önceki hata bakım kipini kaldırır. Migration’ın tamamlanıp
+tamamlanmadığı belirsizse veya schema değiştiyse otomatik downgrade/restore
+yapılmaz; durum `recovery_required` olur ve yazmalar kapalı kalır.
+
+## Sorun giderme
+
+```bash
+docker compose ps -a
+docker compose logs --tail=200 updater
+docker compose logs --tail=200 api
+```
+
+Yaygın updater hata kodları:
+
+| Kod | Anlamı |
+| --- | --- |
+| `update_setup_clean_checkout_required` | Checkout’ta commitlenmemiş veya untracked kaynak var. |
+| `update_setup_official_remote_required` | `origin`, resmî repository değil. |
+| `update_setup_public_source_required` | `.git` içermeyen kaynak hiçbir resmî `main` commit’iyle birebir eşleşmedi. |
+| `revision_not_forward` | HEAD/hedef güncel `origin/main` ileri geçmişinde değil. |
+| `local_docker_context_required` | Seçili motor yerel Unix socket değil. |
+| `project_identity_mismatch` | Updater başka/eksik Compose projesi etiketleri gördü. |
+| `database_project_mismatch` | PostgreSQL ve uygulama aynı proje/DB kimliğine bağlı değil. |
+| `bootstrap_binding_invalid` | İlk imaj/commit bağı bozuk; state volume’ünü silmeden log ve dosya izinlerini inceleyin. |
+| `deployment_contract_changed` | Compose/deploy/updater değişikliği için elle ileri alma gerekiyor. |
+
+Updater geçici GitHub veya Engine hatasında container’ı yeniden kurdurmadan 30
+saniye arayla tekrar dener. Checkout’u düzeltmek için mevcut veritabanını,
+volume’leri, kullanıcıları veya anahtarları silmeyin.
 
 ## Kesinti ve elle kurtarma
 
-Agent çökerse bakımın süresi dolup kendiliğinden açılmaz. Agent yeniden başladığında yarım aktif iş kurtarma gerektirir. Migration CLI timeout'u container'ın durduğunu kanıtlamaz; `<project>-update-<run-id>` adlı migration container'ını ayrıca inceleyin. Agent'ı durdurun; yalnız doğrulanmış bu kuruluma ait container/job üzerinde operatör müdahalesi yapın. Eski sürüm migration sonrası DB ile uyumlu varsayılmaz.
+Updater bakım/migration sırasında kesilirse bakım kilidi süre dolunca kendiliğinden
+açılmaz. `<project>-update-<run-id>` migration container’ını, updater state
+volume’ündeki release/yedekleri, schema’yı ve çalışan immutable imajları bağımsız
+inceleyin. Canlı DB üzerine otomatik restore komutu yoktur; restore provasını ayrı
+boş veritabanında yapın. Veri/schema kabulü tamamlanmadan `recovery_required`
+durumunu kaldırmayın.
 
-Gerekirse özel staging yedeğinden **ayrı, boş kurtarma DB'sinde** restore provası yapın; canlı DB üzerine otomatik silme/restore komutu yoktur. Önceki imajlar, Compose/env ve keyring korunmuştur. Veri/schema uyumluluğunu ve mevcut runtime sağlığını bağımsız doğruladıktan sonra bakım kilidini açık operatör onayıyla kaldırabilirsiniz:
+## API ve kaynaklar
 
-```bash
-/srv/netstudio/.updater-venv/bin/python -m app.updater \
-  --config /etc/netstudio/updater.json \
-  --acknowledge-recovery VERIFIED_40_CHARACTER_INSTALLED_SHA
-```
+`GET /api/v1/system/updates`; superadmin+CSRF ile `POST .../check`,
+`PUT .../policy`, `POST .../install`. Bildirimler `GET /api/v1/notifications`,
+`GET .../stream`, `POST .../read`. `system.update` yalnız superadmin’e aittir.
+`0007_settings_updates` migration’ı mevcut cihaz, sır, anahtar veya kullanıcıları
+silmeden güncelleme/bildirim tablolarını ekler.
 
-Komut sağlıklı mevcut proje, eşleşen imaj SHA'ları, canlı başka agent olmaması ve çalışan migration container'ı bulunmamasını kontrol eder; **schema/iş verisi kabulünün yerine geçmez**. Otomatik kurulum kapalı kalır. Agent'ı yeniden başlatıp arayüzden durumu doğrulayın. Sadece agent'ı kapatmak otomatik kurulumları durdurur, fakat zaten başlayan migration'ı güvenle geri almış sayılmaz.
+Kaynaklar: `backend/app/update_runtime.py` (Compose bootstrap),
+`backend/app/updater.py` (kurulum/yedek/kurtarma), `backend/app/updates.py`
+(metadata/policy), `backend/app/settings_api.py` (RBAC/CSRF),
+`backend/app/notifications.py` ve `frontend/components/UpdatesPage.tsx`.
 
-## API, şema ve doğrulama sınırları
-
-`GET /api/v1/system/updates`; superadmin+CSRF ile `POST .../check`, `PUT .../policy`, `POST .../install`. Bildirimler `GET /api/v1/notifications`, `GET .../stream`, `POST .../read`. Yeni izin `system.update` yalnız superadmin'e aittir. Migration `0007_settings_updates`, yalnız dört yeni tabloyu ekler; mevcut cihaz, sır, anahtar, kullanıcı kimliği ve gözlemleri taşımaz/silmez.
-
-Kaynaklar: `backend/app/updates.py` (metadata/policy), `settings_api.py` (RBAC/CSRF/SSE), `notifications.py` (scope/read cursor), `updater.py` (host işletimi), `system_schema_v1.py` (frozen şema); UI `SettingsLayout`, `UpdatesPage`, `LiveNotifications`.
-
-Host kurulum adımları kontrollü executor testlerinde sınanır; yerel testler gerçek bir main commit'ini canlı kuruluma indirip yükseltme kabulü değildir. Gerçek otomatik yükseltme, geri dönüş/restore tatbikatı, disk dolması, güç kesintisi ve hedef operatör sistemd/Docker ortamı ayrıca izole pilotta doğrulanmalıdır. Bu özellik AGPL, mevcut RBAC/CSRF, SSH host-key ve sır deposu sınırlarını değiştirmez.
+Yerel unit/E2E testleri gerçek bir hedef bilgisayarda güç kesintisi, disk dolması,
+restore tatbikatı veya production kabulünün yerine geçmez.

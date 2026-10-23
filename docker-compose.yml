@@ -1,8 +1,5 @@
 name: ${COMPOSE_PROJECT_NAME:-netstudio}
 
-# Prevent an old .env from silently creating empty replacement data volumes.
-x-netstudio-config-version: ${NETSTUDIO_CONFIG_VERSION:?Use .env.example for a new installation; existing installations must follow docs/name-transition.md first}
-
 x-api-service: &api-service
   image: netstudio-api:${IMAGE_TAG:-local}
   build:
@@ -122,6 +119,49 @@ services:
       - application
     stop_grace_period: 20s
 
+  updater:
+    image: netstudio-updater:${IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.updater
+    restart: unless-stopped
+    init: true
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://netstudio:netstudio@postgres:5432/netstudio}
+    # Compose 2.37.2+ delegates the selected local Engine socket and Docker
+    # credentials only to this isolated service. API/web/worker never receive it.
+    use_api_socket: true
+    volumes:
+      - .:/workspace:ro
+      - netstudio-updater-state:/var/lib/netstudio-updater
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+      collector-worker:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "docker", "version"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    networks:
+      - database
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    stop_grace_period: 30s
+
   network-probe-agent:
     image: netstudio-api:${IMAGE_TAG:-local}
     command: ["python", "-m", "app.network_probe_agent", "--automatic"]
@@ -219,6 +259,8 @@ volumes:
   netstudio-probe-state:
     name: ${NETSTUDIO_PROBE_STATE_VOLUME:-${COMPOSE_PROJECT_NAME:-netstudio}_netstudio-probe-state}
     external: ${NETSTUDIO_EXTERNAL_VOLUMES:-false}
+  netstudio-updater-state:
+    name: ${NETSTUDIO_UPDATER_STATE_VOLUME:-${COMPOSE_PROJECT_NAME:-netstudio}_netstudio-updater-state}
 
 networks:
   database:

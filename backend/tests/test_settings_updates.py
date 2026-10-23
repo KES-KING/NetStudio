@@ -189,6 +189,8 @@ def test_host_install_order_and_failure_recovery(system, tmp_path, monkeypatch, 
     revisions = iter([OLD, NEW])
     monkeypatch.setattr(updater, "revisions", lambda _: next(revisions))
     monkeypatch.setattr(updater, "compose_fingerprint", lambda: "constant")
+    monkeypatch.setattr(updater, "compose_images", lambda: {"api": "netstudio-api:local", "web": "netstudio-web:local"})
+    monkeypatch.setattr(updater, "tag_images", lambda *_: None)
     monkeypatch.setattr(updater, "stage", lambda *_: tmp_path)
     monkeypatch.setattr(updater, "override", lambda _, name, _images: [name])
     monkeypatch.setattr(updater, "wait_quiet", lambda: steps.append("drain"))
@@ -290,6 +292,27 @@ def test_stage_rejects_deployment_changes_before_build(system, tmp_path, monkeyp
         updater.stage({"revision": NEW}, OLD)
     assert commands[0][-2] == "https://github.com/KES-KING/NetStudio.git"
     assert all("build" not in args and "up" not in args for args in commands)
+
+
+def test_successful_release_updates_plain_compose_image_aliases(system, tmp_path, monkeypatch):
+    updater = host(tmp_path, system[1])
+    calls = []
+    def command(args, **_):
+        if "config" in args:
+            return json.dumps({"services": {
+                "api": {"image": "netstudio-api:local"},
+                "collector-worker": {"image": "netstudio-api:local"},
+                "web": {"image": "netstudio-web:local"},
+            }}).encode()
+        calls.append(args)
+        return b""
+    monkeypatch.setattr(updater, "command", command)
+    aliases = updater.compose_images()
+    updater.tag_images({"api": "sha256:api", "web": "sha256:web"}, aliases)
+    assert aliases == {"api": "netstudio-api:local", "web": "netstudio-web:local"}
+    assert [args[-2:] for args in calls] == [
+        ["sha256:api", "netstudio-api:local"], ["sha256:web", "netstudio-web:local"],
+    ]
 
 
 def test_host_config_rejects_broad_remote_or_unbound_targets(tmp_path, system):

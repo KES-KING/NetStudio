@@ -8,7 +8,7 @@ export const updatePhases: Record<string, string> = { queued: "Sırada", buildin
   succeeded: "Kuruldu", failed: "Başarısız", recovery_required: "Kurtarma gerekiyor", cancelled: "İptal edildi" };
 export const updateErrors: Record<string, string> = {
   github_unavailable: "GitHub kontrolü tamamlanamadı. Son başarılı kayıtlar korunuyor.", github_rate_limited: "GitHub hız sınırına ulaşıldı; belirtilen zamandan önce tekrar istek gönderilmez.",
-  update_agent_unavailable: "Sunucu güncelleyicisi bağlı değil. Önce host kurulumunu tamamlayın.", update_revision_unknown: "Kurulu commit doğrulanamadı. Sürüm etiketli imajlar gerekir.",
+  update_agent_unavailable: "Docker güncelleyicisi bağlı değil. Updater servisinin durumunu kontrol edin.", update_revision_unknown: "Kurulu commit doğrulanamadı. Temiz resmi checkout ve updater servisi gerekir.",
   update_recovery_required: "Önceki kurulum için sunucuda kurtarma gerekiyor; otomatik kurulum durdu.", update_check_required: "Önce güncel GitHub kontrolü gerekir.",
   update_revision_changed: "Yeni commit değişti. Listeyi yenileyip yeniden onaylayın.", update_confirmation_required: "Kurulum etkisini onaylayın.",
   sessions_busy: "Açık oturum veya işler bitmedi; kurulum yapılmadı.", deployment_contract_changed: "Dağıtım sözleşmesi değişmiş; sunucuda elle geçiş gerekiyor.",

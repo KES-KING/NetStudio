@@ -1,7 +1,9 @@
-"""Opt-in host-side updater. Never run inside the API or mount its Docker socket.
+"""Isolated deployment updater for a single verified NetStudio project.
 
-Only an operator-owned config binds a Docker project and its existing database.
-Web requests can select the checked main SHA, never commands, paths or repositories.
+The default Compose installation runs this code in its own container with the
+Engine API delegated only to that container.  API/web/worker processes never
+receive Docker access.  A private host configuration remains supported for
+custom installations and recovery.
 """
 import argparse
 from datetime import timezone
@@ -10,12 +12,14 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import tempfile
 import threading
 import time
 from uuid import uuid4
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 import sqlalchemy as sa
@@ -28,6 +32,9 @@ class UpdateFailure(RuntimeError):
     pass
 
 
+IMAGE_ID = re.compile(r"^sha256:[0-9a-f]{64}$")
+
+
 class HostConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     project: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{1,62}$")
@@ -38,16 +45,27 @@ class HostConfig(BaseModel):
     state_dir: Path
     database_url: str
     drain_timeout: int = Field(default=900, ge=15, le=3600)
+    runtime: Literal["host", "container"] = "host"
+    bootstrap_revision: str | None = Field(default=None, pattern=r"^[0-9a-f]{40}$")
 
     def validate_paths(self):
         for path in [self.installation_dir, self.env_file, self.state_dir, *self.compose_files]:
             if not path.is_absolute() or path == Path("/"):
                 raise UpdateFailure("invalid_host_config")
-        for path in [self.env_file, *self.compose_files]:
+        for path in self.compose_files:
             if not path.is_file() or not path.resolve().is_relative_to(self.installation_dir.resolve()):
                 raise UpdateFailure("invalid_host_config")
+        if not self.env_file.is_file() or not (
+            self.env_file.resolve().is_relative_to(self.installation_dir.resolve())
+            or self.runtime == "container" and self.env_file.resolve().is_relative_to(self.state_dir.resolve())
+        ):
+            raise UpdateFailure("invalid_host_config")
         url = sa.engine.make_url(self.database_url)
-        if url.get_backend_name() != "postgresql" or url.host not in {"127.0.0.1", "localhost"} or not url.port:
+        allowed_database = (
+            url.get_backend_name() == "postgresql" and url.port
+            and (url.host in {"127.0.0.1", "localhost"} if self.runtime == "host" else url.host == "postgres" and url.port == 5432)
+        )
+        if not allowed_database:
             raise UpdateFailure("database_must_be_explicit_loopback")
         if self.state_dir.is_symlink() or (self.state_dir.exists() and (self.state_dir.stat().st_uid != os.getuid() or self.state_dir.stat().st_mode & 0o077)):
             raise UpdateFailure("private_state_directory_required")
@@ -134,9 +152,13 @@ class HostUpdater:
                 raise UpdateFailure("project_not_healthy")
             current[service] = value
         url = sa.engine.make_url(self.config.database_url)
-        ports = current["postgres"]["NetworkSettings"]["Ports"].get("5432/tcp") or []
         pg_env = dict(item.split("=", 1) for item in current["postgres"]["Config"]["Env"] if "=" in item)
-        if not any(p["HostIp"] == "127.0.0.1" and int(p["HostPort"]) == url.port for p in ports) or pg_env.get("POSTGRES_DB") != url.database:
+        ports = current["postgres"]["NetworkSettings"]["Ports"].get("5432/tcp") or []
+        database_bound = (
+            any(p["HostIp"] == "127.0.0.1" and int(p["HostPort"]) == url.port for p in ports)
+            if self.config.runtime == "host" else url.host == "postgres" and url.port == 5432
+        )
+        if not database_bound or pg_env.get("POSTGRES_DB") != url.database or pg_env.get("POSTGRES_USER") != url.username:
             raise UpdateFailure("database_project_mismatch")
         for service in ("api", "collector-worker"):
             env = dict(item.split("=", 1) for item in current[service]["Config"]["Env"] if "=" in item)
@@ -149,15 +171,62 @@ class HostUpdater:
         return current
 
     def revisions(self, containers):
-        values = set()
+        values = []
         for service in ("api", "web", "collector-worker"):
             value = containers[service]["Config"]["Labels"].get("org.opencontainers.image.revision", "")
-            if not updates.SHA.fullmatch(value):
-                raise UpdateFailure("update_revision_unknown")
-            values.add(value)
-        if len(values) != 1:
+            values.append(value)
+        exact = set(values)
+        if len(exact) == 1 and updates.SHA.fullmatch(values[0]):
+            return values[0]
+        # A fresh zero-configuration Compose build cannot interpolate Git HEAD
+        # into an OCI label.  The dedicated updater may bind that first build
+        # to the separately verified clean public checkout.  Every candidate
+        # image built by the updater still carries and must pass an exact label.
+        if exact == {"unknown"} and self.config.runtime == "container" and self.config.bootstrap_revision:
+            return self.bound_bootstrap_revision(containers)
+        if len(exact) != 1:
             raise UpdateFailure("runtime_revision_mismatch")
-        return values.pop()
+        raise UpdateFailure("update_revision_unknown")
+
+    def bound_bootstrap_revision(self, containers):
+        """Bind an unlabeled first build to immutable image IDs exactly once.
+
+        A later Git pull changes the verified source mount without changing the
+        running images.  Persisting this binding prevents a restarted updater
+        from claiming that the newer source revision is already installed.
+        """
+        images = {service: containers[service].get("Image", "")
+            for service in ("api", "web", "collector-worker")}
+        if not all(IMAGE_ID.fullmatch(value) for value in images.values()) or images["api"] != images["collector-worker"]:
+            raise UpdateFailure("runtime_revision_mismatch")
+        path = self.config.state_dir / "bootstrap-runtime.json"
+        if path.exists() or path.is_symlink():
+            info = path.lstat()
+            if path.is_symlink() or info.st_uid != os.getuid() or info.st_mode & 0o077 or info.st_size > 16_384:
+                raise UpdateFailure("private_state_directory_required")
+            try:
+                binding = json.loads(path.read_text())
+            except (OSError, ValueError):
+                raise UpdateFailure("bootstrap_binding_invalid") from None
+            revision = binding.get("revision") if isinstance(binding, dict) else None
+            bound_images = binding.get("images") if isinstance(binding, dict) else None
+            if bound_images == images:
+                if not isinstance(revision, str) or not updates.SHA.fullmatch(revision):
+                    raise UpdateFailure("bootstrap_binding_invalid")
+                return revision
+        descriptor, temporary = tempfile.mkstemp(prefix=".bootstrap-runtime.", dir=self.config.state_dir)
+        try:
+            os.fchmod(descriptor, 0o600)
+            with os.fdopen(descriptor, "w") as output:
+                json.dump({"revision": self.config.bootstrap_revision, "images": images}, output, sort_keys=True)
+                output.write("\n")
+                output.flush()
+                os.fsync(output.fileno())
+            os.replace(temporary, path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+        return self.config.bootstrap_revision
 
     def register(self):
         revision = self.revisions(self.project())
@@ -233,7 +302,9 @@ class HostUpdater:
             raise UpdateFailure("revision_not_forward") from None
         if installed == revision:
             raise UpdateFailure("revision_not_forward")
-        changed = self.command(["git", "diff", "--name-only", installed, revision, "--", "docker-compose.yml", "docker-compose.tls.yml", "deploy/"], cwd=source)
+        changed = self.command(["git", "diff", "--name-only", installed, revision, "--",
+            "docker-compose.yml", "docker-compose.tls.yml", "deploy/", "backend/Dockerfile.updater",
+            "backend/app/updater.py", "backend/app/update_runtime.py"], cwd=source)
         if changed.strip():
             raise UpdateFailure("deployment_contract_changed")
         self.command(["git", "-c", "core.hooksPath=/dev/null", "checkout", "--detach", revision], cwd=source)
@@ -268,6 +339,18 @@ class HostUpdater:
         # Includes resolved env/overrides without writing or logging their secrets.
         value = self.command([*self.compose, "config", "--format", "json"])
         return hashlib.sha256(value).hexdigest()
+
+    def compose_images(self):
+        value = json.loads(self.command([*self.compose, "config", "--format", "json"]))
+        services = value.get("services", {})
+        images = {service: services.get(service, {}).get("image") for service in ("api", "web", "collector-worker")}
+        if not all(isinstance(image, str) and image for image in images.values()) or images["api"] != images["collector-worker"]:
+            raise UpdateFailure("deployment_contract_changed")
+        return {"api": images["api"], "web": images["web"]}
+
+    def tag_images(self, images, aliases):
+        for service in ("api", "web"):
+            self.command([*self.docker, "image", "tag", images[service], aliases[service]])
 
     def override(self, directory, name, images):
         path = directory / name
@@ -327,10 +410,14 @@ class HostUpdater:
         recovery = False
         old = None
         directory = None
+        aliases = None
+        aliases_touched = False
+        containers = None
         try:
             containers = self.project()
             installed = self.revisions(containers)
             fingerprint = self.compose_fingerprint()
+            aliases = self.compose_images()
             directory = self.stage(run, installed)
             old = self.override(directory, "previous-compose.json", {key: containers[key]["Image"] for key in ("api", "web", "collector-worker")})
             images = {service: f"netstudio-{'web' if service == 'web' else 'api'}:update-{run['revision']}"
@@ -360,6 +447,13 @@ class HostUpdater:
                 after = {(m.get("Name"), m["Destination"]) for m in current[service]["Mounts"] if m["Type"] == "volume"}
                 if before != after:
                     raise UpdateFailure("volume_identity_changed")
+            # Keep plain future `docker compose up` on the verified release
+            # instead of resolving the base image tag back to the first build.
+            aliases_touched = True
+            self.tag_images({
+                "api": f"netstudio-api:update-{run['revision']}",
+                "web": f"netstudio-web:update-{run['revision']}",
+            }, aliases)
             self.finish(run, "succeeded")
         except Exception as exc:
             code = str(exc) if isinstance(exc, UpdateFailure) else "installation_failed"
@@ -371,6 +465,8 @@ class HostUpdater:
                     if touched_runtime and not recovery and old:
                         self.command([*old, "up", "-d", "--no-deps", "--no-build", "--wait", "--wait-timeout", "180", "api", "web", "collector-worker"], timeout=240)
                         self.project()
+                    if aliases_touched and aliases and containers:
+                        self.tag_images({"api": containers["api"]["Image"], "web": containers["web"]["Image"]}, aliases)
                 except Exception:
                     recovery = True
             self.finish(run, "recovery_required" if recovery else "failed", code)

@@ -30,10 +30,9 @@ export default function UpdatesPage() {
           <div><dt>Sunucu güncelleyicisi</dt><dd>{data.agent_online ? "Bağlı" : "Bağlı değil"}</dd></div><div><dt>Otomatik kurulum</dt><dd>{data.automatic ? "Açık" : "Kapalı"}</dd></div></dl>
         {data.error_code && <p className="notice error" role="alert">{updateErrors[data.error_code] ?? data.error_code}</p>}
         {!installationReady && !data.recovery_required && <div className="update-setup-note" role="note">
-          <strong>Kurulum hazırlığı tamamlanmamış.</strong>
-          <p>{!data.installed_revision ? "Çalışan imajlarda doğrulanmış commit etiketi yok. " : ""}{!data.agent_online ? "Host güncelleyicisi bağlı değil. " : ""}Public resmi checkout dizininde aşağıdaki tek seferlik komut hem mevcut commit’i doğrular hem de güncelleyiciyi başlatır:</p>
-          <code>./netstudio-update setup</code>
-          <p>API container’ına Docker socket verilmez. <a href={`${data.repository_url}/blob/main/docs/updates.md`} target="_blank" rel="noopener noreferrer">Kurulum ve güvenlik rehberi ↗</a></p>
+          <strong>Docker güncelleyicisi henüz hazır değil.</strong>
+          <p>{!data.installed_revision ? "Temiz resmi checkout’un kurulu commit’i henüz doğrulanmadı. " : ""}{!data.agent_online ? "Compose içindeki güncelleyici bağlantısı bekleniyor. " : ""}İlk kurulumda ayrıca script veya .env hazırlığı gerekmez; servis <code>docker compose up -d --wait</code> ile otomatik başlar.</p>
+          <p>Durum sürerse <code>docker compose logs updater</code> çıktısındaki hata kodunu inceleyin. Docker Engine erişimi yalnız updater container’ındadır; API, web ve worker bu yetkiyi almaz. <a href={`${data.repository_url}/blob/main/docs/updates.md`} target="_blank" rel="noopener noreferrer">Kurulum ve güvenlik rehberi ↗</a></p>
         </div>}
         {data.can_manage ? <>
           <label className="update-consent"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />main üzerindeki kodun sunucuda çalıştırılacağını, yedek sonrası servislerin yeniden başlayacağını ve kısa kesinti olacağını anladım.</label>

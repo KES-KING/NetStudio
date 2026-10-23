@@ -85,9 +85,9 @@ Dağıtımlarda lisans ve telif bildirimlerini koruyun; bağımlılıklar kendi 
 
 ## Docker ile kurulum
 
-Otomatik güncelleme mevcut kuruluma kendiliğinden açılmaz. Public `KES-KING/NetStudio/main` kontrolü ile otomatik **kurulum** farklıdır; kurulum için çalışan imajların kesin commit'i ve ayrı host güncelleyicisi gerekir. Resmi, temiz bir checkout'ta `./netstudio-update setup` bu iki önkoşulu tek seferde güvenli biçimde hazırlar; otomatik politika yine yalnız superadmin onayıyla açılır. [Ayarlar, güven sınırı ve işletim adımları](docs/updates.md).
+Compose içindeki ayrı `updater` servisi temiz resmî Git checkout’unun veya GitHub kaynak arşivinin commit’ini doğrular ve ilk `docker compose up` ile kendiliğinden başlar; ayrıca `.env`, Python veya hazırlık scripti gerekmez. Public `KES-KING/NetStudio/main` kontrolü varsayılan açıktır, fakat yeni kodu otomatik **kurma politikası** güvenlik nedeniyle yalnız superadmin’in açık risk onayıyla etkinleşir. [Ayarlar, güven sınırı ve işletim adımları](docs/updates.md).
 
-Docker Engine veya Docker Desktop ve Compose 2.24.4 veya üzeri gerekir (TLS override dosyasındaki `!override` için). Temel Docker kurulumu için makinede Make, Python veya Node gerekmez; isteğe bağlı host güncelleyici hazırlığı Python 3.11+ kullanır. Aşağıdaki komutları repository kökünde çalıştırın; tüm servisler doğrudan `docker compose` ile yönetilir.
+Docker Engine veya Docker Desktop ve **Docker Compose 2.37.2 veya üzeri** gerekir (`updater` için `use_api_socket`, TLS override için `!override`). Host makinede Make, Python veya Node gerekmez. Aşağıdaki komutları repository kökünde çalıştırın; tüm servisler doğrudan `docker compose` ile yönetilir.
 
 ### Docker motorunu seçme
 
@@ -108,20 +108,11 @@ Kabukta tanımlı `DOCKER_HOST` veya `DOCKER_CONTEXT` değerleri motor seçimini
 ### Başlatma
 
 ```bash
-# .env zaten varsa üzerine yazmayın.
-test -f .env || cp .env.example .env
-docker compose config --quiet
-docker compose up --build -d --wait
+docker compose up -d --wait
 docker compose exec api python -m app.admin create-user --username admin --role superadmin --site '*'
 ```
 
-Arayüzden güncelleme kurmak isteyen resmi public checkout kullanıcıları, yukarıdaki `docker compose up` komutu yerine veya mevcut kurulumda bir kez aşağıdaki hazırlığı çalıştırabilir:
-
-```bash
-./netstudio-update setup
-```
-
-Komut yalnız temiz ve resmi `KES-KING/NetStudio` geçmişinin `main` dalında bulunan bir commit'i kabul eder; mevcut Compose proje/context/TLS dosyalarını keşfeder, `.env` içindeki diğer değerleri koruyarak kesin SHA'yı yazar, aynı volume'lerle imajları yeniden oluşturur ve özel host güncelleyici yapılandırmasını başlatır. Python 3.11+, Git ve yerel bir Docker context gerekir. Kirli çalışma ağacı, fork commit'i, uzak Docker motoru veya eşleşmeyen proje güvenli biçimde reddedilir. API/web container'larına Docker socket bağlanmaz. Ayrıntılar ve servis yöneticisi davranışı: [güncelleme işletim rehberi](docs/updates.md).
+İlk komut eksik yerel imajları oluşturur; PostgreSQL, migration, API, web, ağ probe’u ve güncelleyiciyi başlatır. Güncelleyici temiz resmî Git checkout’unu doğrudan; `.git` içermeyen GitHub ZIP/tar kaynağını ise tüm izlenen dosya içeriklerini `origin/main` geçmişiyle birebir eşleştirerek doğrular ve commit’i **Ayarlar → Güncellemeler** ekranına yazar. `.env.example` yalnız isteğe bağlı port, TLS, veritabanı veya ağ özelleştirmeleri için şablondur; standart yerel kurulumda kopyalanmaz. API/web/worker Docker Engine erişimi almaz; bu yüksek yetki yalnız izole `updater` container’ındadır.
 
 Son komut ilk yönetici hesabını oluşturur ve parolayı etkileşimli olarak iki kez ister; en az 12 karakter gerekir. Sonraki başlatmalarda hesabı tekrar oluşturmayın. Varsayılan yönetici parolası yoktur. Web: <http://127.0.0.1:3000>. Desktop motoru seçiliyken servisler Docker Desktop'ın Containers ekranında `netstudio` grubu altında görünür (`COMPOSE_PROJECT_NAME` değiştirilmişse o ad kullanılır).
 
@@ -156,7 +147,7 @@ Nginx gateway ── / ─────────► Next.js web
                                 └── Ayrı, salt okunur şifreleme anahtarı volume'ü
 
 Başlatma: PostgreSQL healthy → Alembic migrate → API ready → web → gateway
-          secrets-init ──────────────────────────┘
+          secrets-init ──────────────────────────┘       └→ updater
 
 İsteğe bağlı VLAN trunk'ı → ayrı network-probe-agent (`NET_RAW`, veritabanı/SSH sırrı/keyring mount'u yok) → HTTPS API
 ```
@@ -169,6 +160,7 @@ Gateway WebSocket upgrade ve uzun süreli SSH akışını destekler. API tek Uvi
 docker compose ps -a                    # Başlatma işleri dahil tüm servisler.
 docker compose logs -f --tail=200        # Tüm servislerin logları; Ctrl+C yalnız izlemeyi bitirir.
 docker compose logs -f --tail=200 api    # Yalnız API logları.
+docker compose logs -f --tail=200 updater # Commit doğrulama/güncelleme ajanı.
 docker compose stop                     # Container'lar ve volume'ler korunur; Desktop'ta kalır.
 docker compose up -d --wait              # Durdurulmuş sistemi tekrar başlatır.
 docker compose up --build -d --wait      # Kod/imaj değişikliklerini uygular, migration ve sağlık kontrollerini çalıştırır.
@@ -269,7 +261,7 @@ Panel kapanması, sayfadan çıkış, çıkış yapma, kimlik bilgisi değişimi
 
 ### Hesabım ve yönetici işlemleri
 
-Üst bardaki avatar/kullanıcı alanı veya yan menünün altındaki **Hesabım** bağlantısı Ayarlar'ın `/settings` hesap sekmesini açar; eski `/account` adresi geriye uyumlu kalır. Her kullanıcı kendi görünen adını, isteğe bağlı avatarını ve mevcut parolasını doğrulayarak yeni parolasını değiştirebilir. Superadmin **Kullanıcılar** sekmesinde (`/settings/users`) kullanıcı oluşturur, arar, rol/lokasyon/aktiflik bilgilerini düzenler, başka kullanıcıların parolasını sıfırlar ve kullanıcı adıyla onaylayarak hesap siler. Kayıtlı parola hiçbir okuma API'sine veya düzenleme formuna geri verilmez; düzenlemede boş parola mevcut hash'i korur. **Güncellemeler** sekmesinin ayrı host hazırlığı ve güven sınırları [işletim rehberindedir](docs/updates.md).
+Üst bardaki avatar/kullanıcı alanı veya yan menünün altındaki **Hesabım** bağlantısı Ayarlar'ın `/settings` hesap sekmesini açar; eski `/account` adresi geriye uyumlu kalır. Her kullanıcı kendi görünen adını, isteğe bağlı avatarını ve mevcut parolasını doğrulayarak yeni parolasını değiştirebilir. Superadmin **Kullanıcılar** sekmesinde (`/settings/users`) kullanıcı oluşturur, arar, rol/lokasyon/aktiflik bilgilerini düzenler, başka kullanıcıların parolasını sıfırlar ve kullanıcı adıyla onaylayarak hesap siler. Kayıtlı parola hiçbir okuma API'sine veya düzenleme formuna geri verilmez; düzenlemede boş parola mevcut hash'i korur. **Güncellemeler** sekmesinin otomatik Docker servisi ve güven sınırları [işletim rehberindedir](docs/updates.md).
 
 - Yeni parolalar 12–1024 karakterdir ve Argon2id ile hashlenir. Kişisel parola değişimi mevcut parolayı ister; admin düzenleme ekranı bu kontrolü atlatamaz.
 - Rol, lokasyon, kullanıcı adı, aktiflik veya parola değişiminde ilgili kullanıcının tüm uygulama oturumları iptal edilir; SSH oturumları da kapanır. Görünen ad/avatar değişimi oturumu kapatmaz.
@@ -299,7 +291,7 @@ NetStudio adlandırmasına ilk geçişte **önce [ad geçişi rehberini](docs/na
 docker compose up --build -d --wait
 ```
 
-Güncelleme ekranından sonraki commit'leri kurabilmek için resmi checkout'u elle ileri aldıktan sonra bir kez `./netstudio-update setup` çalıştırın. Bu hazırlık eski `unknown` imaj etiketini doğrulanmış checkout SHA'sıyla değiştirir ve host ajanını bağlar; cihazları, kullanıcıları, veritabanı volume'ünü veya keyring volume'ünü yeniden oluşturmaz.
+Bu Compose sözleşmesine geçildiğinde ayrı `updater` servisi de aynı `up` komutuyla oluşturulur; ek script gerekmez. Servis temiz resmî checkout SHA’sını doğrular ve güncelleme ekranına bağlanır. Cihazlar, kullanıcılar, veritabanı volume’ü ve keyring volume’ü korunur.
 
 Üretim TLS kurulumunda bunun yerine mevcut override'ı koruyun:
 
@@ -618,7 +610,7 @@ ve volume'leri değiştirilmedi; migration ve imaj geçişi yalnız izole QA'ya 
 - Hesap oluşturma/düzenleme/silme, viewer profil/avatar/parola değişimi, engineer yönetim engeli, canlı SSH yetki iptali, gerçek profil olayının yenilemesiz SSE paneline gelmesi, okundu durumunun reload sonrası korunması, Escape/dış tıklama/odak iadesi, azaltılmış hareket ve mobil taşma denetlendi. Gerçek public GitHub kontrolü 30 commit aldı ve arayüzde GitHub bağlantısı doğrulandı. Güncelleme-available rozeti ve HTML olarak çalıştırılmayan commit metni ayrı UI fixture'ıyla sınandı; bu fixture gerçek kurulum kanıtı değildir.
 - İlk QA'da bildirim düğmesinin test seçicisi kapatma düğmesiyle çakıştı; kapsam daraltıldı. Kullanılmayan topoloji CSS ön yükleme uyarısı için yalnız topoloji navigasyonunun erken prefetch'i kapatıldı. Ekran yakalamalarından sonra global klavye odağını varsayan eski test, odağı kontrol ettikten sonra Enter'ı doğrudan hedef link üzerinden gönderecek şekilde ayrıldı; mobil odak ve gerçek SSH regresyonları korunur. Son turda ilgili konsol/hata katmanı/boş sayfa kontrolleri geçti.
 - README'nin üç zorunlu görüntüsü son çalışan imajlardan 1536×1024 viewport, `fullPage` ve animasyonlar kapalı alınarak açılıp incelendi ve `docs/screenshots/` altına kopyalandı. SSH açık kare gerçek izole SSH bağlantısıdır. Yeni sayfa/panel masaüstü-mobil kanıtları `/tmp/netstudio-settings/` altındadır. React ve PostgreSQL rehberleri doğrultusunda SSE bağlantısı unmount'ta temizlenir; ağ/derleme işlemleri DB kilidi altında çalışmaz.
-- Host hedef doğrulaması mevcut QA üzerinde **salt okunur** çalıştırıldı; doğru proje/DB bulundu ve sürümsüz imaj koruması beklendiği gibi `update_revision_unknown` döndürdü. Otomatik kurulum açık değildir, host agent servis olarak kurulmadı ve hiçbir gerçek güncelleme işi başlatılmadı. `netstudio-fresh`, kullanıcı verileri, SSH anahtarları ve volume'ler korunmuştur; commit/push yapılmadı. Canlı kullanım için temiz yayınlanmış sürüm, migration/API-worker-web geçişi ve bir defalık operatör host hazırlığı gerekir. Gerçek yükseltme/restore, güç kesintisi, Safari/Firefox ve fiziksel cihaz kabulü bu testlerin dışında kalır.
+- Host hedef doğrulaması mevcut QA üzerinde **salt okunur** çalıştırıldı; doğru proje/DB bulundu ve sürümsüz imaj koruması beklendiği gibi `update_revision_unknown` döndürdü. Otomatik kurulum açık değildir, host agent servis olarak kurulmadı ve hiçbir gerçek güncelleme işi başlatılmadı. `netstudio-fresh`, kullanıcı verileri, SSH anahtarları ve volume'ler korunmuştur; commit/push yapılmadı. Bu, 20 Ekim QA anındaki tarihsel durumdur; güncel sıfır-hazırlık Compose updater sözleşmesi yukarıdaki kurulum bölümü ve [işletim rehberinde](docs/updates.md) tanımlıdır. Gerçek yükseltme/restore, güç kesintisi, Safari/Firefox ve fiziksel cihaz kabulü bu testlerin dışında kalır.
 
 ### 20 Ekim 2026 — NetStudio adlandırma geçişi
 
