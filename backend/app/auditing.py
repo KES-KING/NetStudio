@@ -47,6 +47,10 @@ SAFE_KEYS = frozenset({
     "settings", "fast_seconds", "health_seconds", "network_seconds", "inventory_seconds", "preferred_source",
     "auth_protocol", "privacy_protocol",
     "recovery_acknowledged",
+    "configured_profile_id", "resolved_profile_id", "profile_revision",
+    "management_mode", "resolution_status", "validation_level", "result",
+    "capability_id", "profile_id",
+    "collector",
 })
 SECRET_TEXT = re.compile(
     r"-----BEGIN .*PRIVATE KEY-----|\bBearer\s+\S+|(?:password|passwd|passphrase|secret|token|authorization|cookie|private_key)\s*[:=]",

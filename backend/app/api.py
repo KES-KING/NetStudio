@@ -33,6 +33,15 @@ from . import updates
 from .settings_api import install as install_settings
 from .network_probe import install as install_network_probe
 from .collection import upsert
+from .driver_profiles import REGISTRY
+from .profile_resolution import (
+    DriverProfileSelection,
+    binding_values,
+    collector_matches_profile,
+    compatibility_view,
+    resolve_profile,
+    runtime_collector_for_profile,
+)
 from starlette.concurrency import run_in_threadpool
 
 
@@ -243,6 +252,9 @@ def create_app(store=None, key_file=None):
                 conn.execute(sa.select(app.state.store.polling.c.version).limit(1))
                 conn.execute(sa.select(app.state.store.system_update.c.id).limit(1))
                 conn.execute(sa.select(app.state.store.network_probe_agents.c.id).limit(1))
+                conn.execute(sa.select(app.state.store.driver_bindings.c.device_id).limit(1))
+                conn.execute(sa.select(app.state.store.capability_observations_v2.c.device_id).limit(1))
+                conn.execute(sa.select(app.state.store.driver_acceptance.c.id).limit(1))
         except Exception:
             fail("persistence_unavailable", 503)
         return {"status": "ready", "service": "netstudio-api", "revision": getenv("NETSTUDIO_BUILD_REVISION", "unknown")}
@@ -298,11 +310,30 @@ def create_app(store=None, key_file=None):
             fail("forbidden", 403)
         if value.ssh_profile == "huawei_legacy" and not value.legacy_ssh_confirmed:
             fail("legacy_ssh_confirmation_required", 422)
+        collector = value.collector
+        if value.configured_profile_id:
+            if REGISTRY.profile(value.configured_profile_id) is None:
+                fail("unknown_driver_profile", 422)
+            if "collector" in value.model_fields_set and not collector_matches_profile(
+                collector, value.configured_profile_id
+            ):
+                fail("driver_profile_collector_conflict", 409)
+            if "collector" not in value.model_fields_set:
+                collector = runtime_collector_for_profile(value.configured_profile_id)
+            resolution = resolve_profile(
+                value.configured_profile_id, value.management_mode, source="manual"
+            )
+            if resolution.status == "conflict":
+                fail("driver_profile_management_mode_conflict", 409)
+        else:
+            resolution = resolve_profile(
+                collector, value.management_mode, source="legacy_alias"
+            )
         device_id = str(uuid4())
         device = ManagedDevice(id=device_id, name=value.name, management_address=value.management_address, site=value.site,
-            vendor=value.vendor, platform=value.collector, model=value.model, serial="", os_version="", support_status="generic_readonly",
+            vendor=value.vendor, platform=collector, model=value.model, serial="", os_version="", support_status="generic_readonly",
             components=[], physical_ports=[], interfaces=[], bindings=[], device_type=value.device_type, ssh_port=value.ssh_port,
-            collector=value.collector, ssh_profile=value.ssh_profile, allow_legacy_ssh=value.allow_legacy_ssh,
+            collector=collector, ssh_profile=value.ssh_profile, allow_legacy_ssh=value.allow_legacy_ssh,
             ssh_algorithms=value.ssh_algorithms)
         try:
             options_for(attempt_profiles(device)[0], device)
@@ -316,6 +347,10 @@ def create_app(store=None, key_file=None):
                 fail("credential_secret_required", 422)
         with app.state.store.engine.begin() as conn:
             app.state.store.save_device(device, conn)
+            app.state.store.save_driver_binding(binding_values(
+                resolution, device_id=device.id, legacy_collector_id=collector,
+                actor=auth.user.user_id,
+            ), conn)
             ensure_policy(app.state.store, device, auth.user.user_id, conn)
             if credentials:
                 app.state.vault.save(device.id, credentials, conn)
@@ -331,22 +366,125 @@ def create_app(store=None, key_file=None):
         with app.state.store.engine.begin() as conn:
             current = conn.execute(sa.select(app.state.store.devices.c.payload).where(app.state.store.devices.c.id == device.id).with_for_update()).scalar_one()
             device = ManagedDevice.model_validate(current)
+            prior_binding = app.state.store.get_driver_binding(device.id, conn)
             if value.ssh_profile == "huawei_legacy" and device.ssh_profile != "huawei_legacy" and not value.legacy_ssh_confirmed:
                 fail("legacy_ssh_confirmation_required", 422)
-            before = device.model_dump(mode="json", include={"collector", "ssh_profile", "allow_legacy_ssh", "ssh_algorithms"})
-            after = value.model_dump(mode="json", exclude={"legacy_ssh_confirmed"})
+            collector = value.collector if "collector" in value.model_fields_set else device.collector
+            mode = value.management_mode if "management_mode" in value.model_fields_set else (
+                prior_binding["management_mode"] if prior_binding else "unknown"
+            )
+            explicit_profile = "configured_profile_id" in value.model_fields_set
+            profile_id = value.configured_profile_id if explicit_profile else (
+                prior_binding["configured_profile_id"] if prior_binding and collector == device.collector else None
+            )
+            if profile_id:
+                if REGISTRY.profile(profile_id) is None:
+                    fail("unknown_driver_profile", 422)
+                if not collector_matches_profile(collector, profile_id):
+                    fail("driver_profile_collector_conflict", 409)
+                resolution = resolve_profile(profile_id, mode, source="manual")
+                if resolution.status == "conflict":
+                    fail("driver_profile_management_mode_conflict", 409)
+            else:
+                resolution = resolve_profile(collector, mode, source="legacy_alias")
+            before = device.model_dump(mode="json", include={"collector", "ssh_profile", "allow_legacy_ssh", "ssh_algorithms"}) | {
+                "configured_profile_id": prior_binding["configured_profile_id"] if prior_binding else None,
+                "management_mode": prior_binding["management_mode"] if prior_binding else "unknown",
+            }
+            after = value.model_dump(mode="json", exclude={
+                "legacy_ssh_confirmed", "configured_profile_id", "management_mode",
+            })
+            after["collector"] = collector
             updated = ManagedDevice.model_validate({**device.model_dump(), **after})
             try:
                 options_for(attempt_profiles(updated)[0], updated)
             except ValueError as error:
                 fail(str(error), 422)
             app.state.store.save_device(updated, conn)
+            app.state.store.save_driver_binding(binding_values(
+                resolution, device_id=device.id, legacy_collector_id=collector,
+                actor=auth.user.user_id,
+                binding_revision=(prior_binding["binding_revision"] + 1) if prior_binding else 1,
+            ), conn)
             changed(app.state.store, device.id, conn)
+            after.update({
+                "configured_profile_id": resolution.configured_profile_id,
+                "management_mode": resolution.management_mode,
+            })
         if before != after:
             app.state.ssh.revoke(device_id=device.id)
         app.state.store.record(auth.user.user_id, "device.connection.updated", "succeeded", device.id,
             details={"before": before, "after": after, "legacy_ssh_confirmed": value.legacy_ssh_confirmed})
         return app.state.store.get_device(device.id)
+
+    @app.get("/api/v1/devices/{device_id}/compatibility")
+    def device_compatibility(device_id: str, request: Request):
+        _, device = device_for(request, device_id, Permission.INVENTORY_READ)
+        return compatibility_view(app.state.store, device)
+
+    @app.put("/api/v1/devices/{device_id}/driver-profile")
+    def set_driver_profile(
+        device_id: str, value: DriverProfileSelection, request: Request
+    ):
+        auth, device = device_for(
+            request, device_id, Permission.INVENTORY_MANAGE, True
+        )
+        profile = REGISTRY.profile(value.configured_profile_id)
+        if profile is None:
+            fail("unknown_driver_profile", 422)
+        resolution = resolve_profile(
+            profile.id, value.management_mode, source="manual"
+        )
+        if resolution.status == "conflict":
+            fail("driver_profile_management_mode_conflict", 409)
+        store = app.state.store
+        profile_changed = True
+        with store.engine.begin() as conn:
+            payload = conn.execute(sa.select(store.devices.c.payload).where(
+                store.devices.c.id == device.id
+            ).with_for_update()).scalar_one()
+            current = ManagedDevice.model_validate(payload)
+            prior = store.get_driver_binding(device.id, conn)
+            collector = current.collector
+            if (
+                prior
+                and prior["configured_profile_id"] == profile.id
+                and prior["management_mode"] == value.management_mode
+                and collector_matches_profile(collector, profile.id)
+            ):
+                profile_changed = False
+            else:
+                if not collector_matches_profile(collector, profile.id):
+                    collector = runtime_collector_for_profile(profile.id)
+                    current = current.model_copy(update={
+                        "collector": collector, "platform": collector,
+                    })
+                    store.save_device(current, conn)
+                store.save_driver_binding(binding_values(
+                    resolution, device_id=device.id, legacy_collector_id=collector,
+                    actor=auth.user.user_id,
+                    binding_revision=(prior["binding_revision"] + 1) if prior else 1,
+                ), conn)
+                changed(store, device.id, conn)
+                store.record(
+                    auth.user.user_id, "driver.profile.changed",
+                    resolution.status, device.id,
+                    details={
+                        "before": {
+                            "configured_profile_id": prior["configured_profile_id"] if prior else None,
+                            "management_mode": prior["management_mode"] if prior else "unknown",
+                        },
+                        "after": {
+                            "configured_profile_id": profile.id,
+                            "management_mode": value.management_mode,
+                            "resolution_status": resolution.status,
+                        },
+                    },
+                    conn=conn,
+                )
+        if profile_changed:
+            app.state.ssh.revoke(device_id=device.id)
+        return compatibility_view(store, store.get_device(device.id))
 
     @app.put("/api/v1/devices/{device_id}/inventory")
     def save_inventory(device_id: str, value: Inventory, request: Request):
@@ -401,6 +539,9 @@ def create_app(store=None, key_file=None):
             payload = conn.execute(sa.select(store.devices.c.payload).where(store.devices.c.id == device.id).with_for_update()).scalar_one()
             prior = conn.execute(sa.select(store.host_keys.c.fingerprint).where(store.host_keys.c.device_id == device.id)).scalar_one_or_none()
             device = ManagedDevice.model_validate({**payload, "host_key_fingerprint": prior})
+            device = store.with_driver_binding(
+                device, store.get_driver_binding(device.id, conn)
+            )
             public_key, expected = value.public_key, value.fingerprint
             if value.candidate_id:
                 row = conn.execute(sa.select(store.host_candidates).where(store.host_candidates.c.id == value.candidate_id,

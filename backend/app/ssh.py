@@ -27,7 +27,9 @@ def target_allowed(store, device):
     registered = store.get_device(device.id)
     if not registered or any(getattr(registered, key) != getattr(device, key)
                              for key in ("management_address", "ssh_port", "site", "ssh_profile", "collector",
-                                         "host_key_fingerprint", "allow_legacy_ssh", "ssh_algorithms", "connection_revision")):
+                                         "host_key_fingerprint", "allow_legacy_ssh", "ssh_algorithms", "connection_revision",
+                                         "configured_profile_id", "resolved_profile_id", "profile_revision",
+                                         "management_mode", "profile_resolution_status")):
         raise ConnectionPolicyError("device_connection_changed")
     try:
         address = ip_address(device.management_address)

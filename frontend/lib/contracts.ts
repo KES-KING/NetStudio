@@ -32,6 +32,20 @@ export type DeviceCollector =
   | "cisco_iosxe"
   | "cisco_nxos"
   | "juniper_junos";
+export type DeviceManagementMode =
+  | "standalone"
+  | "controller_managed"
+  | "cloud_managed"
+  | "local_managed"
+  | "unknown";
+export type ProfileResolutionStatus =
+  | "unresolved"
+  | "matched"
+  | "conflict"
+  | "unsupported"
+  | "manual_resolution_required"
+  | "infrastructure_adapter"
+  | "external";
 export type Device = {
   id: string;
   name: string;
@@ -49,6 +63,11 @@ export type Device = {
   collector: DeviceCollector;
   resolved_collector?: DeviceCollector | null;
   driver_version?: string | null;
+  configured_profile_id?: string | null;
+  resolved_profile_id?: string | null;
+  profile_revision?: number | null;
+  management_mode?: DeviceManagementMode;
+  profile_resolution_status?: ProfileResolutionStatus;
   ssh_profile?: "auto" | "standard" | "huawei_legacy" | "legacy_sha1" | "legacy_cbc" | "advanced";
   allow_legacy_ssh?: boolean;
   ssh_algorithms?: Record<string, string[]>;
@@ -250,6 +269,69 @@ export type DriverAcceptanceSummary = {
   highest_level: DriverVerificationStatus;
   matching_unexpired_records: number;
   production_accepted: boolean;
+};
+export type DeviceCapabilityObservation = {
+  profile_id: string;
+  profile_revision: number;
+  transport: "ssh" | "snmp" | "api";
+  capability_id: string;
+  status: string;
+  reason_code: string | null;
+  checked_at: string;
+  expires_at: string;
+  evidence_digest: string | null;
+  stale: boolean;
+};
+export type DeviceCompatibility = {
+  device_id: string;
+  configured_profile_id: string | null;
+  legacy_collector_id: string | null;
+  resolved_profile_id: string | null;
+  profile_revision: number | null;
+  management_mode: DeviceManagementMode;
+  resolution_status: ProfileResolutionStatus;
+  resolution_confidence: number;
+  resolution_conflicts: string[];
+  identity_evidence: Partial<{
+    vendor: string;
+    model: string;
+    os_family: string;
+    os_version: string;
+    hardware_revision: string;
+    sys_object_id: string;
+    management_mode: DeviceManagementMode;
+  }>;
+  resolved_at: string | null;
+  implementation_status: DriverImplementationStatus | null;
+  verification_status: DriverVerificationStatus;
+  release_status: DriverReleaseStatus;
+  runtime_collection_ready: boolean;
+  capabilities: DeviceCapabilityObservation[];
+  acceptance: DriverAcceptanceSummary;
+};
+export type DriverAcceptanceRecord = {
+  source_revision: string;
+  profile_id: string;
+  profile_revision: number;
+  vendor: string;
+  model_family: string;
+  exact_model: string;
+  hardware_revision: string;
+  os_family: string;
+  os_version: string;
+  management_mode: DeviceManagementMode;
+  transport: "ssh" | "snmp" | "api";
+  security_profile: string;
+  capability_id: string;
+  parser_version: string;
+  test_suite_revision: string;
+  validation_level: DriverVerificationStatus;
+  result: "pass" | "fail" | "blocked" | "withdrawn";
+  evidence_sha256: string;
+  evidence_sanitized: true;
+  observed_at: string;
+  recorded_at: string;
+  expires_at: string;
 };
 export type DriverProfileCatalogEntry = {
   schema_version: number;

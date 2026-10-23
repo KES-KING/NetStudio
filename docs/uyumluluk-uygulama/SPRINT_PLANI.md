@@ -267,6 +267,14 @@ ve acceptance kaydını veri kaybetmeden kalıcılaştırmak.
 - Eski cihaz, sır, host key, port/interface ID ve telemetri hash'leri korunur.
 - Eski API payload'ı en az bir uyumluluk dönemi çalışır.
 
+### Uygulama durumu
+
+**Tamamlandı — 23 Ekim 2026.** S02-01–S02-09 uygulaması, migration ve
+rollback kanıtı [`S02_TESLIM_RAPORU.md`](S02_TESLIM_RAPORU.md) içindedir.
+`0010_driver_acceptance` yalnız additive tablolar ekler; legacy payload, sır,
+host key, envanter/telemetri, job ve probe verisini yeniden yazmaz. Bu sprint
+yeni parser, fiziksel destek veya production acceptance eklememiştir.
+
 ---
 
 ## S03 — Katalog tabanlı cihaz ve uyumluluk arayüzü

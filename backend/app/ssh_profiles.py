@@ -103,7 +103,9 @@ def attempt_profiles(device, cached=None):
 
 def target_signature(device):
     fields = ("management_address", "ssh_port", "site", "collector", "ssh_profile",
-              "allow_legacy_ssh", "connection_revision", "host_key_fingerprint")
+              "allow_legacy_ssh", "connection_revision", "host_key_fingerprint",
+              "configured_profile_id", "resolved_profile_id", "profile_revision",
+              "management_mode", "profile_resolution_status")
     values = {key: getattr(device, key) for key in fields}
     values["ssh_algorithms"] = device.ssh_algorithms.model_dump()
     return sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()

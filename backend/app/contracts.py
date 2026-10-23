@@ -41,6 +41,14 @@ CollectionQuality = Literal[
     "ok", "partial", "unknown", "unsupported", "permission_denied",
     "parse_error", "timeout", "error",
 ]
+ManagementMode = Literal[
+    "standalone", "controller_managed", "cloud_managed", "local_managed",
+    "unknown",
+]
+ProfileResolutionStatus = Literal[
+    "unresolved", "matched", "conflict", "unsupported",
+    "manual_resolution_required", "infrastructure_adapter", "external",
+]
 
 
 class SSHAlgorithms(StrictModel):
@@ -89,6 +97,10 @@ class SNMPCredentials(StrictModel):
 
 class ConnectionSettings(StrictModel):
     collector: Collector = "external"
+    configured_profile_id: str | None = Field(
+        default=None, pattern=r"^[a-z][a-z0-9_]{1,63}$"
+    )
+    management_mode: ManagementMode = "unknown"
     ssh_profile: SSHProfile = "standard"
     legacy_ssh_confirmed: bool = False
     allow_legacy_ssh: bool = False
@@ -130,6 +142,11 @@ class ManagedDevice(Device):
     connection_revision: int = 1
     resolved_collector: str | None = None
     driver_version: str | None = None
+    configured_profile_id: str | None = None
+    resolved_profile_id: str | None = None
+    profile_revision: int | None = Field(default=None, ge=1)
+    management_mode: ManagementMode = "unknown"
+    profile_resolution_status: ProfileResolutionStatus = "unresolved"
     validation_level: Literal["experimental", "fixture_tested", "lab_validated", "physical_validated"] = "experimental"
     snmp_configured: bool = False
 

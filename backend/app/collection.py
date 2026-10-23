@@ -10,6 +10,7 @@ from .contracts import GroupObservation, ManagedDevice, Telemetry
 from .database import now
 from .driver_catalog import VERSION
 from .ssh import ConnectionPolicyError
+from .profile_resolution import record_collected_resolution, save_capability_observation
 from .telemetry import normalize, physical_summary, timestamp
 
 
@@ -60,6 +61,7 @@ def persist(store, original, result, *, fence=lambda conn: None):
         # A manual inventory edit which raced the read always wins.
         if current.inventory_observed_at != original.inventory_observed_at:
             raise ConnectionPolicyError("out_of_order_inventory")
+        binding = record_collected_resolution(store, result.device, conn)
         device = preserve_inventory(current, result.device, result.inventory_complete)
         if device != current:
             store.save_device(device, conn)
@@ -88,6 +90,7 @@ def persist(store, original, result, *, fence=lambda conn: None):
                     groups[name] = dict(device_id=device.id, group_name=name, payload=payload, metadata=details, content_hash=digest)
                     conn.execute(store.collection_groups.insert().values(**groups[name]))
         for name, meta in result.metadata.items():
+            save_capability_observation(store, binding, name, meta, conn)
             prior = groups.get(name, {})
             details = meta.model_dump(mode="json")
             good = meta.quality == "ok" and meta.complete

@@ -62,6 +62,32 @@ Acil cevap uyumluluğu için `NETSTUDIO_DRIVER_CATALOG_V2=0`, yalnız additive v
 alanlarını kaldırıp önceki katalog JSON biçimini döndürür. Kolektör davranışını,
 cihaz kayıtlarını, sırları veya veritabanını değiştirmez.
 
+### Kanonik profil binding'i ve uyumluluk API'si
+
+`0010_driver_acceptance` migration'ı cihaz payload'ını yeniden yazmadan üç
+additive tablo ekler: `device_driver_bindings`,
+`device_capability_observations_v2` ve `driver_acceptance_records`.
+
+- Eski `collector` alanı en az bir uyumluluk dönemi okunup yazılmaya devam eder.
+- Device cevapları `configured_profile_id`, `resolved_profile_id`,
+  `profile_revision`, `management_mode` ve `profile_resolution_status`
+  alanlarını binding tablosundan additive olarak alır.
+- `GET /api/v1/devices/{device_id}/compatibility`, yalnız kullanıcının site
+  kapsamında redakte çözüm/capability/kabul görünümünü döndürür.
+- `PUT /api/v1/devices/{device_id}/driver-profile`, kanonik profil ve management
+  mode seçer; profil değişimi connection revision/cache/job fence ve açık SSH
+  oturumu iptalini tetikler.
+- `GET /api/v1/driver-acceptance`, yalnız superadmin için redakte kayıtları
+  döndürür. Browser tarafından acceptance/validation/evidence yazma endpoint'i
+  yoktur.
+
+`fortinet` otomatik profile çevrilmez. Kanıtsız `huawei_vrp`, `dell_force10` ve
+`extreme_vsp` binding'leri manuel çözüm bekler. Başarılı, kimliği doğrulayan
+collector/parser sonucu resolved profili günceller. Capability tablosu ham cihaz
+çıktısı veya hata metni değil; typed durum/reason, zaman, expiry ve SHA-256 digest
+saklar. Acceptance kaydı yoksa katalog veya cihaz görünümü destek seviyesini
+kendiliğinden yükseltmez.
+
 ## Veri doğruluğu
 
 - SFP yuvası, takılan bakır modül nedeniyle RJ45'e dönüştürülmez. Modül ortamı ayrı

@@ -9,6 +9,7 @@ from .auth import fail
 from .contracts import ManagedDevice, PollingSettings, SNMPCredentials
 from .database import now
 from .driver_catalog import DRIVERS, catalog as driver_catalog
+from .profile_resolution import acceptance_records, catalog_acceptance_summaries
 from .history import history
 from .queue import enqueue, transaction
 from .scheduler import ensure_policy
@@ -24,6 +25,17 @@ def changed(store, device_id, conn):
     store.save_device(device.model_copy(update={"connection_revision": device.connection_revision + 1,
         "resolved_collector": None, "driver_version": None}), conn)
     conn.execute(store.ssh_cache.delete().where(store.ssh_cache.c.device_id == device_id))
+    conn.execute(store.capability_observations_v2.delete().where(
+        store.capability_observations_v2.c.device_id == device_id
+    ))
+    conn.execute(store.jobs_repository.jobs.update().where(
+        store.jobs_repository.jobs.c.device_id == device_id,
+        store.jobs_repository.jobs.c.status == "queued",
+    ).values(
+        status="cancelled", finished_at=now(),
+        error_code="device_connection_changed",
+        result_code="device_connection_changed",
+    ))
     conn.execute(store.polling.update().where(store.polling.c.device_id == device_id)
         .values(paused_reason=None, due_at=now(), state={}, updated_at=now()))
 
@@ -32,7 +44,38 @@ def install(app, context, device_for):
     @app.get("/api/v1/driver-catalog")
     def drivers(request: Request):
         context(request)
-        return driver_catalog()
+        result = driver_catalog()
+        summaries = catalog_acceptance_summaries(app.state.store)
+        for profile in result.get("profiles", []):
+            dynamic = summaries.get((profile["id"], profile["profile_revision"]))
+            if dynamic:
+                rank = {
+                    "not_tested": 0, "unit_verified": 1, "fixture_verified": 2,
+                    "transport_lab_validated": 3, "physical_validated": 4,
+                }
+                static = profile["acceptance"]
+                profile["acceptance"] = {
+                    **dynamic,
+                    "highest_level": max(
+                        (static["highest_level"], dynamic["highest_level"]),
+                        key=rank.get,
+                    ),
+                    "production_accepted": bool(
+                        static["production_accepted"]
+                        or dynamic["production_accepted"]
+                    ),
+                }
+        return result
+
+    @app.get("/api/v1/driver-acceptance")
+    def driver_acceptance(request: Request, profile_id: str | None = Query(
+        None, max_length=64, pattern=r"^[a-z][a-z0-9_]{1,63}$"
+    )):
+        auth = context(request)
+        from .security import has_permission
+        if not has_permission(auth.user, Permission.AUDIT_READ, "*"):
+            fail("forbidden", 403)
+        return {"items": acceptance_records(app.state.store, profile_id=profile_id)}
 
     @app.get("/api/v1/ssh-profiles")
     def profiles(request: Request):
