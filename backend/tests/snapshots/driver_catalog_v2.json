@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "catalog_revision": "2026.10.24.5",
+  "catalog_revision": "2026.10.24.6",
   "legacy_driver_ids": [
     "cisco_ios",
     "cisco_iosxe",

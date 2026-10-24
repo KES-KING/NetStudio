@@ -45,8 +45,23 @@
     "supported_requires": [
       "implemented",
       "physical_validated",
-      "matching_unexpired_acceptance_record"
+      "matching_unexpired_acceptance_record",
+      "trusted_signed_release_decision",
+      "rollback_without_data_loss",
+      "current_24h_benchmark",
+      "healthy_general_rollout"
     ],
+    "candidate_requires": [
+      "implemented",
+      "physical_validated",
+      "migration_upgrade",
+      "browser_e2e",
+      "lab_owner_review",
+      "release_owner_review"
+    ],
+    "physical_evidence_max_age_days": 180,
+    "benchmark_max_age_days": 90,
+    "rollout_error_budget_breach_removes_supported": true,
     "production_accepted_default": false,
     "fixture_or_lab_may_not_assert_physical": true
   },

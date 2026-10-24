@@ -8,7 +8,7 @@
 | Kaynak kapsamı | Backend, frontend, migration, testler ve mevcut teknik belgeler |
 | Girdi matrisi | [`NetStudio_Switch_OS_SSH_SNMP_Uyumluluk_Matrisi.md`](../NetStudio_Switch_OS_SSH_SNMP_Uyumluluk_Matrisi.md) |
 | Çalışan ürün sözleşmesi | [`collection-automation.md`](../collection-automation.md) |
-| Belge durumu | `fa1a40f` başlangıç analizi ve hedef tasarım; güncel uygulama S00–S10 teslim raporlarında izlenir |
+| Belge durumu | `fa1a40f` başlangıç analizi ve hedef tasarım; güncel uygulama S00–S11 teslim raporlarında izlenir |
 | Takvim | `REQUIRES ESTIMATION` |
 | Kapasite iddiaları | `REQUIRES BENCHMARK` |
 
@@ -786,7 +786,7 @@ label'ı olmaz. Audit olayları en az şunları içermelidir:
 | [ADR-COMPAT-002](adr/ADR-COMPAT-002-provenance-ve-last-good.md) | Capability/provenance ve alan bazlı last-good | Kabul edildi | S02/S04 |
 | [ADR-COMPAT-003](adr/ADR-COMPAT-003-snmpv2c-karar-kapisi.md) | SNMPv2c açık opt-in kabul/reddetme kararı | Kabul edildi ve S10 ile uygulandı | Kurulum+cihaz opt-in, SwOS-only, v1/SET/downgrade yok |
 | [ADR-COMPAT-004](adr/ADR-COMPAT-004-controller-api-guven-modeli.md) | Controller/cloud API hedef ve TLS güven modeli | Kabul edildi ve S08 ile uygulandı | URL'siz hedef, TLS/CA, scope, site ve secret sınırı |
-| [ADR-COMPAT-005](adr/ADR-COMPAT-005-fiziksel-kabul-ve-yayin-kapisi.md) | Fiziksel kabul tuple'ı, expiry ve release statüsü | Kabul edildi | Bütün destek yayınları |
+| [ADR-COMPAT-005](adr/ADR-COMPAT-005-fiziksel-kabul-ve-yayin-kapisi.md) | Fiziksel kabul tuple'ı, expiry ve release statüsü | Kabul edildi ve S11 ile uygulandı | Bütün destek yayınları |
 | [ADR-COMPAT-006](adr/ADR-COMPAT-006-kod-sahipli-manifest.md) | İlk sürümde kod sahipli manifest | Kabul edildi | S01 |
 
 S00 kararı gereği ilk sürüm manifestleri kod içinde review/test ile dağıtılır;

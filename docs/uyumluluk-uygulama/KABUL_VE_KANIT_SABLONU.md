@@ -294,6 +294,8 @@ yazılmaz.
 | Yeniden test tetikleyicileri | Parser/profile/OS/controller/TLS değişimi vb. |
 | Kanıt son kullanma tarihi | Tarih |
 | `production_accepted` | Varsayılan `false`; yalnız gerçek yayın/kurulum kabulüyle `true` |
+| İmzalı karar | Ed25519 key ID + canonical payload SHA-256; private key runtime'a girmez |
+| Rollout politikası | `canary→pilot→general`, error/partial/queue p95 bütçesi ve breach eylemi |
 
 ### İmza/review
 
@@ -351,3 +353,21 @@ release:
 
 Bu YAML örneği secret veya ham çıktı taşımaz. `physical_validated` değeri yalnız
 gerçek fiziksel cihaz testi gerçekten yapıldıysa kullanılmalıdır.
+
+## 13. S11 makine kapısı
+
+Bu şablondaki review tamamlandıktan sonra sırsız alanlar
+`backend/app/release_acceptance.py` içindeki strict karar sözleşmesine aktarılır.
+Artifact SHA-256 import sırasında gerçek dosyadan yeniden hesaplanır. Karar
+offline Ed25519 anahtarıyla imzalanır ve
+[`S11_OPERASYON_REHBERI.md`](S11_OPERASYON_REHBERI.md) akışıyla alınır.
+
+- `candidate`: exact fiziksel kimlik+envanter, migration/E2E ve lab+release
+  review zorunludur.
+- `supported`: bütün bildirilen capability'ler, transport negatifleri,
+  worker/lease/last-good/rollback, dört rol review'u ve güncel 24 saat benchmark
+  zorunludur; runtime `supported` aktivasyonu ayrıca sıralı ve sağlıklı
+  `canary→pilot→general` gözlemlerini gerektirir.
+- Süresi dolan veya imzalı withdrawal ile geri çekilen karar destek üretmez.
+- Rollout budget breach aynı decision ID altında geri döndürülemez; yeni karar
+  gerekir.

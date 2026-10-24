@@ -28,6 +28,18 @@ Cihaz sırları, şifreleme anahtarları, kullanıcı oturumları ve site bazlı
 - Controller/cloud API hedefi tarayıcıdan serbest URL/hostname olarak alınmaz. Bulut origin'i kod içi vendor/bölge allowlist'inden, yerel hedef yetkili kullanıcının kaydettiği literal IP ve HTTPS portundan gelir. TLS doğrulaması zorunludur; redirect izlenmez, yerel hedefte DNS kullanılmaz ve pagination aynı origin/path dışına çıkamaz.
 - Controller tokenı cihaz SSH/SNMP sırrından ayrı AAD ve tabloda saklanır; yalnız tanımlı read-only scope'lar kabul edilir. Scope metadata'sı üretici tarafındaki gerçek rol/grant için kanıt değildir; operatör Meraki/FortiGate bearer tokenını, UniFi API key'ini ve Omada/Omada Pro OAuth access tokenını üretici tarafında en az yetkiyle oluşturmalıdır. Controller, dış site/network ve cihaz kimliği aynı NetStudio sitesine bağlanır; cross-site ve aynı site+vendor+dış cihaz kimliğinin tekrarlı binding'i reddedilir. Uygulama sınırlarına ek olarak dağıtım egress'i gerekli controller/cloud hedefleriyle kısıtlanmalıdır.
 - Cihaz sırları okuma API'lerine, frontend kalıcı depolarına veya genel loglara sızmamalıdır.
+- Sürücü `candidate`/`supported` yayını HTTP isteğiyle veya tek başına veritabanı
+  satırıyla açılamaz. Karar; güvenilen Ed25519 anahtarıyla imzalı, çalışan commit,
+  katalog/profil/parser revizyonuyla eşleşen, süresi dolmamış exact fiziksel tuple
+  kanıtına bağlı olmalıdır. Private release anahtarı API/worker/container'a
+  verilmez; public trust-root ayrı volume'de API'ye salt okunur bağlanır. Artifact
+  yolu, imza ve reviewer kimliği read API'lerinde yayımlanmaz. Rollout hata bütçesi
+  ihlali desteği fail-closed düşürür; sonraki sağlıklı örnek aynı kararı kendiliğinden
+  yeniden etkinleştirmez. Fiziksel kabul `production_accepted` üretmez.
+- Profil ile açılan tek-seferlik `release-admin`, Docker'ın root olarak
+  oluşturduğu yalnız-public trust-root volume'ünü atomik yazabilmek için UID 0
+  çalışır; bütün Linux capability'leri düşürülür, root filesystem salt okunur,
+  Docker socket ve uygulama keyring'i mount edilmez.
 - Eksik anahtar, geçersiz oturum veya yetki kaybında ilgili işlem güvenli biçimde reddedilmelidir.
 
 ## İnceleme sınırları

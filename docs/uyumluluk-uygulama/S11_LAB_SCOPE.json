@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "status": "blocked_no_authorized_targets",
+  "recorded_at": "2026-10-24",
+  "scope_owner": null,
+  "authorization_references": [],
+  "targets": [],
+  "constraints": {
+    "read_only": true,
+    "isolated_lab_required": true,
+    "production_targets_allowed": false,
+    "raw_output_in_repository": false,
+    "secrets_in_repository": false
+  },
+  "result": "No physical device test was authorized or executed. This empty scope must not be interpreted as acceptance."
+}

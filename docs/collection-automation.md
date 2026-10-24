@@ -92,6 +92,9 @@ yalnız doğrulanmış alanlar ve güvenli hata kodlarıdır.
   hedefi güvenle seçilemeyen kayıtları yayımlar;
 - `acceptance.production_accepted` varsayılan olarak `false` kalır ve fixture/lab
   sonucundan yükseltilmez.
+- `release_decision`, yalnız çalışan build SHA'sı ve profil/parser revizyonuyla
+  eşleşen, süresi geçmemiş ve güvenilen Ed25519 anahtarıyla doğrulanan S11 kararı
+  varsa döner. Rollout hata bütçesi ihlalinde release durumu `experimental` olur.
 - `features.snmp_v2c_enabled`, kurulum bayrağının etkin durumunu yayımlar;
   kapalıyken `mikrotik_swos` profili `snmp_v2c_installation_disabled`
   gerekçesiyle seçilemez.
@@ -113,6 +116,9 @@ cihaz kayıtlarını, sırları veya veritabanını değiştirmez.
 `0010_driver_acceptance` migration'ı cihaz payload'ını yeniden yazmadan üç
 additive tablo ekler: `device_driver_bindings`,
 `device_capability_observations_v2` ve `driver_acceptance_records`.
+`0012_release_acceptance` bunlara imzalı karar ve rollout gözlemi için
+`driver_release_decisions` ile `driver_rollout_observations` tablolarını ekler;
+mevcut cihaz/secret/host-key/envanter/job satırlarını yeniden yazmaz.
 
 - Eski `collector` alanı en az bir uyumluluk dönemi okunup yazılmaya devam eder.
 - Device cevapları `configured_profile_id`, `resolved_profile_id`,
@@ -126,6 +132,10 @@ additive tablo ekler: `device_driver_bindings`,
 - `GET /api/v1/driver-acceptance`, yalnız superadmin için redakte kayıtları
   döndürür. Browser tarafından acceptance/validation/evidence yazma endpoint'i
   yoktur.
+- `GET /api/v1/driver-release-decisions`, yalnız audit okuma yetkisiyle karar
+  kimliği, profil/revizyon, action, public hash, signer key kimliği ve expiry
+  döndürür; payload, artifact ref, imza ve reviewer kimliği dönmez. Karar yazma
+  yalnız offline doğrulamalı `release-admin` CLI akışındadır.
 
 `fortinet` otomatik profile çevrilmez. Kanıtsız `huawei_vrp`, `dell_force10` ve
 `extreme_vsp` binding'leri manuel çözüm bekler. Başarılı, kimliği doğrulayan
@@ -140,7 +150,8 @@ kendiliğinden yükseltmez.
 
 Cihaz detayındaki **Uyumluluk** paneli yapılandırılan/çözümlenen profili,
 management mode'u, transport ve capability durumlarını, redakte kimlik kanıtını
-ve acceptance kapsamını birlikte gösterir. `partial`, `unsupported`, yetki,
+ve acceptance kapsamını birlikte gösterir. İmzalı S11 kararı varsa exact kapsam,
+expiry, payload SHA-256 ve rollout aşaması koşullu olarak gösterilir. `partial`, `unsupported`, yetki,
 parse, timeout, genel hata ve stale kanıt birbirinden ayrılır. Viewer bu alanı
 salt okunur görür; `inventory.manage` yetkili kullanıcı legacy/belirsiz kaydı
 açık onayla kanonik profile taşıyabilir.
@@ -148,6 +159,9 @@ açık onayla kanonik profile taşıyabilir.
 Katalog release değeri `supported` olsa bile cihazın tam tuple'ına uyan,
 süresi geçmemiş fiziksel kabul kaydı olmadan arayüz cihazı **Destekleniyor** diye
 etiketlemez. Fixture veya izole SSH/SNMP laboratuvarı production kabulü değildir.
+İmzalı `supported` kararı da sağlıklı ve sıralı `canary→pilot→general` gözlemi
+tamamlanana kadar dinamik katalogda `candidate` kalır; sıra veya hata bütçesi
+ihlali statüyü `experimental` seviyesine düşürür.
 Backend, istemci manipülasyonuna karşı `selectable=false` profili bütün cihaz
 oluşturma/profil değiştirme yollarında reddeder.
 
@@ -265,6 +279,7 @@ Envanter/ağ tablolarında aynı içerik tekrar tarihçeye kopyalanmaz.
 Ek API'ler:
 
 - `GET /api/v1/driver-catalog`, `/api/v1/ssh-profiles`
+- `GET /api/v1/driver-acceptance`, `/api/v1/driver-release-decisions`
 - `POST /api/v1/devices/{id}/host-key-discoveries`
 - `GET /api/v1/devices/{id}/host-key-candidates/{candidate}`
 - Mevcut `PUT .../host-key`: elle alanlar veya `candidate_id`

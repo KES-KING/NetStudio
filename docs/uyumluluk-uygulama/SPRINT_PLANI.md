@@ -797,7 +797,7 @@ tamamlanmış sayılamaz: **REQUIRES BENCHMARK**.
 |---|---|---|
 | `catalog_only` | `experimental` | Adapter + unit + fixture + negatif test |
 | `experimental` | `candidate` | Transport lab + en az bir fiziksel tuple + migration/E2E |
-| `candidate` | `supported` | Kapsamlı fiziksel capability kabulü + rollback + release review |
+| `candidate` | `supported` | Kapsamlı fiziksel capability kabulü + rollback + release review + sağlıklı `canary→pilot→general` |
 | `supported` | `production_accepted` | Belirli release/kurulum politikası ve güncel canlı kabul kanıtı |
 
 Tek tuple'nın geçmesi profilin tüm model/sürümlerini yükseltmez. Katalog kabul
@@ -810,6 +810,23 @@ Tek tuple'nın geçmesi profilin tüm model/sürümlerini yükseltmez. Katalog k
   `not_tested` olarak dürüstçe kalır.
 - Rollback volume/veri/sır silmeden denenmiştir.
 - Kapasite beyanı yalnız gerçek benchmark sonucuyla yapılmıştır.
+
+### Uygulama durumu
+
+**Yayın/kabul altyapısı tamamlandı; dış kabul kapıları açık — 24 Ekim 2026.**
+İmzalı karar ve rollout zarfı, exact tuple/profile/parser/commit bağı, fiziksel
+kanıt ve benchmark süre sonu, geri çekme, hata bütçesiyle otomatik düşürme,
+rollout aşama atlama/gerileme engeli, `general` öncesi `candidate` tutma,
+redakte audit API'si ve additive `0012_release_acceptance` migration'ı
+uygulanmıştır. Yetkili fiziksel lab envanteri verilmediği ve gerçek 24 saatlik
+soak çalıştırılmadığı için hiçbir profil `candidate` veya `supported` seviyesine
+yükseltilmemiş, `production_accepted=false` korunmuştur. S11-01 scope kaydı
+`blocked_no_authorized_targets`, S11-03/04 fiziksel senaryoları ve S11-06
+benchmark `REQUIRES BENCHMARK` durumundadır. Ayrıntılar
+[`S11_TESLIM_RAPORU.md`](S11_TESLIM_RAPORU.md),
+[`S11_OPERASYON_REHBERI.md`](S11_OPERASYON_REHBERI.md) ve
+[`S11_DESTEK_YAYINI.md`](S11_DESTEK_YAYINI.md) içindedir. `Ana tasarım etkisi:
+yok`; mevcut Uyumluluk paneline yalnız imzalı karar ayrıntısı eklenmiştir.
 
 ## 6. Sprintler arası kalite ve release kontrolleri
 

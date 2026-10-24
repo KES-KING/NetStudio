@@ -272,6 +272,8 @@ def create_app(store=None, key_file=None):
                 conn.execute(sa.select(app.state.store.api_controllers.c.id).limit(1))
                 conn.execute(sa.select(app.state.store.api_controller_secrets.c.controller_id).limit(1))
                 conn.execute(sa.select(app.state.store.device_controller_bindings.c.device_id).limit(1))
+                conn.execute(sa.select(app.state.store.driver_release_decisions.c.id).limit(1))
+                conn.execute(sa.select(app.state.store.driver_rollout_observations.c.id).limit(1))
         except Exception:
             fail("persistence_unavailable", 503)
         return {"status": "ready", "service": "netstudio-api", "revision": getenv("NETSTUDIO_BUILD_REVISION", "unknown")}

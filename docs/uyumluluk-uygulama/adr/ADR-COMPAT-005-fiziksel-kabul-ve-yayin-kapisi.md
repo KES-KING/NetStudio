@@ -6,6 +6,7 @@
 | Tarih | 23 Ekim 2026 |
 | Sahip | Sürüm ve uyumluluk kabul sahipleri |
 | Uygulama alanı | Bütün profil ve capability yayınları |
+| Uygulama | S11 ile `release_acceptance.py`, `release_cli.py`, `0012_release_acceptance` |
 
 ## Karar
 
@@ -46,10 +47,30 @@ bu durumu açıkça gösterir.
 4. Fixture/lab kanıtı fiziksel doğrulama yerine kullanılamaz.
 5. `production_accepted` ayrı, sürüm+kurulum özel bir kapıdır; varsayılanı
    `false` olur ve fiziksel kabulden türetilmez.
+6. Karar güvenilen Ed25519 anahtarıyla offline imzalanır; çalışan build SHA,
+   katalog, profil ve parser revizyonu runtime'da yeniden doğrulanır.
+7. `supported` için veri/sır silmeyen rollback kanıtı ve süresi dolmamış gerçek
+   24 saat benchmark zorunludur.
+8. Rollout hata bütçesi ihlali yayın seviyesini fail-closed düşürür ve aynı karar
+   altındaki sonraki sağlıklı örnek ihlali temizlemez.
+9. İmzalı `supported` kararı, sıralı ve sağlıklı `canary→pilot→general`
+   gözlemleri tamamlanana kadar runtime kataloğunda `candidate` kalır.
 
 Her kabul kaydı kanıt türü, test sonucu, redakte artifact hash'i, inceleyenler,
 istisnalar ve geçerlilik bitişini içerir. Ham cihaz çıktısı public repository'ye
 konmaz.
+
+## Uygulama sonucu
+
+S11 yayın kapısı kaynak kodda uygulanmıştır. Public trust-root ayrı kalıcı
+volume'de tutulur ve API tarafından salt okunur açılır; private imza anahtarı
+runtime'a girmez. Karar/import HTTP yüzeyi yoktur. İmzalı withdrawal önceki
+kararın sonuna kadar etkili olur; expiry, commit/profil/parser değişimi ve payload
+tamperi desteği otomatik düşürür.
+
+24 Ekim 2026 itibarıyla yetkili fiziksel hedef ve gerçek 24 saat benchmark
+sağlanmadığından aktif `candidate/supported` kararı yoktur. Bu uygulama sonucu
+tek başına fiziksel veya production kabulü değildir.
 
 ## Sonuçlar
 

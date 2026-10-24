@@ -335,6 +335,26 @@ export type DriverAcceptanceSummary = {
   matching_unexpired_records: number;
   production_accepted: boolean;
 };
+export type DriverReleaseDecisionSummary = {
+  decision_id: string;
+  payload_sha256: string;
+  signer_key_id: string;
+  signed_at: string;
+  expires_at: string;
+  accepted_vendor: string;
+  accepted_model_family: string;
+  accepted_exact_model: string;
+  accepted_hardware_revision: string;
+  accepted_os_family: string;
+  accepted_os_version: string;
+  accepted_management_mode: DeviceManagementMode;
+  accepted_transport: "ssh" | "snmp" | "api";
+  accepted_security_profile: string;
+  benchmark_status: "pass" | "fail" | "not_run";
+  rollout_stage: "not_started" | "canary" | "pilot" | "general";
+  blocked_reasons: string[];
+  production_accepted: false;
+};
 export type DeviceCapabilityObservation = {
   profile_id: string;
   profile_revision: number;
@@ -381,6 +401,7 @@ export type DeviceCompatibility = {
   runtime_collection_ready: boolean;
   capabilities: DeviceCapabilityObservation[];
   acceptance: DriverAcceptanceSummary;
+  release_decision: DriverReleaseDecisionSummary | null;
 };
 export type DriverAcceptanceRecord = {
   source_revision: string;
@@ -427,6 +448,7 @@ export type DriverProfileCatalogEntry = {
   capabilities: Partial<Record<DriverCommand["group"], string[]>>;
   capability_summaries: DriverCapabilitySummary[];
   acceptance: DriverAcceptanceSummary;
+  release_decision?: DriverReleaseDecisionSummary | null;
   tested_versions: string[];
   commands: DriverCommand[];
   reason?: string;

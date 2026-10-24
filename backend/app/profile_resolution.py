@@ -541,18 +541,41 @@ def _tuple_match(value: str, pattern: str) -> bool:
     return pattern == "*" or fnmatchcase(value.casefold(), pattern.casefold())
 
 
+def _effective_acceptance_rows(rows):
+    """Latest result wins for one exact tuple/capability acceptance scope."""
+    latest = {}
+    for row in rows:
+        key = tuple(row[name] for name in (
+            "profile_id", "profile_revision", "vendor", "model_family",
+            "exact_model", "hardware_revision", "os_family", "os_version",
+            "management_mode", "transport", "capability_id", "parser_version",
+            "test_suite_revision",
+        ))
+        prior = latest.get(key)
+        if prior is None or (row["recorded_at"], row["id"]) > (
+            prior["recorded_at"], prior["id"]
+        ):
+            latest[key] = row
+    return [row for row in latest.values() if row["result"] == "pass"]
+
+
 def acceptance_summary(
     store, profile_id: str, profile_revision: int, *, device=None,
-    identity_evidence: dict | None = None,
+    identity_evidence: dict | None = None, decision_id: str | None = None,
 ):
     table = store.driver_acceptance
     with store.engine.connect() as conn:
         rows = list(conn.execute(sa.select(table).where(
             table.c.profile_id == profile_id,
             table.c.profile_revision == profile_revision,
-            table.c.result == "pass",
             table.c.expires_at > now(),
         )).mappings())
+    rows = _effective_acceptance_rows(rows)
+    if decision_id:
+        rows = [
+            row for row in rows
+            if row["test_suite_revision"] == f"s11:{decision_id}"
+        ]
     if device is not None:
         evidence = identity_evidence or {}
         build_revision = getenv("NETSTUDIO_BUILD_REVISION", "")
@@ -594,11 +617,11 @@ def catalog_acceptance_summaries(store) -> dict[tuple[str, int], dict]:
     table = store.driver_acceptance
     with store.engine.connect() as conn:
         rows = list(conn.execute(sa.select(table).where(
-            table.c.result == "pass",
             table.c.expires_at > now(),
             table.c.source_revision == build_revision,
             table.c.parser_version == DRIVER_VERSION,
         )).mappings())
+    rows = _effective_acceptance_rows(rows)
     grouped: dict[tuple[str, int], list] = {}
     for row in rows:
         grouped.setdefault((row["profile_id"], row["profile_revision"]), []).append(row)
@@ -649,14 +672,29 @@ def compatibility_view(store, device) -> dict:
                 "status", "reason_code", "checked_at", "expires_at",
                 "evidence_digest",
             )} | {"stale": expiry <= comparison_time})
+    from .release_acceptance import release_states
+    release = (
+        release_states(store).get((profile.id, binding["profile_revision"]))
+        if profile and binding["profile_revision"] else None
+    )
+    decision_id = release and release["release_decision"]["decision_id"]
     summary = (
         acceptance_summary(
             store, profile.id, binding["profile_revision"], device=device,
             identity_evidence=binding["identity_evidence"],
+            decision_id=decision_id,
         )
         if profile and binding["profile_revision"] and binding["resolution_status"] == "matched" else
         {"highest_level": "not_tested", "matching_unexpired_records": 0,
          "production_accepted": False}
+    )
+    rank = {
+        "not_tested": 0, "unit_verified": 1, "fixture_verified": 2,
+        "transport_lab_validated": 3, "physical_validated": 4,
+    }
+    verification = max(
+        (profile.verification_status if profile else "not_tested", summary["highest_level"]),
+        key=rank.get,
     )
     return {
         "device_id": device.id,
@@ -673,8 +711,12 @@ def compatibility_view(store, device) -> dict:
         ).model_dump(mode="json", exclude_none=True),
         "resolved_at": binding["resolved_at"],
         "implementation_status": profile.implementation_status if profile else None,
-        "verification_status": profile.verification_status if profile else "not_tested",
-        "release_status": profile.release_status if profile else "hidden",
+        "verification_status": verification,
+        "release_status": (
+            release["release_status"] if release else
+            profile.release_status if profile else "hidden"
+        ),
+        "release_decision": release["release_decision"] if release else None,
         "runtime_collection_ready": bool(
             profile and profile.implementation_status == "implemented"
             and binding["resolution_status"] == "matched"

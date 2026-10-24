@@ -74,8 +74,10 @@ services:
       NETSTUDIO_UPDATES_CHECK_ENABLED: ${NETSTUDIO_UPDATES_CHECK_ENABLED:-1}
       NETSTUDIO_DRIVER_CATALOG_V2: ${NETSTUDIO_DRIVER_CATALOG_V2:-1}
       NETSTUDIO_ALLOW_SNMP_V2C: ${NETSTUDIO_ALLOW_SNMP_V2C:-0}
+      NETSTUDIO_RELEASE_TRUST_ROOTS_FILE: /run/release-state/trust-roots.json
     volumes:
       - netstudio-keyring:/run/secrets:ro
+      - netstudio-release-state:/run/release-state:ro
     ports:
       - "${API_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-8000}:8000"
     depends_on:
@@ -123,6 +125,33 @@ services:
       - database
       - application
     stop_grace_period: 20s
+
+  release-admin:
+    <<: *api-service
+    profiles: [release-admin]
+    # One-shot root owns the otherwise root-created public trust-root volume.
+    # It has no private key/keyring, Docker socket or Linux capabilities.
+    user: "0:0"
+    entrypoint: ["python", "-m", "app.release_cli"]
+    command: ["--help"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://netstudio:netstudio@postgres:5432/netstudio}
+      NETSTUDIO_RELEASE_TRUST_ROOTS_FILE: /run/release-state/trust-roots.json
+    volumes:
+      - ${NETSTUDIO_RELEASE_INPUT_DIR:-./artifacts/release}:/run/release-input:ro
+      - netstudio-release-state:/run/release-state
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - database
 
   updater:
     image: netstudio-updater:${IMAGE_TAG:-local}
@@ -266,6 +295,8 @@ volumes:
     external: ${NETSTUDIO_EXTERNAL_VOLUMES:-false}
   netstudio-updater-state:
     name: ${NETSTUDIO_UPDATER_STATE_VOLUME:-${COMPOSE_PROJECT_NAME:-netstudio}_netstudio-updater-state}
+  netstudio-release-state:
+    name: ${NETSTUDIO_RELEASE_STATE_VOLUME:-${COMPOSE_PROJECT_NAME:-netstudio}_netstudio-release-state}
 
 networks:
   database:

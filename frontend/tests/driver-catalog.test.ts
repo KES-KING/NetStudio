@@ -176,6 +176,61 @@ describe("additive driver catalog v2 contract", () => {
       tone: "success",
       label: "Destekleniyor · fiziksel kapsam eşleşti",
     });
+    expect(supportPresentation(supported, {
+      ...compatibility,
+      release_decision: {
+        decision_id: "decision-s11-rollout",
+        payload_sha256: "a".repeat(64),
+        signer_key_id: "release-2026",
+        signed_at: "2026-10-24T09:00:00Z",
+        expires_at: "2027-01-22T09:00:00Z",
+        accepted_vendor: "Cisco",
+        accepted_model_family: "WS-C2960X-*",
+        accepted_exact_model: "WS-C2960X-48FPD-L",
+        accepted_hardware_revision: "V02",
+        accepted_os_family: "IOS",
+        accepted_os_version: "15.2(7)E",
+        accepted_management_mode: "standalone",
+        accepted_transport: "ssh",
+        accepted_security_profile: "ssh2_host_key_pinned_read_only",
+        benchmark_status: "pass",
+        rollout_stage: "canary",
+        blocked_reasons: ["rollout_error_rate_exceeded"],
+        production_accepted: false,
+      },
+    })).toEqual({
+      tone: "warning",
+      label: "Yayın kapısı kapandı · rollout hata bütçesi aşıldı",
+    });
+    expect(supportPresentation(
+      { ...supported, release_status: "candidate" },
+      {
+        ...compatibility,
+        release_decision: {
+          decision_id: "decision-s11-pending-rollout",
+          payload_sha256: "b".repeat(64),
+          signer_key_id: "release-2026",
+          signed_at: "2026-10-24T09:00:00Z",
+          expires_at: "2027-01-22T09:00:00Z",
+          accepted_vendor: "Cisco",
+          accepted_model_family: "WS-C2960X-*",
+          accepted_exact_model: "WS-C2960X-48FPD-L",
+          accepted_hardware_revision: "V02",
+          accepted_os_family: "IOS",
+          accepted_os_version: "15.2(7)E",
+          accepted_management_mode: "standalone",
+          accepted_transport: "ssh",
+          accepted_security_profile: "ssh2_host_key_pinned_read_only",
+          benchmark_status: "pass",
+          rollout_stage: "canary",
+          blocked_reasons: ["rollout_general_not_reached"],
+          production_accepted: false,
+        },
+      },
+    )).toEqual({
+      tone: "warning",
+      label: "Aday · rollout general aşamasına ulaşmadı",
+    });
   });
 
   it("never derives credential field values from the device read model", () => {

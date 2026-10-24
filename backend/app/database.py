@@ -125,6 +125,9 @@ class Store:
         from .controller_schema_v1 import define_tables as controller_tables
         for name, table in controller_tables(self.meta).items():
             setattr(self, name, table)
+        from .release_schema_v1 import define_tables as release_tables
+        for name, table in release_tables(self.meta).items():
+            setattr(self, name, table)
 
     @contextmanager
     def user_transaction(self):

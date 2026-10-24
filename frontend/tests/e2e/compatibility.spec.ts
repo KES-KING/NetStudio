@@ -253,6 +253,94 @@ test("catalog-driven add form exposes supported, experimental, planned and unsup
   expect(errors).toEqual([]);
 });
 
+test("signed release scope is visible without exposing controlled evidence", async ({
+  page,
+}) => {
+  const errors = observeErrors(page);
+  await page.setViewportSize({ width: 1536, height: 900 });
+  await login(page, "qa-admin", "test-only-password-1234");
+
+  const catalogResponse = await page.request.get("/api/v1/driver-catalog");
+  const compatibilityResponse = await page.request.get(
+    `/api/v1/devices/${swosDeviceId}/compatibility`,
+  );
+  expect(catalogResponse.ok()).toBeTruthy();
+  expect(compatibilityResponse.ok()).toBeTruthy();
+  const catalog = await catalogResponse.json();
+  const compatibility = await compatibilityResponse.json();
+  const swos = catalog.profiles.find(
+    (candidate: { id: string }) => candidate.id === "mikrotik_swos",
+  );
+  swos.release_status = "supported";
+  compatibility.release_status = "supported";
+  compatibility.verification_status = "physical_validated";
+  compatibility.acceptance = {
+    highest_level: "physical_validated",
+    matching_unexpired_records: 5,
+    production_accepted: false,
+  };
+  compatibility.release_decision = {
+    decision_id: "decision-s11-browser-fixture",
+    payload_sha256: "a".repeat(64),
+    signer_key_id: "release-browser-fixture",
+    signed_at: "2026-10-24T09:00:00Z",
+    expires_at: "2027-01-22T09:00:00Z",
+    accepted_vendor: "MikroTik",
+    accepted_model_family: "CSS610-*",
+    accepted_exact_model: "CSS610-8G-2S+",
+    accepted_hardware_revision: "r2",
+    accepted_os_family: "SwOS",
+    accepted_os_version: "2.18",
+    accepted_management_mode: "standalone",
+    accepted_transport: "snmp",
+    accepted_security_profile: "snmpv2c_read_only_acl_isolated",
+    benchmark_status: "pass",
+    rollout_stage: "general",
+    blocked_reasons: [],
+    production_accepted: false,
+  };
+  await page.route("**/api/v1/driver-catalog", (route) =>
+    route.fulfill({ json: catalog }),
+  );
+  await page.route(
+    `**/api/v1/devices/${swosDeviceId}/compatibility`,
+    (route) => route.fulfill({ json: compatibility }),
+  );
+
+  await page.goto(`/devices/${swosDeviceId}`);
+  const panel = page.getByRole("region", { name: "Uyumluluk" });
+  await expect(
+    panel.getByText("Destekleniyor · fiziksel kapsam eşleşti", { exact: true }),
+  ).toBeVisible();
+  await expect(panel.getByText("Production kabulü: Yok", { exact: true })).toBeVisible();
+  await panel.getByText("İmzalı yayın kararı", { exact: true }).click();
+  await expect(
+    panel.getByText("Kapsam: MikroTik · CSS610-8G-2S+ · donanım r2", { exact: true }),
+  ).toBeVisible();
+  await expect(panel.getByText("OS: SwOS · 2.18", { exact: true })).toBeVisible();
+  await expect(
+    panel.getByText("Yönetim/transport: Bağımsız yönetim · SNMP", { exact: true }),
+  ).toBeVisible();
+  await expect(panel.getByText("Rollout: general", { exact: true })).toBeVisible();
+  await expect(panel.getByText(`SHA-256: ${"a".repeat(64)}`, { exact: true })).toBeVisible();
+  await expect(panel).not.toContainText("CONTROLLED");
+  await expectNoHorizontalOverflow(page, 1536);
+  await page.screenshot({
+    path: join(evidenceDir, "s11-release-decision-desktop.png"),
+    fullPage: false,
+    animations: "disabled",
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectNoHorizontalOverflow(page, 390);
+  await expect(panel.getByText("İmzalı yayın kararı", { exact: true })).toBeVisible();
+  await panel.locator(".compatibility-release").screenshot({
+    path: join(evidenceDir, "s11-release-decision-mobile.png"),
+    animations: "disabled",
+  });
+  expect(errors).toEqual([]);
+});
+
 test("SwOS SNMPv2c risk approval is explicit, redacted and revocable", async ({
   page,
 }) => {

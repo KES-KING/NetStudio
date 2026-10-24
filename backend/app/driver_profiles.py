@@ -46,7 +46,7 @@ from .driver_manifests import (
 
 
 DRIVER_VERSION = "2026.10.24.5"
-CATALOG_REVISION = "2026.10.24.5"
+CATALOG_REVISION = "2026.10.24.6"
 NTC_VERSION = "9.3.0"
 GROUPS = ("fast", "health", "network", "inventory")
 DATA_CONTRACT = {

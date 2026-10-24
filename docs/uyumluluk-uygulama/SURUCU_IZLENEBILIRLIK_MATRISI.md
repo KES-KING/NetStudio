@@ -5,7 +5,7 @@
 | Belge kimliği | `NETSTUDIO-COMPAT-TRACE-001` |
 | Kaynak kapsam | [Switch OS / SSH / SNMP uyumluluk matrisi](../NetStudio_Switch_OS_SSH_SNMP_Uyumluluk_Matrisi.md) |
 | Başlangıç kaynak kod tabanı | `fa1a40f` |
-| Güncel uygulama | S10, 24 Ekim 2026; katalog `2026.10.24.5`, uygulanan profil revizyonu `2` |
+| Güncel uygulama | S11 yayın kapısı, 24 Ekim 2026; katalog `2026.10.24.6`, uygulanan profil revizyonu `2` |
 | Kullanım | Her hedef profilin implementasyon, sprint ve kabul izini tutmak |
 
 ## 1. Okuma kuralı

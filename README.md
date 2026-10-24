@@ -28,6 +28,10 @@ Arayüz: Next.js 16 / React 19 / TypeScript, Apache ECharts, xterm.js ve SWR. Ba
 - Kişisel profil/avatar/parola yönetimi; `viewer`, `engineer`, `superadmin` rolleri ve yalnız superadmin'e açık kullanıcı yönetimi/ayrıntılı audit.
 - **Ayarlar:** Hesabım, Kullanıcılar ve GitHub commit bağlantılı Güncellemeler; üst barda site/hesap yetkili canlı bildirimler ve güncelleme işareti. [Host güncelleyici kurulumu ve kurtarma rehberi](docs/updates.md).
 - Docker Compose ile PostgreSQL, migration, sır deposu, API, frontend ve gateway kurulumu.
+- Exact fiziksel tuple desteği için commit/profil/parser/expiry bağı olan imzalı
+  release kararı, 24 saat benchmark ve canary→pilot→general hata bütçesi kapısı;
+  normal kullanıcı kurulumunda hiçbir ek adım gerekmez ve kanıtsız profil
+  `supported` olmaz.
 
 Bu proje geliştirme aşamasındadır. Toplayıcı worker'ları kalıcı kuyruk üzerinden koordineli çalışır; API/terminal broker'ı hâlâ tek süreç varsayar. Fiziksel cihaz/üretim kabulü, 100 cihaz kapasitesi ve üreticiye özgü konfigürasyon uygulama/yedekleme yetenekleri doğrulanmış sayılmaz. Çalışan sürücü sınırları [toplama sözleşmesinde](docs/collection-automation.md#sürücü-ve-veri-doğrulama-seviyesi), genişletme hedefleri [SSH/SNMP uyumluluk matrisi](docs/NetStudio_Switch_OS_SSH_SNMP_Uyumluluk_Matrisi.md) ve [uyumluluk uygulama paketinde](docs/uyumluluk-uygulama/README.md) belirtilir. CI rozeti GitHub'daki gerçek durumu gösterir; aşağıdaki tarihli yerel doğrulama sonuçları onun yerine geçmez.
 

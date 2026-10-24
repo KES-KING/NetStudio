@@ -265,7 +265,7 @@ def test_0001_to_head_on_disposable_postgres(monkeypatch):
         }
         assert conn.execute(sa.text(
             "SELECT version_num FROM alembic_version"
-        )).scalar_one() == "0011_controller_api"
+        )).scalar_one() == "0012_release_acceptance"
         for name, table in {
             "devices": store.devices, "secrets": store.secrets,
             "host_keys": store.host_keys,

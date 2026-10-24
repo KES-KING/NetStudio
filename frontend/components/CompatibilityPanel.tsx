@@ -206,6 +206,35 @@ export function CompatibilityPanel({
               <p>
                 Production kabulü: {compatibility.acceptance.production_accepted ? "Var" : "Yok"}
               </p>
+              {compatibility.release_decision && (
+                <details className="compatibility-release-decision">
+                  <summary>İmzalı yayın kararı</summary>
+                  <p>
+                    Kapsam: {compatibility.release_decision.accepted_vendor} · {compatibility.release_decision.accepted_exact_model} · donanım {compatibility.release_decision.accepted_hardware_revision}
+                  </p>
+                  <p>
+                    OS: {compatibility.release_decision.accepted_os_family} · {compatibility.release_decision.accepted_os_version}
+                  </p>
+                  <p>
+                    Yönetim/transport: {managementModeLabels[compatibility.release_decision.accepted_management_mode]} · {transportLabels[compatibility.release_decision.accepted_transport]}
+                  </p>
+                  <p className="mono break-text">
+                    Güvenlik profili: {compatibility.release_decision.accepted_security_profile}
+                  </p>
+                  <p>Rollout: {compatibility.release_decision.rollout_stage}</p>
+                  <p>Geçerlilik: {formatTime(compatibility.release_decision.expires_at)}</p>
+                  <p className="mono break-text">
+                    SHA-256: {compatibility.release_decision.payload_sha256}
+                  </p>
+                  {compatibility.release_decision.blocked_reasons.length > 0 && (
+                    <ul>
+                      {compatibility.release_decision.blocked_reasons.map((reason) => (
+                        <li key={reason} className="mono break-text">{reason}</li>
+                      ))}
+                    </ul>
+                  )}
+                </details>
+              )}
             </div>
           </div>
 

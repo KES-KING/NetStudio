@@ -142,6 +142,18 @@ export function supportPresentation(
 ): { tone: "neutral" | "warning" | "success"; label: string } {
   if (!profile)
     return { tone: "warning", label: "Kanonik profil henüz belirlenmedi" };
+  if (compatibility.release_decision?.blocked_reasons.some((reason) =>
+    ["rollout_not_started", "rollout_general_not_reached"].includes(reason)
+  ))
+    return {
+      tone: "warning",
+      label: "Aday · rollout general aşamasına ulaşmadı",
+    };
+  if (compatibility.release_decision?.blocked_reasons.length)
+    return {
+      tone: "warning",
+      label: "Yayın kapısı kapandı · rollout hata bütçesi aşıldı",
+    };
   if (profile.release_status === "supported") {
     const exactPhysicalAcceptance =
       compatibility.acceptance.highest_level === "physical_validated" &&

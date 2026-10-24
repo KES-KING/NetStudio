@@ -46,7 +46,18 @@ def test_s00_statuses_and_supported_release_gate_are_closed():
         "implemented",
         "physical_validated",
         "matching_unexpired_acceptance_record",
+        "trusted_signed_release_decision",
+        "rollback_without_data_loss",
+        "current_24h_benchmark",
+        "healthy_general_rollout",
     }
+    assert set(gate["candidate_requires"]) == {
+        "implemented", "physical_validated", "migration_upgrade",
+        "browser_e2e", "lab_owner_review", "release_owner_review",
+    }
+    assert gate["physical_evidence_max_age_days"] == 180
+    assert gate["benchmark_max_age_days"] == 90
+    assert gate["rollout_error_budget_breach_removes_supported"] is True
     assert gate["production_accepted_default"] is False
     assert gate["fixture_or_lab_may_not_assert_physical"] is True
 

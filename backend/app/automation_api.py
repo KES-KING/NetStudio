@@ -10,6 +10,7 @@ from .contracts import ManagedDevice, PollingSettings, SNMPCredentials, SNMPV2cC
 from .database import now
 from .driver_catalog import DRIVERS, catalog as driver_catalog
 from .profile_resolution import acceptance_records, catalog_acceptance_summaries
+from .release_acceptance import public_release_decisions, release_states
 from .history import history
 from .queue import enqueue, transaction
 from .scheduler import ensure_policy
@@ -53,6 +54,7 @@ def install(app, context, device_for):
         context(request)
         result = driver_catalog()
         summaries = catalog_acceptance_summaries(app.state.store)
+        releases = release_states(app.state.store)
         for profile in result.get("profiles", []):
             dynamic = summaries.get((profile["id"], profile["profile_revision"]))
             if dynamic:
@@ -72,6 +74,18 @@ def install(app, context, device_for):
                         or dynamic["production_accepted"]
                     ),
                 }
+            release = releases.get((profile["id"], profile["profile_revision"]))
+            if release:
+                profile["release_status"] = release["release_status"]
+                profile["release_decision"] = release["release_decision"]
+                profile["verification_status"] = max(
+                    (profile["verification_status"], profile["acceptance"]["highest_level"]),
+                    key={
+                        "not_tested": 0, "unit_verified": 1,
+                        "fixture_verified": 2, "transport_lab_validated": 3,
+                        "physical_validated": 4,
+                    }.get,
+                )
         return result
 
     @app.get("/api/v1/driver-acceptance")
@@ -83,6 +97,14 @@ def install(app, context, device_for):
         if not has_permission(auth.user, Permission.AUDIT_READ, "*"):
             fail("forbidden", 403)
         return {"items": acceptance_records(app.state.store, profile_id=profile_id)}
+
+    @app.get("/api/v1/driver-release-decisions")
+    def driver_release_decisions(request: Request):
+        auth = context(request)
+        from .security import has_permission
+        if not has_permission(auth.user, Permission.AUDIT_READ, "*"):
+            fail("forbidden", 403)
+        return {"items": public_release_decisions(app.state.store)}
 
     @app.get("/api/v1/ssh-profiles")
     def profiles(request: Request):
