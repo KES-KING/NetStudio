@@ -263,6 +263,7 @@ export type DriverCapabilitySummary = {
   group: DriverCommand["group"];
   fields: string[];
   sources: ("ssh" | "snmp" | "api")[];
+  source_fields?: Partial<Record<"ssh" | "snmp" | "api", string[]>>;
   verification_status: DriverVerificationStatus;
 };
 export type DriverAcceptanceSummary = {

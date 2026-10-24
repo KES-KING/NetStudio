@@ -436,6 +436,17 @@ Cihaz yoksa sprint kod/fixture açısından kapanabilir ancak profil
   eşitlenmez.
 - Mevcut Cisco/Huawei cihaz kayıtları geriye uyumlu çalışır.
 
+### Uygulama durumu
+
+**Tamamlandı — 23 Ekim 2026.** S05-01–S05-09; profil başına bağımsız
+manifestler, iki proje-sentetik IOS-XE fixture'ı, NX-OS/Junos typed eşlemeleri,
+Q-BRIDGE FDB ve kimlik/reboot tabanlı yeniden çözümleme ile uygulanmıştır.
+Kaynak ve doğrulama sınırları [`S05_TESLIM_RAPORU.md`](S05_TESLIM_RAPORU.md),
+operatör sözleşmesi [`P0_SURUCU_PROFILLERI.md`](P0_SURUCU_PROFILLERI.md)
+içindedir. Bütün P0 release değerleri `experimental` kalır; fiziksel cihaz ve
+production kabulü yapılmamıştır. `Ana tasarım etkisi: yok`; README ekran
+görüntüleri yenilenmemiştir.
+
 ---
 
 ## S06 — P1: Yaygın kurumsal platformlar

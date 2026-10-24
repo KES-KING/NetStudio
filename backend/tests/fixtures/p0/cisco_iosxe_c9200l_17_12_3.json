@@ -1,0 +1,24 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "cisco_iosxe",
+  "model": "C9200L-24P-4G",
+  "os_version": "17.12.3",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "sanitization": "reserved identities and test-only serial; no device or customer recording",
+  "outputs": {
+    "show version": "Cisco IOS XE Software, Version 17.12.3\nCisco IOS Software [Dublin], Catalyst L3 Switch Software (CAT9K_IOSXE), Version 17.12.3, RELEASE SOFTWARE (fc2)\nswitch-01.example.test uptime is 2 days, 1 hour, 5 minutes\ncisco C9200L-24P-4G (ARM64) processor with 1024000K bytes of memory.\nProcessor board ID TEST-SERIAL-9200\nModel Number                       : C9200L-24P-4G\n",
+    "show interfaces": "GigabitEthernet1/0/1 is up, line protocol is up (connected)\n  Hardware is Gigabit Ethernet, address is 0200.0000.9201\n  MTU 1500 bytes, BW 1000000 Kbit/sec\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\n  5 minute input rate 8000 bits/sec, 1 packets/sec\n  5 minute output rate 16000 bits/sec, 2 packets/sec\n     10 packets input, 1000 bytes, 0 no buffer\n     0 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored\n     20 packets output, 2000 bytes, 0 underruns\n     0 output errors, 0 collisions, 0 interface resets\n  Total output drops: 0\n",
+    "show interfaces status": "Port      Name               Status       Vlan       Duplex  Speed Type\nGi1/0/1                      connected    10         a-full  a-100010/100/1000BaseTX\n"
+  },
+  "expected": {
+    "model": "C9200L-24P-4G",
+    "parsed_os_version": "17.12.3",
+    "serial": "TEST-SERIAL-9200",
+    "interface_name": "GigabitEthernet1/0/1",
+    "admin_up": true,
+    "oper_up": true
+  }
+}

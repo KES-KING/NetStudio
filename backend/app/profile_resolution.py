@@ -33,7 +33,7 @@ ConflictCode = Literal[
     "legacy_alias_ambiguous", "identity_evidence_required",
     "vendor_mismatch", "os_family_mismatch", "model_mismatch",
     "version_mismatch", "management_mode_mismatch", "multiple_candidates",
-    "configured_profile_mismatch",
+    "configured_profile_mismatch", "transport_identity_mismatch",
 ]
 
 
@@ -325,45 +325,124 @@ def binding_values(
     }
 
 
-def record_collected_resolution(store, device, conn) -> dict | None:
+def _identity_changed(prior: dict | None, evidence: IdentityEvidence) -> bool:
+    if not prior:
+        return False
+    old = IdentityEvidence.model_validate(prior.get("identity_evidence") or {})
+    return any(getattr(old, key) != getattr(evidence, key) for key in (
+        "vendor", "model", "os_family", "os_version", "hardware_revision",
+        "sys_object_id",
+    ))
+
+
+def _invalidate_profile_caches(store, device_id: str, conn) -> None:
+    """Discard only derived capability caches; retain secrets and last-good data."""
+    conn.execute(store.capabilities.delete().where(
+        store.capabilities.c.device_id == device_id
+    ))
+    conn.execute(store.capability_observations_v2.delete().where(
+        store.capability_observations_v2.c.device_id == device_id
+    ))
+
+
+def record_collected_resolution(
+    store, device, conn, *, observed_profile_id: str | None = None,
+    identity_evidence: dict | IdentityEvidence | None = None,
+    identity_conflicts: list[str] | None = None,
+    force_revalidation: bool = False,
+) -> dict | None:
     """Persist a parser-validated runtime identity without storing raw output."""
     runtime_id = device.resolved_collector
-    if not runtime_id:
-        return store.get_driver_binding(device.id, conn)
-    profile = REGISTRY.runtime_profile(runtime_id)
-    if profile is None:
-        return store.get_driver_binding(device.id, conn)
     prior = store.get_driver_binding(device.id, conn)
     configured = prior["configured_profile_id"] if prior else None
     mode = prior["management_mode"] if prior else device.management_mode
-    evidence = IdentityEvidence(
-        vendor=device.vendor or None,
-        model=device.model or None,
-        os_family=profile.identity.os_families[0],
-        os_version=device.os_version or None,
-        management_mode=mode,
+    cache_invalidated = False
+    profile = (
+        REGISTRY.profile(observed_profile_id)
+        if observed_profile_id else REGISTRY.runtime_profile(runtime_id)
     )
-    if configured and configured != profile.id:
-        configured_profile = REGISTRY.profile(configured)
+    if identity_evidence is None and force_revalidation and prior:
+        evidence = IdentityEvidence.model_validate(prior["identity_evidence"] or {})
         result = ProfileResolutionResult(
-            requested_id=configured, configured_profile_id=configured,
-            profile_revision=(
-                configured_profile.profile_revision if configured_profile
-                else profile.profile_revision
-            ),
-            management_mode=mode, status="conflict", confidence=1,
-            conflicts=["configured_profile_mismatch"],
-            reason_code="configured_profile_mismatch", source="automatic",
+            requested_id=prior["configured_profile_id"] or "auto",
+            configured_profile_id=prior["configured_profile_id"],
+            profile_revision=prior["profile_revision"],
+            management_mode=prior["management_mode"], status="unresolved",
+            confidence=0, conflicts=["identity_evidence_required"],
+            reason_code="device_reboot_detected", source="automatic",
             runtime_collector_id=runtime_id, identity_evidence=evidence,
         )
+        _invalidate_profile_caches(store, device.id, conn)
+        cache_invalidated = True
+    elif profile is None:
+        return prior
     else:
-        result = ProfileResolutionResult(
-            requested_id=configured or "auto", configured_profile_id=configured,
-            resolved_profile_id=profile.id, profile_revision=profile.profile_revision,
-            management_mode=mode, status="matched", confidence=1,
-            source="automatic", runtime_collector_id=runtime_id,
-            identity_evidence=evidence,
+        evidence = IdentityEvidence.model_validate(identity_evidence or {
+            "vendor": device.vendor or None,
+            "model": device.model or None,
+            "os_family": profile.identity.os_families[0],
+            "os_version": device.os_version or None,
+            "management_mode": mode,
+        })
+        if evidence.management_mode == "unknown" and mode != "unknown":
+            evidence = evidence.model_copy(update={"management_mode": mode})
+        if identity_conflicts:
+            configured_profile = REGISTRY.profile(configured) if configured else None
+            result = ProfileResolutionResult(
+                requested_id=configured or "auto",
+                configured_profile_id=configured,
+                profile_revision=(
+                    configured_profile.profile_revision if configured_profile
+                    else profile.profile_revision
+                ),
+                management_mode=mode, status="conflict", confidence=0,
+                conflicts=["transport_identity_mismatch"],
+                reason_code="transport_identity_mismatch", source="automatic",
+                runtime_collector_id=runtime_id, identity_evidence=evidence,
+            )
+        elif configured and configured != profile.id:
+            configured_profile = REGISTRY.profile(configured)
+            result = ProfileResolutionResult(
+                requested_id=configured, configured_profile_id=configured,
+                profile_revision=(
+                    configured_profile.profile_revision if configured_profile
+                    else profile.profile_revision
+                ),
+                management_mode=mode, status="conflict", confidence=1,
+                conflicts=["configured_profile_mismatch"],
+                reason_code="configured_profile_mismatch", source="automatic",
+                runtime_collector_id=runtime_id, identity_evidence=evidence,
+            )
+        elif profile.implementation_status != "implemented":
+            result = ProfileResolutionResult(
+                requested_id=configured or "auto",
+                configured_profile_id=configured,
+                profile_revision=profile.profile_revision,
+                management_mode=mode, status="unsupported", confidence=1,
+                reason_code="driver_profile_not_implemented", source="automatic",
+                runtime_collector_id=None, identity_evidence=evidence,
+            )
+        else:
+            resolved = resolve_profile(
+                profile.id, management_mode=mode, evidence=evidence,
+                source="automatic",
+            )
+            result = resolved.model_copy(update={
+                "requested_id": configured or "auto",
+                "configured_profile_id": configured,
+                "runtime_collector_id": runtime_id or profile.runtime_driver_id,
+            })
+        identity_changed = bool(
+            prior and prior["resolution_status"] == "matched"
+            and _identity_changed(prior, evidence)
         )
+        cache_invalidated = bool(identity_conflicts or force_revalidation or identity_changed or (
+            prior and prior["resolved_profile_id"] not in {None, profile.id}
+        ) or (
+            prior and prior["profile_revision"] != profile.profile_revision
+        ))
+        if cache_invalidated:
+            _invalidate_profile_caches(store, device.id, conn)
     values = binding_values(
         result, device_id=device.id,
         legacy_collector_id=prior["legacy_collector_id"] if prior else device.collector,
@@ -386,6 +465,7 @@ def record_collected_resolution(store, device, conn) -> dict | None:
                 "management_mode": mode,
                 "resolution_status": result.status,
                 "source": "collector",
+                "cache_invalidated": cache_invalidated,
             }, conn=conn,
         )
         return values
@@ -393,6 +473,8 @@ def record_collected_resolution(store, device, conn) -> dict | None:
 
 
 def save_capability_observation(store, binding, capability_id, metadata, conn):
+    if binding and binding["resolution_status"] != "matched":
+        return
     profile_id = binding and (
         binding["resolved_profile_id"] or binding["configured_profile_id"]
     )

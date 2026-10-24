@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "catalog_revision": "2026.10.23.2",
+  "catalog_revision": "2026.10.23.3",
   "legacy_driver_ids": [
     "cisco_ios",
     "cisco_iosxe",
@@ -21,7 +21,7 @@
   ],
   "profiles": [
     {"id": "cisco_ios", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
-    {"id": "cisco_iosxe", "implementation": "implemented", "verification": "not_tested", "release": "experimental", "available": true, "selectable": true},
+    {"id": "cisco_iosxe", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
     {"id": "cisco_nxos", "implementation": "implemented", "verification": "unit_verified", "release": "experimental", "available": true, "selectable": true},
     {"id": "huawei_vrp_v200", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
     {"id": "juniper_junos", "implementation": "implemented", "verification": "unit_verified", "release": "experimental", "available": true, "selectable": true},

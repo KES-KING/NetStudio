@@ -431,7 +431,9 @@ def merge_snapshot(device, snapshot):
 
 
 def normalize_mac(value):
-    digits = value.replace(".", "").lower()
+    digits = re.sub(r"[^0-9a-f]", "", value.lower())
+    if len(digits) != 12:
+        return ""
     return ":".join(digits[index:index + 2] for index in range(0, 12, 2))
 
 

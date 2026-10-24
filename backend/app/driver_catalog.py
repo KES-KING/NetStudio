@@ -8,6 +8,7 @@ from .driver_profiles import (
     DRIVER_VERSION,
     GROUPS,
     IOS,
+    IOSXE,
     JUNOS,
     NTC_VERSION,
     NXOS,
@@ -218,7 +219,7 @@ def catalog(*, include_v2: bool | None = None) -> dict:
 
 __all__ = [
     "CAPABILITIES", "CATALOG_REVISION", "Command", "DRIVERS", "GROUPS",
-    "IOS", "JUNOS", "NTC_VERSION", "NXOS", "PLANNED", "SUPPORTED", "VERSION",
+    "IOS", "IOSXE", "JUNOS", "NTC_VERSION", "NXOS", "PLANNED", "SUPPORTED", "VERSION",
     "REFERENCES", "VRP", "catalog", "catalog_v2_enabled", "commands",
     "legacy_catalog",
 ]

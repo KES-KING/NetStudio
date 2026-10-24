@@ -202,7 +202,7 @@ def test_acceptance_reads_are_redacted_and_do_not_promote_catalog_release(
     at = now()
     record = AcceptanceRecord(
         source_revision="f" * 40,
-        profile_id="cisco_ios", profile_revision=1,
+        profile_id="cisco_ios", profile_revision=2,
         vendor="Cisco", model_family="WS-C2960X-*",
         exact_model="WS-C2960X-48FPD-L", hardware_revision="V02",
         os_family="IOS", os_version="15.2(7)E",
@@ -232,7 +232,7 @@ def test_acceptance_reads_are_redacted_and_do_not_promote_catalog_release(
         "os_version": "15.2(7)E",
     }
     matched = acceptance_summary(
-        store, "cisco_ios", 1, device=device, identity_evidence=evidence
+        store, "cisco_ios", 2, device=device, identity_evidence=evidence
     )
     assert matched == {
         "highest_level": "physical_validated",
@@ -240,13 +240,13 @@ def test_acceptance_reads_are_redacted_and_do_not_promote_catalog_release(
         "production_accepted": False,
     }
     wrong_mode = acceptance_summary(
-        store, "cisco_ios", 1,
+        store, "cisco_ios", 2,
         device=device.model_copy(update={"management_mode": "unknown"}),
         identity_evidence=evidence,
     )
     assert wrong_mode["matching_unexpired_records"] == 0
     assert acceptance_summary(
-        store, "cisco_ios", 1, device=device,
+        store, "cisco_ios", 2, device=device,
         identity_evidence={**evidence, "hardware_revision": "V03"},
     )["matching_unexpired_records"] == 0
 

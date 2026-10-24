@@ -14,6 +14,7 @@ from app.driver_catalog import GROUPS
 from app.snmp import COLUMNS, SYS_UPTIME, collect_snmp
 from app.snmp_mappers import (
     BRIDGE_COLUMNS, ENTITY_COLUMNS, LLDP_COLUMNS, QBRIDGE_COLUMNS,
+    QBRIDGE_FDB_COLUMNS,
     SENSOR_COLUMNS, SYSTEM_SCALARS,
 )
 from app.ssh import ConnectionPolicyError
@@ -40,7 +41,9 @@ def test_real_snmpv3_sha256_aes128_and_unknown_user(system):
         config.add_vacm_user(agent, 3, "qa-reader", "authPriv", (1,), contextName=b"qa")
         values = {
             oid(SYSTEM_SCALARS[0]): rfc1902.ObjectIdentifier("1.3.6.1.4.1.9.1.1"),
-            oid(SYSTEM_SCALARS[1]): rfc1902.OctetString("Loopback switch"),
+            oid(SYSTEM_SCALARS[1]): rfc1902.OctetString(
+                "Cisco IOS Software, C2960X Software, Version 15.2(7)E"
+            ),
             oid(SYSTEM_SCALARS[2]): rfc1902.OctetString("qa-switch"),
             oid(SYS_UPTIME): rfc1902.TimeTicks(12000),
         }
@@ -59,8 +62,10 @@ def test_real_snmpv3_sha256_aes128_and_unknown_user(system):
                 values[oid(prefix) + (index,)] = value
         values.update({
             oid(BRIDGE_COLUMNS["port_ifindex"]) + (1,): rfc1902.Integer32(1),
-            oid(QBRIDGE_COLUMNS["vlan_fid"]) + (10,): rfc1902.Integer32(10),
+            oid(QBRIDGE_COLUMNS["vlan_fid"]) + (0, 10): rfc1902.Integer32(10),
             oid(QBRIDGE_COLUMNS["pvid"]) + (1,): rfc1902.Integer32(10),
+            oid(QBRIDGE_FDB_COLUMNS["fdb_port"]) + (10, 2, 0, 0, 0, 0, 10): rfc1902.Integer32(1),
+            oid(QBRIDGE_FDB_COLUMNS["fdb_status"]) + (10, 2, 0, 0, 0, 0, 10): rfc1902.Integer32(3),
             oid(LLDP_COLUMNS["local_port"]) + (1,): rfc1902.OctetString("eth1"),
             oid(LLDP_COLUMNS["remote_chassis"]) + (0, 1, 1): rfc1902.OctetString("02:00:00:00:00:02"),
             oid(LLDP_COLUMNS["remote_port"]) + (0, 1, 1): rfc1902.OctetString("Ethernet1"),
@@ -132,8 +137,11 @@ def test_real_snmpv3_sha256_aes128_and_unknown_user(system):
             assert len(result.payloads["fast"]["interfaces"]) == 4
             assert result.payloads["fast"]["interfaces"][0]["in_octets"] > 2**32
             assert result.payloads["inventory"]["system_identity"]["sys_name"] == "qa-switch"
+            assert result.observed_profile_id == "cisco_ios"
+            assert result.identity_evidence["os_family"] == "IOS"
             assert len(result.payloads["inventory"]["entities"]) == 4
             assert result.payloads["network"]["interfaces"][0]["pvid"] == 10
+            assert result.payloads["network"]["endpoints"]["entries"][0]["mac"] == "02:00:00:00:00:0a"
             assert result.payloads["network"]["neighbors"][0]["relation"] == "l2"
             assert result.payloads["health"]["health"]["temperature_c"] == 42
             assert all(result.metadata[group].quality == "partial" and not result.metadata[group].complete

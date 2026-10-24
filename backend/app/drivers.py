@@ -1,5 +1,6 @@
 """Bounded multi-platform reads using the same pinned SSH policy as terminals."""
 import asyncio
+from dataclasses import dataclass
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -15,7 +16,7 @@ from .collection import ReadResult, metadata, upsert
 from .collector import linux_snapshot, read_limited
 from .contracts import Health, InterfaceSample
 from .database import now
-from .driver_catalog import CAPABILITIES, DRIVERS, GROUPS, VERSION
+from .driver_catalog import DRIVERS, GROUPS, SUPPORTED, VERSION
 from .ssh import ConnectionPolicyError, connect
 from .structured_parsers import parse_structured
 from .fixture_drivers import DeviceDriver, FixtureDriver, GenericReadOnlyDriver, UnsupportedCapability
@@ -88,17 +89,58 @@ def quality(code):
             "collector_timeout": "timeout", "collector_parse_failed": "parse_error"}.get(code, "error")
 
 
-def identify(outputs):
+@dataclass(frozen=True)
+class PlatformIdentity:
+    profile_id: str
+    runtime_driver_id: str | None
+    vendor: str
+    os_family: str
+
+
+def identify_platform(outputs):
     text = "\n".join(outputs.values())
+    if re.search(r"IOS[ -]?XE|CAT9K_IOSXE", text, re.I):
+        return PlatformIdentity("cisco_iosxe", "cisco_iosxe", "Cisco", "IOS-XE")
+    if re.search(r"VRP[^\n]{0,100}\bV600\b|CloudEngine[^\n]{0,100}\bV600\b", text, re.I):
+        return PlatformIdentity("huawei_vrp_v600", None, "Huawei", "VRP V600")
     if re.search(r"VRP\s*\(R\)|Huawei Versatile Routing", text, re.I):
-        return "huawei_vrp"
+        if not re.search(r"\bV200\w*\b|Version\s+5\.\d+", text, re.I):
+            raise ConnectionPolicyError("collector_platform_unsupported")
+        return PlatformIdentity("huawei_vrp_v200", "huawei_vrp", "Huawei", "VRP V200")
+    if re.search(r"Junos OS Evolved|JUNOS Evolved", text, re.I):
+        return PlatformIdentity("juniper_junos_evolved", None, "Juniper", "Junos OS Evolved")
     if re.search(r"Junos:|JUNOS|<junos-version>", text):
-        return "juniper_junos"
+        return PlatformIdentity("juniper_junos", "juniper_junos", "Juniper", "Junos OS")
     if re.search(r"NX-OS|NXOS|nxos_ver_str", text):
-        return "cisco_nxos"
+        return PlatformIdentity("cisco_nxos", "cisco_nxos", "Cisco", "NX-OS")
     if re.search(r"Cisco IOS", text, re.I):
-        return "cisco_iosxe" if re.search(r"IOS XE|IOS-XE", text, re.I) else "cisco_ios"
+        return PlatformIdentity("cisco_ios", "cisco_ios", "Cisco", "IOS")
     raise ConnectionPolicyError("collector_platform_unsupported")
+
+
+def identify(outputs):
+    """Backward-compatible runtime ID resolver for implemented profiles."""
+    identity = identify_platform(outputs)
+    if identity.runtime_driver_id is None:
+        raise ConnectionPolicyError("collector_platform_unsupported")
+    return identity.runtime_driver_id
+
+
+def _identity_command(driver):
+    return next(
+        command.text for command in DRIVERS[driver][1]
+        if command.group == "inventory" and command.required
+    )
+
+
+def _identity_evidence(identity, device):
+    return {
+        "vendor": identity.vendor,
+        "model": device.model or None,
+        "os_family": identity.os_family,
+        "os_version": device.os_version or None,
+        "management_mode": device.management_mode,
+    }
 
 
 async def collect(store, vault, device, groups=GROUPS, authorize=lambda: None):
@@ -125,6 +167,8 @@ async def collect(store, vault, device, groups=GROUPS, authorize=lambda: None):
         result.inventory_complete = True
         return result
     outputs, unavailable = {}, {}
+    platform = None
+    identity_failure = None
     async with asyncio.timeout(180):
         async with connect(store, vault, device) as connection:
             authorize()
@@ -138,24 +182,39 @@ async def collect(store, vault, device, groups=GROUPS, authorize=lambda: None):
                         authorize()
                         try:
                             outputs[probe] = await reader.command(probe)
-                            driver = identify(outputs)
+                            platform = identify_platform(outputs)
+                            driver = platform.runtime_driver_id
                             break
                         except ConnectionPolicyError as error:
                             if str(error) not in {"collector_platform_unsupported", "collector_command_unsupported"}:
                                 raise
                     if not driver:
-                        raise ConnectionPolicyError("collector_platform_unsupported")
+                        identity_failure = platform
+                        if identity_failure is None:
+                            raise ConnectionPolicyError("collector_platform_unsupported")
+                else:
+                    identity_command = _identity_command(driver)
+                    authorize()
+                    outputs[identity_command] = await reader.command(identity_command)
+                    platform = identify_platform({identity_command: outputs[identity_command]})
+                    if platform.runtime_driver_id is None:
+                        identity_failure = platform
+                    else:
+                        driver = platform.runtime_driver_id
                 if not device.driver_version:
                     requested.update(GROUPS)
                 # Current interface identity is needed to correlate slow network
                 # tables. It is read once in this SSH session, not per command.
                 if requested & {"inventory", "network"}:
                     requested.add("fast")
-                revision = sha256(f"{device.connection_revision}:{driver}:{VERSION}:{device.os_version}".encode()).hexdigest()
+                if identity_failure:
+                    authorize()
+                    process.close()
+                revision = sha256(f"{device.connection_revision}:{driver or platform.profile_id}:{VERSION}:{device.os_version}".encode()).hexdigest()
                 with store.engine.connect() as conn:
                     cached = dict(conn.execute(sa.select(store.capabilities.c.command_id, store.capabilities.c.status)
                         .where(store.capabilities.c.device_id == device.id, store.capabilities.c.revision_key == revision)).all())
-                for command in DRIVERS[driver][1]:
+                for command in (() if identity_failure else DRIVERS[driver][1]):
                     if command.group not in requested or command.text in outputs:
                         continue
                     authorize()
@@ -174,12 +233,23 @@ async def collect(store, vault, device, groups=GROUPS, authorize=lambda: None):
                 authorize()
             finally:
                 process.close()
+    if identity_failure:
+        result = ReadResult(device, metadata={group: metadata(
+            group, identity_failure.profile_id, quality="error", complete=False,
+            reason="collector_platform_unsupported",
+        ) for group in requested})
+        result.observed_profile_id = identity_failure.profile_id
+        result.identity_evidence = _identity_evidence(identity_failure, device)
+        return result
     if driver in {"juniper_junos", "cisco_nxos"}:
         result = parse_structured(device, driver, outputs, unavailable, requested)
     else:
         result = parse_text(device, driver, outputs, unavailable, requested)
     result.device = result.device.model_copy(update={"resolved_collector": driver, "driver_version": VERSION,
         "validation_level": DRIVERS[driver][3]})
+    if platform:
+        result.observed_profile_id = platform.profile_id
+        result.identity_evidence = _identity_evidence(platform, result.device)
     # Cache only status, never CLI output. Unsupported commands are invalidated
     # by driver, software version or credential/connection revision changes.
     authorize()
@@ -231,7 +301,7 @@ def split(updated, batch, groups, driver, unavailable, extra):
                        "components": [c.model_dump(mode="json") for c in updated.components], **extra}
             result.inventory_complete = True
         # Unsupported fields are explicit even where the valid subset succeeds.
-        fields = {key: "unsupported" for key in CAPABILITIES[group]}
+        fields = {key: "unsupported" for key in SUPPORTED[driver][group]}
         if group in {"fast", "health"}:
             values = payload.get("interfaces", []) if group == "fast" else [payload["health"]]
             for key in fields:
@@ -243,10 +313,11 @@ def split(updated, batch, groups, driver, unavailable, extra):
                     fields[key] = "ok"
             if group == "network":
                 if data["endpoints"]["status"] == "ok":
-                    fields["arp"] = "ok"
-                    if driver == "linux_ssh":
+                    if "arp" in fields:
+                        fields["arp"] = "ok"
+                    if driver == "linux_ssh" and "ndp" in fields:
                         fields["ndp"] = "ok"
-                    else:
+                    elif "fdb" in fields:
                         fields["fdb"] = "ok"
                 if data["neighbors"]:
                     fields["lldp"] = "ok"
@@ -259,7 +330,7 @@ def split(updated, batch, groups, driver, unavailable, extra):
                         fields[name] = "ok"
             elif group == "inventory" and any(c["kind"] == "chassis" for c in payload["components"]):
                 fields["chassis"] = "ok"
-        if group == "health" and payload["interfaces"]:
+        if group == "health" and payload["interfaces"] and "poe_watts" in fields:
             fields["poe_watts"] = "ok"
         result.payloads[group] = payload
         result.metadata[group] = metadata(group, driver, quality="partial" if diagnostics else "ok",
@@ -278,6 +349,9 @@ def parse_text(device, driver, outputs, unavailable, groups):
             if k in health_commands or k in {"show version", "display version"}}, unavailable, {"health"})
         result.payloads.update(health.payloads)
         result.metadata.update(health.metadata)
+        if health.observed_profile_id:
+            result.observed_profile_id = health.observed_profile_id
+            result.identity_evidence = health.identity_evidence
     return result
 
 
@@ -296,10 +370,15 @@ def _parse_text(device, driver, outputs, unavailable, groups):
         warnings = []
         parsing_command = "display version" if module is huawei else "show version"
         version = outputs.get("display version" if module is huawei else "show version", "")
-        if version and identify({"version": version}) != driver:
-            # IOS and IOS-XE share selected command parsers, not arbitrary OSes.
-            if {identify({"version": version}), driver} - {"cisco_ios", "cisco_iosxe"}:
-                raise ValueError("platform_mismatch")
+        platform = identify_platform({"version": version}) if version else None
+        if platform and platform.runtime_driver_id != driver:
+            result = ReadResult(device, metadata={group: metadata(
+                group, driver, quality="error", complete=False,
+                reason="collector_platform_mismatch",
+            ) for group in groups})
+            result.observed_profile_id = platform.profile_id
+            result.identity_evidence = _identity_evidence(platform, device)
+            return result
         snapshot = {"at": at, "entries": entries, "release": device.os_version, "model": device.model,
                     "serial": device.serial, "health": Health(), "outputs": outputs, "unavailable": unavailable}
         if module is cisco:
@@ -368,9 +447,12 @@ def _parse_text(device, driver, outputs, unavailable, groups):
             from .contracts import Telemetry
             updated, batch = device, Telemetry(observed_at=at, source="ssh", reachability="reachable", health=snapshot["health"],
                 interfaces=[InterfaceSample(interface_id=i.id, quality="unknown") for i in device.interfaces])
-        extra = enrich_ios(updated, batch, outputs, unavailable) if module is cisco else {}
+        extra = enrich_ios(driver, updated, batch, outputs, unavailable) if module is cisco else {}
         result = split(updated, batch, groups, driver, unavailable, extra)
         result.inventory_complete = bool(entries)
+        if platform:
+            result.observed_profile_id = platform.profile_id
+            result.identity_evidence = _identity_evidence(platform, updated)
         return result
     except (ValueError, KeyError, OverflowError, ConnectionPolicyError):
         # A status-table failure says nothing about `show version` or the
@@ -382,10 +464,10 @@ def _parse_text(device, driver, outputs, unavailable, groups):
             complete=False, reason="collector_parse_failed", diagnostics=diagnostics) for g in groups})
 
 
-def enrich_ios(device, batch, outputs, unavailable):
+def enrich_ios(driver, device, batch, outputs, unavailable):
     samples = {cisco.canonical(i.name): next((s for s in batch.interfaces if s.interface_id == i.id), None) for i in device.interfaces}
     extra = {}
-    for command in DRIVERS["cisco_ios"][1]:
+    for command in DRIVERS[driver][1]:
         if not command.parser.startswith("ntc.") or command.text not in outputs:
             continue
         try:

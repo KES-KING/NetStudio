@@ -11,9 +11,18 @@ from typing import Literal, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .driver_manifests import (
+    cisco_ios as ios_manifest,
+    cisco_iosxe as iosxe_manifest,
+    cisco_nxos as nxos_manifest,
+    huawei_vrp_v200 as vrp_v200_manifest,
+    juniper_junos as junos_manifest,
+    linux_ssh as linux_manifest,
+)
 
-DRIVER_VERSION = "2026.10.20.3"
-CATALOG_REVISION = "2026.10.23.2"
+
+DRIVER_VERSION = "2026.10.23.4"
+CATALOG_REVISION = "2026.10.23.3"
 NTC_VERSION = "9.3.0"
 GROUPS = ("fast", "health", "network", "inventory")
 DATA_CONTRACT = {
@@ -31,8 +40,8 @@ DATA_CONTRACT = {
         "lldp", "cdp", "dom",
     ],
     "inventory": [
-        "model", "serial", "os_version", "chassis", "stack", "modules",
-        "breakout",
+        "model", "serial", "os_version", "system_identity", "chassis",
+        "stack", "modules", "breakout",
     ],
 }
 REFERENCES = {
@@ -92,6 +101,7 @@ class CapabilitySummary(FrozenModel):
     group: Literal["fast", "health", "network", "inventory"]
     fields: tuple[str, ...]
     sources: tuple[TransportKind, ...]
+    source_fields: dict[TransportKind, tuple[str, ...]] = Field(default_factory=dict)
     verification_status: VerificationStatus
 
 
@@ -179,87 +189,18 @@ def commands(reference: str, rows: Sequence[tuple[str, str, str, bool]]) -> tupl
     )
 
 
-IOS = commands("cisco", [
-    ("show interfaces", "fast", "ios.interfaces", True),
-    ("show interfaces status", "fast", "ios.status", True),
-    ("show processes cpu", "health", "ios.cpu", False),
-    ("show memory statistics", "health", "ios.memory", False),
-    ("show power inline", "health", "ntc.cisco_ios_show_power_inline", False),
-    ("show environment all", "health", "ios.environment", False),
-    ("show ip interface", "network", "ios.ip", False),
-    ("show mac address-table", "network", "ios.fdb", False),
-    ("show arp", "network", "ios.arp", False),
-    ("show interfaces switchport", "network", "ntc.cisco_ios_show_interfaces_switchport", False),
-    ("show etherchannel summary", "network", "ntc.cisco_ios_show_etherchannel_summary", False),
-    ("show lldp neighbors detail", "network", "ntc.cisco_ios_show_lldp_neighbors_detail", False),
-    ("show version", "inventory", "ios.version", True),
-    ("show inventory", "inventory", "ntc.cisco_ios_show_inventory", False),
-])
-VRP = commands("huawei", [
-    ("display interface", "fast", "vrp.interfaces", True),
-    ("display cpu-usage", "health", "vrp.cpu", False),
-    ("display memory-usage", "health", "vrp.memory", False),
-    ("display ip interface brief", "network", "vrp.ip", False),
-    ("display mac-address", "network", "vrp.fdb", False),
-    ("display arp all", "network", "vrp.arp", False),
-    ("display version", "inventory", "vrp.version", True),
-])
-JUNOS = commands("junos", [
-    ("show interfaces extensive | display xml", "fast", "junos.interfaces", True),
-    ("show chassis routing-engine | display xml", "health", "junos.health", False),
-    ("show chassis environment | display xml", "health", "junos.environment", False),
-    ("show lldp neighbors | display xml", "network", "junos.lldp", False),
-    ("show ethernet-switching table | display xml", "network", "junos.fdb", False),
-    ("show arp no-resolve | display xml", "network", "junos.arp", False),
-    ("show version | display xml", "inventory", "junos.version", True),
-    ("show chassis hardware | display xml", "inventory", "junos.hardware", False),
-])
-NXOS = commands("nxos", [
-    ("show interface | json", "fast", "nxos.interfaces", True),
-    ("show system resources | json", "health", "nxos.health", False),
-    ("show lldp neighbors detail | json", "network", "nxos.lldp", False),
-    ("show mac address-table | json", "network", "nxos.fdb", False),
-    ("show version | json", "inventory", "nxos.version", True),
-    ("show inventory | json", "inventory", "nxos.hardware", False),
-])
+IOS = commands("cisco", ios_manifest.COMMAND_ROWS)
+IOSXE = commands("cisco", iosxe_manifest.COMMAND_ROWS)
+VRP = commands("huawei", vrp_v200_manifest.COMMAND_ROWS)
+JUNOS = commands("junos", junos_manifest.COMMAND_ROWS)
+NXOS = commands("nxos", nxos_manifest.COMMAND_ROWS)
 
-
-CURRENT_CAPABILITIES = {
-    "cisco_ios": {
-        "fast": DATA_CONTRACT["fast"],
-        "health": DATA_CONTRACT["health"],
-        "network": ["addresses", "vlan", "lag", "fdb", "arp", "lldp"],
-        "inventory": ["model", "serial", "os_version", "chassis", "modules"],
-    },
-    "cisco_iosxe": {},
-    "huawei_vrp_v200": {
-        "fast": DATA_CONTRACT["fast"],
-        "health": ["cpu_percent", "memory_percent"],
-        "network": ["addresses", "vlan", "fdb", "arp"],
-        "inventory": ["model", "os_version", "chassis"],
-    },
-    "juniper_junos": {
-        "fast": [
-            key for key in DATA_CONTRACT["fast"]
-            if key not in {"rx_bps", "tx_bps", "duplex"}
-        ],
-        "health": ["cpu_percent", "memory_percent"],
-        "network": ["addresses", "lldp"],
-        "inventory": ["model", "serial", "os_version", "chassis", "modules"],
-    },
-    "cisco_nxos": {
-        "fast": DATA_CONTRACT["fast"],
-        "health": ["cpu_percent", "memory_percent"],
-        "network": [],
-        "inventory": ["model", "serial", "os_version", "chassis"],
-    },
-}
-CURRENT_CAPABILITIES["cisco_iosxe"] = CURRENT_CAPABILITIES["cisco_ios"]
-LINUX_CAPABILITIES = {
-    "fast": ["admin_up", "oper_up", "in_octets", "out_octets", "rx_bps", "tx_bps"],
-    "health": [],
-    "network": ["addresses", "arp", "ndp"],
-    "inventory": [],
+P0_CAPABILITIES = {
+    "cisco_ios": ios_manifest.CAPABILITIES,
+    "cisco_iosxe": iosxe_manifest.CAPABILITIES,
+    "cisco_nxos": nxos_manifest.CAPABILITIES,
+    "huawei_vrp_v200": vrp_v200_manifest.CAPABILITIES,
+    "juniper_junos": junos_manifest.CAPABILITIES,
 }
 
 
@@ -309,14 +250,24 @@ SNMP_V2C_BLOCKED = _transport(
 
 
 def _capabilities(
-    groups: dict[str, list[str]], verification: VerificationStatus,
-    sources: tuple[TransportKind, ...],
+    groups: dict[str, dict[TransportKind, Sequence[str]]],
+    verification: VerificationStatus,
 ) -> tuple[CapabilitySummary, ...]:
-    return tuple(
-        CapabilitySummary(
-            group=group, fields=tuple(groups.get(group, ())), sources=sources,
-            verification_status=verification,
+    def summary(group: str) -> CapabilitySummary:
+        by_source = {
+            source: tuple(fields) for source, fields in groups[group].items()
+            if fields
+        }
+        union = tuple(
+            field for field in DATA_CONTRACT[group]
+            if any(field in fields for fields in by_source.values())
         )
+        return CapabilitySummary(
+            group=group, fields=union, sources=tuple(by_source),
+            source_fields=by_source, verification_status=verification,
+        )
+    return tuple(
+        summary(group)
         for group in GROUPS
         if groups.get(group)
     )
@@ -335,11 +286,13 @@ def _profile(
     runtime_driver_id: str | None = None,
     adapter: str | None = None,
     command_plan: tuple[Command, ...] = (),
-    capability_groups: dict[str, list[str]] | None = None,
+    capability_groups: dict[str, dict[TransportKind, Sequence[str]]] | None = None,
     tested_versions: tuple[str, ...] = (),
+    profile_revision: int = 1,
 ) -> DriverProfile:
     return DriverProfile(
         id=identifier,
+        profile_revision=profile_revision,
         label=label,
         wave=wave,
         implementation_status=implementation,
@@ -347,10 +300,7 @@ def _profile(
         release_status=release,
         identity=identity,
         transports=transports,
-        capabilities=_capabilities(
-            capability_groups or {}, verification,
-            tuple(transport.kind for transport in transports if transport.state == "implemented"),
-        ),
+        capabilities=_capabilities(capability_groups or {}, verification),
         acceptance=AcceptanceSummary(highest_level=verification),
         runtime_driver_id=runtime_driver_id,
         adapter=adapter,
@@ -362,35 +312,42 @@ def _profile(
 PROFILES = (
     _profile(
         "cisco_ios", "Cisco IOS", "P0",
-        _identity("Cisco", "IOS", models=("WS-C2960X-*",), versions=("15.2(*)E",)),
+        _identity("Cisco", "IOS", models=("WS-C2960X-*",), versions=("15.2(*)E*",)),
         (SSH_IMPLEMENTED, SNMP_IMPLEMENTED),
         implementation="implemented", verification="fixture_verified",
         release="experimental", runtime_driver_id="cisco_ios",
         adapter="ssh_cli", command_plan=IOS,
-        capability_groups=CURRENT_CAPABILITIES["cisco_ios"],
+        capability_groups=P0_CAPABILITIES["cisco_ios"], profile_revision=2,
         tested_versions=("Catalyst 2960-X / IOS 15.2(7)E sanitized fixtures",),
     ),
     _profile(
-        "cisco_iosxe", "Cisco IOS-XE", "P0", _identity("Cisco", "IOS-XE"),
+        "cisco_iosxe", "Cisco IOS-XE", "P0",
+        _identity("Cisco", "IOS-XE", models=("C9200*", "C9300*"), versions=("17.*",)),
         (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
-        verification="not_tested", release="experimental",
-        runtime_driver_id="cisco_iosxe", adapter="ssh_cli", command_plan=IOS,
-        capability_groups=CURRENT_CAPABILITIES["cisco_iosxe"],
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="cisco_iosxe", adapter="ssh_cli", command_plan=IOSXE,
+        capability_groups=P0_CAPABILITIES["cisco_iosxe"], profile_revision=2,
+        tested_versions=(
+            "C9200L-24P-4G / IOS-XE 17.12.3 synthetic sanitized fixture",
+            "C9300-24T / IOS-XE 17.9.5 synthetic sanitized fixture",
+        ),
     ),
     _profile(
         "cisco_nxos", "Cisco NX-OS", "P0", _identity("Cisco", "NX-OS"),
         (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
         verification="unit_verified", release="experimental",
         runtime_driver_id="cisco_nxos", adapter="ssh_cli_json",
-        command_plan=NXOS, capability_groups=CURRENT_CAPABILITIES["cisco_nxos"],
+        command_plan=NXOS, capability_groups=P0_CAPABILITIES["cisco_nxos"],
+        profile_revision=2,
+        tested_versions=("NX-OS JSON synthetic parser corpus",),
     ),
     _profile(
         "huawei_vrp_v200", "Huawei VRP V200", "P0",
-        _identity("Huawei", "VRP V200", models=("S5700*",), versions=("V200*",)),
+        _identity("Huawei", "VRP V200", models=("S5700*",), versions=("*V200*",)),
         (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
         verification="fixture_verified", release="experimental",
         runtime_driver_id="huawei_vrp", adapter="ssh_cli", command_plan=VRP,
-        capability_groups=CURRENT_CAPABILITIES["huawei_vrp_v200"],
+        capability_groups=P0_CAPABILITIES["huawei_vrp_v200"], profile_revision=2,
         tested_versions=("S5700 / VRP V200 sanitized fixtures",),
     ),
     _profile(
@@ -398,7 +355,9 @@ PROFILES = (
         (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
         verification="unit_verified", release="experimental",
         runtime_driver_id="juniper_junos", adapter="ssh_xml",
-        command_plan=JUNOS, capability_groups=CURRENT_CAPABILITIES["juniper_junos"],
+        command_plan=JUNOS, capability_groups=P0_CAPABILITIES["juniper_junos"],
+        profile_revision=2,
+        tested_versions=("Classic Junos XML synthetic parser corpus",),
     ),
     _profile("aruba_aoscx", "Aruba AOS-CX", "P1", _identity("HPE Aruba Networking", "AOS-CX"), (SSH_PLANNED, SNMP_PLANNED)),
     _profile("aruba_aoss", "Aruba AOS-Switch", "P1", _identity("HPE Aruba Networking", "AOS-Switch"), (SSH_PLANNED, SNMP_PLANNED)),
@@ -464,6 +423,7 @@ ALIASES = (
 
 LINUX_SSH = InfrastructureAdapter(
     id="linux_ssh",
+    revision=2,
     label="Linux iproute2",
     role="generic_read_only_infrastructure_adapter",
     runtime_driver_id="linux_ssh",
@@ -471,7 +431,7 @@ LINUX_SSH = InfrastructureAdapter(
     verification_status="transport_lab_validated",
     release_status="experimental",
     transports=(SSH_IMPLEMENTED,),
-    capabilities=_capabilities(LINUX_CAPABILITIES, "transport_lab_validated", ("ssh",)),
+    capabilities=_capabilities(linux_manifest.CAPABILITIES, "transport_lab_validated"),
     tested_versions=("iproute2 JSON isolated SSH lab",),
     not_equivalent_to=("dell_sonic", "nvidia_cumulus_linux", "sonic_nos"),
 )
@@ -583,13 +543,34 @@ def validate_registry(
                 capability.fields
             ) <= set(DATA_CONTRACT[capability.group]):
                 raise ValueError(f"invalid_capability_fields:{profile.id}:{capability.group}")
-            for source in capability.sources:
+            if set(capability.source_fields) != set(capability.sources):
+                raise ValueError(f"capability_source_fields_mismatch:{profile.id}:{capability.group}")
+            declared = {
+                field for fields in capability.source_fields.values() for field in fields
+            }
+            if declared != set(capability.fields):
+                raise ValueError(f"capability_field_union_mismatch:{profile.id}:{capability.group}")
+            for source, fields in capability.source_fields.items():
                 if source not in transport_by_kind or transport_by_kind[source].state != "implemented":
                     raise ValueError(f"capability_transport_not_implemented:{profile.id}:{source}")
+                if len(fields) != len(set(fields)) or not set(fields) <= set(
+                    DATA_CONTRACT[capability.group]
+                ):
+                    raise ValueError(f"invalid_capability_source_fields:{profile.id}:{source}")
         if profile.implementation_status == "implemented" and (
             not profile.runtime_driver_id or not profile.adapter or not profile.commands
         ):
             raise ValueError(f"implemented_profile_requires_adapter_and_command_plan:{profile.id}")
+        command_names = [command.text for command in profile.commands]
+        if len(command_names) != len(set(command_names)):
+            raise ValueError(f"duplicate_profile_command:{profile.id}")
+        if any(command.group not in GROUPS for command in profile.commands):
+            raise ValueError(f"invalid_profile_command_group:{profile.id}")
+        if profile.implementation_status == "implemented" and not any(
+            command.group == "inventory" and command.required
+            for command in profile.commands
+        ):
+            raise ValueError(f"implemented_profile_requires_identity_command:{profile.id}")
         if profile.release_status == "supported" and not (
             profile.implementation_status == "implemented"
             and profile.verification_status == "physical_validated"

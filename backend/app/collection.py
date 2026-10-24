@@ -23,6 +23,9 @@ class ReadResult:
     capability_evidence: list[tuple[str, GroupObservation]] = field(default_factory=list)
     inventory_complete: bool = False
     reboot_detected: bool = False
+    observed_profile_id: str | None = None
+    identity_evidence: dict | None = None
+    identity_conflicts: list[str] = field(default_factory=list)
 
 
 def metadata(group, driver, *, quality="ok", reason=None, complete=True, source="ssh", diagnostics=None, fields=None):
@@ -127,6 +130,25 @@ def merge_read_results(*results: ReadResult) -> ReadResult:
     merged = ReadResult(available[0].device)
     merged.inventory_complete = any(result.inventory_complete for result in available)
     merged.reboot_detected = any(result.reboot_detected for result in available)
+    identity_results = [
+        result for result in available
+        if result.observed_profile_id and result.identity_evidence
+    ]
+    if identity_results:
+        # Structured SSH identity is profile-specific. Generic SNMP system
+        # identity stays corroborating evidence until vendor mappings exist.
+        identity = next((result for result in identity_results if any(
+            details.source == "ssh" for details in result.metadata.values()
+        )), identity_results[-1])
+        merged.observed_profile_id = identity.observed_profile_id
+        merged.identity_evidence = deepcopy(identity.identity_evidence)
+        observed_profiles = {result.observed_profile_id for result in identity_results}
+        if len(observed_profiles) > 1:
+            merged.identity_conflicts.append("transport_identity_mismatch")
+    merged.identity_conflicts.extend(
+        conflict for result in available for conflict in result.identity_conflicts
+        if conflict not in merged.identity_conflicts
+    )
     for group in {name for result in available for name in result.metadata}:
         candidates = [(result, result.metadata[group]) for result in available if group in result.metadata]
         merged.capability_evidence.extend((group, details) for _, details in candidates)
@@ -201,7 +223,13 @@ def persist(store, original, result, *, fence=lambda conn: None):
         # A manual inventory edit which raced the read always wins.
         if current.inventory_observed_at != original.inventory_observed_at:
             raise ConnectionPolicyError("out_of_order_inventory")
-        binding = record_collected_resolution(store, result.device, conn)
+        binding = record_collected_resolution(
+            store, result.device, conn,
+            observed_profile_id=result.observed_profile_id,
+            identity_evidence=result.identity_evidence,
+            identity_conflicts=result.identity_conflicts,
+            force_revalidation=result.reboot_detected,
+        )
         device = preserve_inventory(current, result.device, result.inventory_complete)
         if device != current:
             store.save_device(device, conn)

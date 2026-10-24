@@ -1,0 +1,25 @@
+{
+  "fixture_set": "S05-P0-IOSXE-SYNTHETIC-001",
+  "generated_at": "2026-10-23T21:20:59+03:00",
+  "source_permission": "project_generated_test_fixture",
+  "sanitization_method": "deterministic_project_synthetic_v1",
+  "review_status": "project_synthetic_no_external_raw_evidence",
+  "capabilities": ["identity", "interfaces"],
+  "known_exceptions": [
+    "optional health, network and module commands are outside this minimal fixture set",
+    "physical behavior and vendor output fidelity are not asserted"
+  ],
+  "sensitive_term_scan": "manual_bounded_pattern_scan_pass",
+  "physical_acceptance": false,
+  "production_accepted": false,
+  "files": [
+    {
+      "path": "cisco_iosxe_c9200l_17_12_3.json",
+      "sha256": "ca4c61a60de04fcc18c5f5a922d10f312c5576acb6511242ec88c17e01edc220"
+    },
+    {
+      "path": "cisco_iosxe_c9300_17_9_5.json",
+      "sha256": "7dbea65079fba205115f23f302c62db845bd60f21d6e6c32306a3995abf73689"
+    }
+  ]
+}

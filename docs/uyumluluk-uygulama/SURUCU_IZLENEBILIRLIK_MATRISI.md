@@ -4,7 +4,8 @@
 |---|---|
 | Belge kimliği | `NETSTUDIO-COMPAT-TRACE-001` |
 | Kaynak kapsam | [Switch OS / SSH / SNMP uyumluluk matrisi](../NetStudio_Switch_OS_SSH_SNMP_Uyumluluk_Matrisi.md) |
-| Kaynak kod tabanı | `fa1a40f` |
+| Başlangıç kaynak kod tabanı | `fa1a40f` |
+| Güncel uygulama | S05, 23 Ekim 2026; katalog `2026.10.23.3`, P0 profil revizyonu `2` |
 | Kullanım | Her hedef profilin implementasyon, sprint ve kabul izini tutmak |
 
 ## 1. Okuma kuralı
@@ -31,15 +32,18 @@ diğerlerini otomatik yükseltmez.
 
 | Hedef profil | Eski/mevcut karşılık | Mevcut durum | Hedef transport | Sprint | Minimum destek çıkışı |
 |---|---|---|---|---|---|
-| `cisco_ios` | Aynı | I+F; 2960-X/IOS 15.2 biçimli fixture, fiziksel kabul yok | SSH + SNMPv3 | S05, S11 | Exact model/IOS ile interfaces, identity, FDB/VLAN/LLDP/counters için P |
-| `cisco_iosxe` | Aynı | I ancak IOS komut/capability planını paylaşıyor; `experimental`, tested version boş | SSH + SNMPv3 | S05, S11 | IOS-XE'ye özgü fixture + en az bir Catalyst exact tuple P |
-| `cisco_nxos` | Aynı | I, sınırlı JSON; network tabloları tam eşlenmemiş; `experimental` | SSH JSON + SNMPv3 | S05, S11 | Exact Nexus/NX-OS tuple; katalogdaki her capability parsed veya explicit unsupported |
-| `huawei_vrp_v200` | `huawei_vrp` alias | I+F; S5700/VRP V200 fixture, fiziksel kabul yok | SSH + SNMPv3 | S01, S02, S05, S11 | Alias migration + exact S5700/VRP tuple P |
-| `juniper_junos` | Aynı | I, sınırlı XML; `experimental`, tested version boş | SSH XML/NETCONF adayı + SNMPv3 | S05, S11 | Exact EX/QFX/Junos tuple, mapped capability'ler için P |
+| `cisco_ios` | Aynı | I+F; bağımsız rev2 manifest, 2960-X/IOS 15.2 fixture ve standard-MIB alanları; `experimental` | SSH + SNMPv3 | S05 tamamlandı, S11 | Exact model/IOS ile interfaces, identity, FDB/VLAN/LLDP/counters için P |
+| `cisco_iosxe` | Aynı | I+F; IOS'tan bağımsız rev2 manifest, C9200L/17.12.3 ve C9300/17.9.5 proje-sentetik fixture; `experimental` | SSH + SNMPv3 | S05 tamamlandı, S11 | En az bir Catalyst exact tuple üzerinde fiziksel P |
+| `cisco_nxos` | Aynı | I; rev2 JSON interface/resource/FDB/LLDP/inventory eşlemesi ve standard-MIB alanları unit doğrulandı; `experimental` | SSH JSON + SNMPv3 | S05 tamamlandı, S11 | Exact Nexus/NX-OS tuple için P |
+| `huawei_vrp_v200` | `huawei_vrp` koşullu alias/runtime | I+F; rev2 S5700/VRP V200 fixture, V600 fail-closed, secret/envanter korunur; `experimental` | SSH + SNMPv3 | S01, S02, S05 tamamlandı, S11 | Exact S5700/VRP tuple için P |
+| `juniper_junos` | Aynı | I; rev2 XML interface/FDB/ARP/environment/LLDP/inventory ve standard-MIB alanları unit doğrulandı; Evolved fail-closed; `experimental` | SSH XML + SNMPv3 | S05 tamamlandı, S11 | Exact EX/QFX/Junos tuple için P |
 
 P0'a eşlik eden `linux_ssh`, bir OS profilinden çok genel altyapı adaptörüdür.
 Mevcut izole SSH lab kanıtı korunur; Cumulus/SONiC desteği olarak yeniden
-etiketlenmez.
+etiketlenmez. P0 kanıt ve komut sınırları
+[`P0_SURUCU_PROFILLERI.md`](P0_SURUCU_PROFILLERI.md) içinde tutulur. `F` işareti
+fiziksel doğrulama değildir; IOS-XE fixture'ları gerçek cihaz kaydı değil,
+proje-sentetik parser girdileridir.
 
 ## 3. P1 — Yaygın kurumsal platformlar
 

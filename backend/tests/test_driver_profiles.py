@@ -25,7 +25,7 @@ S00 = json.loads(
 SNAPSHOT = json.loads(
     (Path(__file__).parent / "snapshots" / "driver_catalog_v2.json").read_text()
 )
-LEGACY_V1_SHA256 = "e5320b2d86f126aacc9605ba68e529dbd3b95644e22baad95c7b37503a3682b1"
+LEGACY_V1_SHA256 = "727f2804ba7031993503e835c94bb61a20b1137683ecd65f36f859c4b319a7ec"
 
 
 def _snapshot(value: dict) -> dict:
@@ -49,7 +49,7 @@ def _snapshot(value: dict) -> dict:
     }
 
 
-def test_registry_has_exact_s00_scope_and_statuses():
+def test_registry_has_exact_s00_scope_and_statuses_do_not_regress():
     expected = {entry["id"]: entry for entry in S00["profiles"]}
     actual = {profile.id: profile for profile in REGISTRY.profiles}
     assert len(actual) == 38
@@ -57,7 +57,13 @@ def test_registry_has_exact_s00_scope_and_statuses():
     for identifier, decision in expected.items():
         profile = actual[identifier]
         assert profile.implementation_status == decision["implementation_status"]
-        assert profile.verification_status == decision["verification_status"]
+        levels = [
+            "not_tested", "unit_verified", "fixture_verified",
+            "transport_lab_validated", "physical_validated",
+        ]
+        assert levels.index(profile.verification_status) >= levels.index(
+            decision["verification_status"]
+        )
         assert profile.release_status == decision["release_status"]
     bindings = REGISTRY.legacy_bindings
     assert len(bindings) == 16

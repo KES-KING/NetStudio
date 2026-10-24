@@ -30,11 +30,11 @@ Bir markanın katalogda yer alması bütün modellerinin desteklendiği anlamın
 
 | Platform | Uygulanan temel okuma | Kanıt / sınır |
 | --- | --- | --- |
-| Cisco IOS / 2960-X | Port durumları, sayaç/CLI hız penceresi, VLAN/IP, FDB/ARP, CPU/RAM, NTC ile switchport/LAG/LLDP/PoE/modül alanları | Temizlenmiş 15.2(7)E çıktıları ve yerel eski SSH testi; fiziksel kabul ayrı |
-| Huawei VRP | Portlar, hız/sayaçlar, PVID, IP, FDB/ARP, CPU/RAM, sürüm/uptime | S5700 biçimli çıktı testleri; donanım/DOM/VRF gibi eksik alanlar açıkça bildirilir |
-| Cisco IOS-XE | IOS ortak komut alt kümesi | Deneysel; model/sürüm kabulü gerekir |
-| Junos | XML arayüz/lojik arayüz, sayaçlar, IP, routing-engine CPU/RAM, sürüm/chassis/modül, LLDP | Deneysel; fiziksel Juniper kabulü yok |
-| NX-OS | JSON arayüz/sayaçlar, sürüm, sistem kaynakları | Deneysel; diğer tabloların eşleştirilmediği çıktılar parse hatasıdır |
+| Cisco IOS / 2960-X | Bağımsız manifest; port/sayaç/CLI hız penceresi, VLAN/IP, FDB/ARP, CPU/RAM, switchport/LAG/LLDP/PoE/modül | Temizlenmiş 15.2(7)E çıktıları ve yerel eski SSH testi; fiziksel kabul ayrı |
+| Huawei VRP V200 | Bağımsız V200 manifesti; port, hız/sayaç, PVID, IP, FDB/ARP, CPU/RAM, sürüm/uptime | S5700 biçimli fixture; V600 bu parser'a düşmez, donanım/DOM/VRF boşlukları açıktır |
+| Cisco IOS-XE | IOS'tan bağımsız manifest; doğrulanmış IOS-benzeri read-only alt küme | C9200L/17.12.3 ve C9300/17.9.5 proje-sentetik fixture; deneysel, fiziksel kabul yok |
+| Junos | Güvenli XML; arayüz/sayaç/IP, routing-engine ve environment, FDB/ARP, LLDP, sürüm/chassis/modül | Sentetik unit corpus; Junos Evolved fail-closed, fiziksel kabul yok |
+| NX-OS | JSON arayüz/sayaç, sürüm/kaynak, FDB, LLDP ve inventory | Sentetik unit corpus; ARP/VLAN CLI capability'si ilan edilmez, fiziksel kabul yok |
 | Linux | iproute2 JSON, sayaçlar, IP, ARP/NDP, uptime | Mevcut izole SSH sözleşmesi korunur |
 | Aruba AOS-CX/AOS-Switch, Comware, EOS, RouterOS, FortiSwitchOS, Dell OS9/10, Extreme | Katalogda planlanan aileler | `available=false`; henüz çalışan sürücü olarak sunulmaz |
 
@@ -56,6 +56,9 @@ yalnız doğrulanmış alanlar ve güvenli hata kodlarıdır.
   hedefi güvenle seçilemeyen kayıtları yayımlar;
 - `acceptance.production_accepted` varsayılan olarak `false` kalır ve fixture/lab
   sonucundan yükseltilmez.
+- capability özetindeki `source_fields`, her alanın SSH/SNMP/API taşıma
+  sınırını ayrıca yayımlar; union `fields` tek başına her transportun o alanı
+  ürettiği anlamına gelmez.
 
 `fortinet` eski kimliği FortiSwitchOS standalone veya FortiLink profiline
 otomatik çevrilmez; `manual_resolution_required` döner. `catalog_only`, `blocked`
@@ -129,6 +132,26 @@ oluşturma/profil değiştirme yollarında reddeder.
   arayüzü ve fiziksel üyeler ikinci kez toplanmaz.
 - Eksik ölçümler sıfır değildir. LLDP/L2 ilişkisi ve MAC/IP gözlemi otomatik
   fiziksel kablo kanıtı sayılmaz.
+- Q-BRIDGE FDB girdisi ancak FID→VLAN, bridge-port→ifIndex ve ifIndex→kalıcı
+  interface zinciri eksiksizse kabul edilir. FID'nin VLAN'a eşit olduğu
+  varsayılmaz. `dot1qVlanCurrentFdbId` yalnız TimeFilter `0` güncel snapshot'ı
+  üzerinden yürünür; karışık snapshot reddedilir. SNMP FDB'den IP/ARP veya
+  kablo ilişkisi üretilmez.
+
+### Profil kimliği ve yeniden çözümleme
+
+P0 SSH toplayıcısı profilin zorunlu inventory kimlik komutunu diğer komutlardan
+önce okur. IOS/IOS-XE, VRP V200/V600, klasik Junos/Junos Evolved ve NX-OS
+birbirine parser fallback'i yapmaz. Gözlenen implemented profil farklıysa gerçek
+profilin allowlist'i kullanılır ve yapılandırılmış binding çelişki olarak
+kaydedilir; catalog-only ailede toplama `collector_platform_unsupported` ile
+durur. Tanınabilir SNMP `sysDescr` ayrı kimlik kanıtıdır; SSH ve SNMP farklı
+kanonik profil gösterirse `transport_identity_mismatch` ile fail-closed olur.
+
+Önceden eşleşmiş vendor/model/OS ailesi veya sürümü değiştiğinde, profil
+revizyonu değiştiğinde ya da SNMP uptime reboot gösterdiğinde çözüm yeniden
+hesaplanır. Yalnız derived komut ve capability cache'i temizlenir; cihaz kaydı,
+şifreli sır, host key, envanter, job geçmişi ve last-good grup verisi korunur.
 
 ## SSH güven sözleşmesi
 
@@ -242,7 +265,7 @@ sözleşmesini kendiliğinden genişletmez.
 | --- | --- |
 | SFP/kısmi tablo düzeltmeleri, atomik grup ve alan bazlı son-doğru kaydı | Uygulandı; capability kaynak/saat provenance korunur |
 | Typed registry ve additive katalog v2 | Uygulandı; 38 profil sınıflı, eski 16 katalog kaydı geriye uyumlu |
-| Cisco/Huawei ortak akışı, Junos/NX-OS | Uygulandı; deneysel ailelerde ve bazı veri alanlarında kapsam kısmi |
+| P0 kanonik manifestleri; IOS/IOS-XE ayrımı, Huawei V200 alias, Junos/NX-OS | Uygulandı; bütün profiller deneysel ve fiziksel kabul bekliyor |
 | Host key keşfi/onayı, ortak SSH profilleri | Uygulandı; yerel gerçek SSH ve tarayıcı testi |
 | Kalıcı kuyruk, zamanlayıcı, worker, standard MIB SNMPv3 çekirdeği | Uygulandı; ortak fencing/deadline, bounded reader ve yerel gerçek UDP testi |
 | Arayüz, kalite tanıları, sınırlı geçmiş, saklama | Uygulandı; gerçek tarayıcı ve yerel saklama testleri |
@@ -266,8 +289,9 @@ sözleşmesini kendiliğinden genişletmez.
   SNMP kanalını duraklatır; otomatik kaynak seçimi SSH ile devam edebilir ve bunu
   grup tanısında belirtir. Açık SNMP tercihinde başarısız hızlı ölçümün yerine
   SSH ölçümü SNMP etiketiyle yazılmaz.
-- Alan bazlı son-doğru birleştirme uygulanmıştır. Tüm CLI platformlarında
-  reboot/donanım değişikliğinin erken tespiti açık iyileştirmedir.
+- Alan bazlı son-doğru birleştirme ve P0 kimlik/reboot yeniden çözümlemesi
+  uygulanmıştır. Vendor'a özgü donanım değişikliği kapsamı fiziksel pilotta
+  ayrıca doğrulanmalıdır.
 - SSH ve SNMP kanal pause/recovery state'i ayrıdır; bir kanalın kimlik hatası
   diğer kanalı durdurmaz ve retry süresi dolunca yalnız hatalı kanal yeniden denenir.
 
@@ -279,6 +303,8 @@ sözleşmesini kendiliğinden genişletmez.
 - [NX-OS structured output](https://www.cisco.com/c/en/us/td/docs/dcn/nx-os/nexus9000/103x/command-reference/show/b_n9k_show_commands_103x/m_show_xml.html)
 - [AsyncSSH API](https://asyncssh.readthedocs.io/en/latest/api.html#asyncssh.get_server_host_key)
 - [IF-MIB / RFC 2863](https://www.rfc-editor.org/info/rfc2863/)
+- [Q-BRIDGE-MIB / RFC 4363](https://www.rfc-editor.org/info/rfc4363/)
+- [TimeFilter uygulama notları / RFC 2021](https://www.rfc-editor.org/info/rfc2021/)
 - [PySNMP](https://github.com/lextudio/pysnmp)
 - [PostgreSQL row locking](https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE)
 - [NTC parser test guide](https://github.com/networktocode/ntc-templates/blob/master/docs/dev/dev_parser.md)

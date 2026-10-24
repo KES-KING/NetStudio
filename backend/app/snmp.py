@@ -4,10 +4,11 @@ from __future__ import annotations
 import sqlalchemy as sa
 
 from .collection import ReadResult, metadata
-from .contracts import EndpointCollection, Health
+from .contracts import Health
 from .driver_catalog import GROUPS
 from .snmp_mappers import (
     BRIDGE_COLUMNS, ENTITY_COLUMNS, IF_COLUMNS, LLDP_COLUMNS, QBRIDGE_COLUMNS,
+    QBRIDGE_FDB_COLUMNS,
     SENSOR_COLUMNS, SYSTEM_SCALARS, SYS_UPTIME, parse_bridge_mib,
     parse_entity_mib, parse_if_mib, parse_lldp_mib, parse_system_mib,
 )
@@ -21,7 +22,8 @@ from .transport import TransportContext
 COLUMNS = IF_COLUMNS
 ALL_ROOTS = tuple({
     *SYSTEM_SCALARS, *IF_COLUMNS.values(), *BRIDGE_COLUMNS.values(),
-    *QBRIDGE_COLUMNS.values(), *LLDP_COLUMNS.values(), *ENTITY_COLUMNS.values(),
+    *QBRIDGE_COLUMNS.values(), *QBRIDGE_FDB_COLUMNS.values(),
+    *LLDP_COLUMNS.values(), *ENTITY_COLUMNS.values(),
     *SENSOR_COLUMNS.values(),
 })
 
@@ -65,6 +67,21 @@ async def collect_snmp(store, vault, device, authorize=lambda: None, groups=("fa
         reader = BoundedSNMPReader(context, session, ALL_ROOTS, limits)
         identity = parse_system_mib(await reader.get(*SYSTEM_SCALARS))
         result = ReadResult(device)
+        if identity.sys_descr:
+            # A recognized standard sysDescr is corroborating profile evidence;
+            # unknown/free-form descriptions never become an automatic guess.
+            from .drivers import identify_platform
+            try:
+                platform = identify_platform({"sysDescr": identity.sys_descr})
+            except ConnectionPolicyError:
+                platform = None
+            if platform:
+                result.observed_profile_id = platform.profile_id
+                result.identity_evidence = {
+                    "vendor": platform.vendor, "os_family": platform.os_family,
+                    "sys_object_id": identity.sys_object_id,
+                    "management_mode": device.management_mode,
+                }
         with store.engine.connect() as conn:
             previous_fast = conn.execute(sa.select(store.collection_groups.c.payload).where(
                 store.collection_groups.c.device_id == device.id,
@@ -108,11 +125,22 @@ async def collect_snmp(store, vault, device, authorize=lambda: None, groups=("fa
             entity_payload, entity_complete = parse_entity_mib(entity_columns, sensor_columns)
 
         if "network" in requested:
-            bridge_columns = await _columns(reader, {**BRIDGE_COLUMNS, **QBRIDGE_COLUMNS})
+            bridge_columns = await _columns(reader, {
+                **BRIDGE_COLUMNS, "pvid": QBRIDGE_COLUMNS["pvid"],
+            })
+            # TimeFilter index 0 requests the current table. Walking the
+            # narrower .0 subtree also stops before the agent's next
+            # time-filter sentinel instead of traversing conceptual snapshots.
+            vlan_fid_prefix = QBRIDGE_COLUMNS["vlan_fid"]
+            vlan_columns = {"vlan_fid": column_map(
+                await reader.walk(vlan_fid_prefix + ".0"), vlan_fid_prefix,
+            )}
+            fdb_columns = await _columns(reader, QBRIDGE_FDB_COLUMNS, tuple_indices=True)
             bridge, bridge_complete = parse_bridge_mib(
                 interface_payload.get("if_index_map", {}),
-                bridge_columns["port_ifindex"], bridge_columns["vlan_fid"],
+                bridge_columns["port_ifindex"], vlan_columns["vlan_fid"],
                 bridge_columns["pvid"],
+                fdb_columns["fdb_port"], fdb_columns["fdb_status"],
             )
             lldp_columns = await _columns(reader, LLDP_COLUMNS, tuple_indices=True)
             neighbors, lldp_complete = parse_lldp_mib(
@@ -121,18 +149,21 @@ async def collect_snmp(store, vault, device, authorize=lambda: None, groups=("fa
             )
             payload = {
                 **bridge, "neighbors": neighbors,
-                "endpoints": EndpointCollection(status="unknown").model_dump(mode="json"),
             }
+            fdb_complete = payload["endpoints"]["status"] == "ok"
             result.payloads["network"] = payload
             result.metadata["network"] = metadata(
                 "network", "snmp_bridge_lldp", source="snmp",
-                quality=_quality(False, bridge_complete or lldp_complete),
+                quality=_quality(False, bridge_complete or fdb_complete or lldp_complete),
                 # Standard VLAN/LLDP is not the entire network group (for
                 # example FDB/ARP/address data). It must merge, never replace.
                 complete=False,
                 reason="snmp_standard_mib_partial",
                 fields={
                     "vlan": "ok" if bridge_complete else "unsupported",
+                    "fdb": "ok" if fdb_complete else (
+                        "partial" if payload["endpoints"]["entries"] else "unsupported"
+                    ),
                     "lldp": "ok" if lldp_complete else "unsupported",
                 },
             )

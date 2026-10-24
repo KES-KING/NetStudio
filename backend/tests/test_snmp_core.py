@@ -145,10 +145,27 @@ def test_standard_mappers_preserve_identity_and_unknown_evidence(system):
     with pytest.raises(ConnectionPolicyError, match="snmp_ambiguous_ifindex"):
         parse_if_mib(duplicate_index, columns, 300)
 
-    bridge, complete = parse_bridge_mib({7: "if1"}, {1: 7}, {10: 10}, {1: 10})
+    bridge, complete = parse_bridge_mib(
+        {7: "if1"}, {1: 7}, {(0, 10): 100}, {1: 10},
+        {(100, 2, 0, 0, 0, 0, 1): 1},
+        {(100, 2, 0, 0, 0, 0, 1): 3},
+    )
     assert complete and bridge["interfaces"] == [{"interface_id": "if1", "pvid": 10, "source": "snmp"}]
+    assert bridge["endpoints"]["status"] == "ok"
+    assert bridge["endpoints"]["entries"][0]["mac"] == "02:00:00:00:00:01"
+    assert bridge["endpoints"]["entries"][0]["vlan"] == 10
     with pytest.raises(ConnectionPolicyError, match="snmp_bridge_port_conflict"):
         parse_bridge_mib({7: "if1", 8: "if2"}, [(1, 7), (1, 8)], {}, {})
+    with pytest.raises(ConnectionPolicyError, match="snmp_fid_vlan_conflict"):
+        parse_bridge_mib(
+            {7: "if1"}, {1: 7}, {(0, 10): 100, (0, 20): 100}, {1: 10},
+            {(100, 2, 0, 0, 0, 0, 1): 1},
+            {(100, 2, 0, 0, 0, 0, 1): 3},
+        )
+    with pytest.raises(ConnectionPolicyError, match="snmp_vlan_snapshot_conflict"):
+        parse_bridge_mib(
+            {7: "if1"}, {1: 7}, {(0, 10): 100, (1, 10): 100}, {1: 10},
+        )
 
     neighbors, complete = parse_lldp_mib(
         device, {(1,): "eth1"}, {(0, 1, 1): "aa:bb:cc:dd:ee:ff"},
