@@ -44,7 +44,14 @@ export type DeviceCollector =
   | "extreme_exos"
   | "extreme_vsp"
   | "extreme_slxos"
-  | "fortinet_fortiswitchos";
+  | "fortinet_fortiswitchos"
+  | "meraki_dashboard"
+  | "fortinet_fortilink_api"
+  | "unifi_api"
+  | "unifi_no_snmp_api"
+  | "tplink_omada_api"
+  | "tplink_omada_pro_api"
+  | "ubiquiti_edgeswitch";
 export type DeviceManagementMode =
   | "standalone"
   | "controller_managed"
@@ -85,6 +92,7 @@ export type Device = {
   allow_legacy_ssh?: boolean;
   ssh_algorithms?: Record<string, string[]>;
   snmp_configured?: boolean;
+  api_configured?: boolean;
   credential_configured: boolean;
   host_key_fingerprint: string | null;
   inventory_observed_at: string | null;
@@ -214,6 +222,37 @@ export type SSHTicket = {
   id: string;
   websocket_path: string;
   expires_in: number;
+};
+export type APIController = {
+  id: string;
+  name: string;
+  vendor: "meraki" | "unifi" | "fortigate" | "omada" | "omada_pro";
+  site: string;
+  endpoint_kind: "cloud" | "local";
+  address: string | null;
+  port: number | null;
+  cloud_region: "global" | "canada" | "india" | "china" | null;
+  custom_ca_configured: boolean;
+  external_scope_id: string;
+  external_site_id: string;
+  enabled: boolean;
+  revision: number;
+  credential_configured: boolean;
+  credential: {
+    auth_kind: "bearer" | "api_key" | "access_token";
+    scopes: string[];
+    expires_at: string | null;
+  } | null;
+  binding_count: number;
+};
+export type DeviceControllerBinding = {
+  device_id: string;
+  controller_id: string;
+  external_device_id: string;
+  external_site_id: string;
+  binding_revision: number;
+  updated_at: string;
+  updated_by: string;
 };
 export type DriverCommand = {
   text: string;

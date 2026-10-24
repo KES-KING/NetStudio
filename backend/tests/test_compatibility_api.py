@@ -63,7 +63,7 @@ def test_old_and_canonical_device_payloads_coexist(system):
     assert p1_response.json()["collector"] == "hp_procurve"
     catalog_only_response = client.post("/api/v1/devices", json={
         "name": "Catalog only", "management_address": "127.0.0.4",
-        "site": "lab", "configured_profile_id": "tplink_omada_managed",
+            "site": "lab", "configured_profile_id": "h3c_comware5",
     })
     assert catalog_only_response.status_code == 409
     assert catalog_only_response.json()["detail"]["code"] == "driver_profile_not_selectable"
@@ -108,18 +108,18 @@ def test_compatibility_is_site_scoped_and_profile_mutation_is_strict(system):
     assert client.get(path + "/compatibility").status_code == 404
 
     login(client)
-    not_selectable = client.put(path + "/driver-profile", json={
+    selected = client.put(path + "/driver-profile", json={
         "configured_profile_id": "fortinet_fortiswitch_fortilink"
     })
-    assert not_selectable.status_code == 409
-    assert not_selectable.json()["detail"]["code"] == "driver_profile_not_selectable"
+    assert selected.status_code == 200
+    assert selected.json()["configured_profile_id"] == "fortinet_fortiswitch_fortilink"
     connection_bypass = client.put(path + "/connection-settings", json={
         "collector": "fortinet",
         "configured_profile_id": "fortinet_fortiswitch_fortilink",
         "management_mode": "standalone",
     })
     assert connection_bypass.status_code == 409
-    assert connection_bypass.json()["detail"]["code"] == "driver_profile_not_selectable"
+    assert connection_bypass.json()["detail"]["code"] == "driver_profile_collector_conflict"
     for injected in (
         {"identity_evidence": {"vendor": "Fortinet"}},
         {"validation_level": "physical_validated"},

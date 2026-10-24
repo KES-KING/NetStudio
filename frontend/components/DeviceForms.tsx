@@ -9,6 +9,8 @@ import {
 import { api, errorMessage } from "../lib/api";
 import type {
   Device,
+  APIController,
+  DeviceControllerBinding,
   DeviceManagementMode,
   DriverCatalog,
 } from "../lib/contracts";
@@ -210,6 +212,166 @@ function ConnectionFields({ device }: { device?: Device }) {
       )}
     </fieldset>
   );
+}
+
+const controllerProfiles = {
+  cisco_meraki_ms: { vendor: "meraki", auth: "bearer", scopes: ["dashboard:general:config:read", "switch:config:read", "switch:telemetry:read"] },
+  fortinet_fortiswitch_fortilink: { vendor: "fortigate", auth: "bearer", scopes: ["switch-controller:read"] },
+  ubiquiti_unifi_switch: { vendor: "unifi", auth: "api_key", scopes: ["site:read", "device:read"] },
+  ubiquiti_unifi_no_snmp: { vendor: "unifi", auth: "api_key", scopes: ["site:read", "device:read"] },
+  tplink_omada_managed: { vendor: "omada", auth: "access_token", scopes: ["site:read", "device:read"] },
+  tplink_omada_pro: { vendor: "omada_pro", auth: "access_token", scopes: ["site:read", "device:read"] },
+} as const;
+
+function ControllerSettings({
+  device,
+  profileId,
+  onSaved,
+}: {
+  device: Device;
+  profileId: string;
+  onSaved: () => void;
+}) {
+  const policy = controllerProfiles[profileId as keyof typeof controllerProfiles];
+  const { data: controllers, mutate: mutateControllers } = useSWR<APIController[]>(
+    "/api/v1/controllers",
+    api,
+  );
+  const bindingPath = `/api/v1/devices/${device.id}/controller-binding`;
+  const { data: binding, mutate: mutateBinding } = useSWR<DeviceControllerBinding | null>(bindingPath, api);
+  const compatible = (controllers ?? []).filter(
+    (controller) => policy && controller.vendor === policy.vendor && controller.site === device.site,
+  );
+  const [selectedId, setSelectedId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string>();
+  const [message, setMessage] = useState<string>();
+  const selected = compatible.find((controller) => controller.id === selectedId)
+    ?? compatible.find((controller) => controller.id === binding?.controller_id)
+    ?? compatible[0];
+
+  if (!policy)
+    return <p className="notice warning">Bu profil için controller kayıt politikası bulunamadı.</p>;
+
+  async function createController(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    setBusy(true); setFailure(undefined); setMessage(undefined);
+    try {
+      const created = await api<APIController>("/api/v1/controllers", {
+        method: "POST",
+        body: JSON.stringify({
+          name: values.get("controller_name"), vendor: policy.vendor, site: device.site,
+          endpoint_kind: policy.vendor === "meraki" ? "cloud" : "local",
+          address: policy.vendor === "meraki" ? null : values.get("address"),
+          port: policy.vendor === "meraki" ? null : Number(values.get("port")),
+          cloud_region: policy.vendor === "meraki" ? values.get("cloud_region") : null,
+          ca_pem: policy.vendor === "meraki" ? null : String(values.get("ca_pem") ?? "") || null,
+          external_scope_id: values.get("external_scope_id"),
+          external_site_id: values.get("external_site_id"), enabled: true,
+        }),
+      });
+      await mutateControllers(); setSelectedId(created.id); form.reset();
+      setMessage("Controller kaydı oluşturuldu. Şimdi salt-okunur erişim anahtarını kaydedin.");
+    } catch (error) { setFailure(errorMessage(error)); } finally { setBusy(false); }
+  }
+
+  async function saveSecret(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected) return;
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    const expiry = String(values.get("expires_at") ?? "");
+    setBusy(true); setFailure(undefined); setMessage(undefined);
+    try {
+      await api(`/api/v1/controllers/${selected.id}/credentials`, {
+        method: "PUT",
+        body: JSON.stringify({ auth_kind: policy.auth, token: values.get("token"),
+          scopes: policy.scopes, expires_at: expiry ? new Date(expiry).toISOString() : null }),
+      });
+      form.reset(); await mutateControllers(); onSaved();
+      setMessage("Controller erişim anahtarı ayrı sır kasasında kaydedildi.");
+    } catch (error) { setFailure(errorMessage(error)); } finally { setBusy(false); }
+  }
+
+  async function bind(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected) return;
+    const values = new FormData(event.currentTarget);
+    setBusy(true); setFailure(undefined); setMessage(undefined);
+    try {
+      await api(bindingPath, { method: "PUT", body: JSON.stringify({
+        controller_id: selected.id, external_device_id: values.get("external_device_id"),
+      }) });
+      await mutateBinding(); onSaved();
+      setMessage("Cihaz, controller içindeki kimliği ve sitesiyle eşlendi.");
+    } catch (error) { setFailure(errorMessage(error)); } finally { setBusy(false); }
+  }
+
+  async function revokeSecret() {
+    if (!selected) return;
+    setBusy(true); setFailure(undefined);
+    try {
+      await api(`/api/v1/controllers/${selected.id}/credentials`, { method: "DELETE" });
+      await mutateControllers(); onSaved(); setMessage("Controller erişim anahtarı iptal edildi.");
+    } catch (error) { setFailure(errorMessage(error)); } finally { setBusy(false); }
+  }
+
+  async function unbind() {
+    setBusy(true); setFailure(undefined);
+    try {
+      await api(bindingPath, { method: "DELETE" });
+      await mutateBinding(); onSaved(); setMessage("Controller cihaz eşlemesi kaldırıldı.");
+    } catch (error) { setFailure(errorMessage(error)); } finally { setBusy(false); }
+  }
+
+  return <section aria-label="Controller API bağlantısı">
+    <p className="notice">
+      API yönetimi SSH’den ayrıdır. Hedef URL girilmez; {policy.vendor === "meraki" ? "Meraki bölge adresi sabittir" : "yalnız kayıtlı controller IP adresine doğrulanmış TLS ile bağlanılır"}.
+    </p>
+    {compatible.length > 0 && <label>Controller kaydı
+      <select value={selected?.id ?? ""} onChange={(event) => setSelectedId(event.target.value)}>
+        {compatible.map((controller) => <option key={controller.id} value={controller.id}>
+          {controller.name} · {controller.external_site_id}{controller.enabled ? "" : " · kapalı"}
+        </option>)}
+      </select>
+    </label>}
+    <details open={compatible.length === 0}><summary>Yeni controller kaydı</summary>
+      <form onSubmit={createController}><div className="form-grid">
+        <label>Kayıt adı<input name="controller_name" required maxLength={160} /></label>
+        {policy.vendor === "meraki" ? <label>Bulut bölgesi<select name="cloud_region" defaultValue="global">
+          <option value="global">Global</option><option value="canada">Kanada</option>
+          <option value="india">Hindistan</option><option value="china">Çin</option>
+        </select></label> : <>
+          <label>Controller IP adresi<input name="address" required placeholder="IPv4 veya IPv6" /></label>
+          <label>HTTPS portu<input name="port" type="number" min={1} max={65535} defaultValue={443} required /></label>
+        </>}
+        <label>{policy.vendor === "meraki" ? "Organization ID" : "Controller / tenant ID"}<input name="external_scope_id" required maxLength={160} /></label>
+        <label>Controller site / network ID<input name="external_site_id" required maxLength={160} /></label>
+      </div>
+      {policy.vendor !== "meraki" && <label>Özel CA sertifikası (PEM, gerekiyorsa)<textarea name="ca_pem" rows={5} maxLength={32768} spellCheck={false} /></label>}
+      <button disabled={busy}>Controller kaydını oluştur</button></form>
+    </details>
+    {selected && <>
+      <fieldset><legend>Salt-okunur API erişimi · {selected.credential_configured ? "tanımlı" : "tanımlı değil"}</legend>
+        <p className="field-help">Gerekli kapsamlar: {policy.scopes.join(", ")}. Token kaydedildikten sonra tekrar gösterilmez.</p>
+        <form onSubmit={saveSecret}><div className="form-grid">
+          <label>{policy.auth === "api_key" ? "API anahtarı" : policy.auth === "access_token" ? "OAuth erişim tokenı" : "Bearer erişim tokenı"}<input name="token" type="password" minLength={16} maxLength={16384} required autoComplete="new-password" /></label>
+          <label>Geçerlilik sonu (varsa)<input name="expires_at" type="datetime-local" /></label>
+        </div><button disabled={busy}>API erişimini kaydet</button></form>
+        {selected.credential_configured && <button type="button" className="danger" disabled={busy} onClick={revokeSecret}>Kayıtlı API erişimini iptal et</button>}
+      </fieldset>
+      <fieldset><legend>Controller cihaz eşlemesi</legend>
+        <p className="field-help">NetStudio sitesi: {device.site} · Controller sitesi: {selected.external_site_id}. Başka sitenin cihazı bu kayda bağlanamaz.</p>
+        <form onSubmit={bind}><label>Controller cihaz kimliği / seri numarası<input name="external_device_id" required maxLength={160} defaultValue={binding?.external_device_id ?? ""} /></label>
+          <button disabled={busy || !selected.credential_configured}>Cihaz eşlemesini kaydet</button></form>
+        {binding && <button type="button" disabled={busy} onClick={unbind}>Cihaz eşlemesini kaldır</button>}
+      </fieldset>
+    </>}
+    {message && <p className="notice success" role="status">{message}</p>}
+    {failure && <p className="notice error" role="alert">{failure}</p>}
+  </section>;
 }
 
 export function AddDevice({
@@ -431,8 +593,9 @@ export function AddDevice({
           </p>
         )}
         {credentialTransport === "api" && (
-          <p className="notice warning" role="status">
-            Bu sürümde browser üzerinden vendor API sırrı kaydı açılmamıştır.
+          <p className="notice" role="status">
+            Cihazı kaydettikten sonra Bağlantı bilgileri ekranından controller
+            kaydını, salt-okunur API erişimini ve controller cihaz kimliğini eşleyin.
           </p>
         )}
         {error && (
@@ -674,10 +837,7 @@ export function ConnectionSettings({
           <SNMPSettings device={device} onSaved={onSaved} />
         )}
         {selectedTransport === "api" && (
-          <p className="notice warning">
-            Bu profil için browser tabanlı API credential kaydı henüz uygulanmadı;
-            token veya parola alanı gösterilmiyor.
-          </p>
+          <ControllerSettings device={device} profileId={currentProfile?.id ?? ""} onSaved={onSaved} />
         )}
         {message && (
           <p role="status" className="notice success">

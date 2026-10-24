@@ -13,7 +13,8 @@ type Polling = { settings: { enabled: boolean; fast_seconds: number; health_seco
   network_seconds: number; inventory_seconds: number; preferred_source: string };
   state: { last_attempt_at?: string; last_success_at?: string; last_error?: string; effective_intervals?: Record<string, number> };
   due_at: string; generated_at: string; paused_reason: string | null; readiness: string; worker_available: boolean;
-  groups: Record<string, Group>; negotiated: Record<string, string> | null };
+  groups: Record<string, Group>; negotiated: Record<string, string> | null;
+  available_transports: ("ssh" | "snmp" | "api")[]; ready_transports: string[] };
 const labels: Record<string, string> = { fast: "Portlar ve trafik", health: "Cihaz sağlığı", network: "Ağ tabloları", inventory: "Envanter" };
 const qualities: Record<string, string> = { ok: "Başarılı", partial: "Kısmi", unsupported: "Desteklenmiyor",
   permission_denied: "Yetki yetersiz", parse_error: "Ayrıştırma hatası", timeout: "Zaman aşımı", error: "Hata", unknown: "Henüz ölçülmedi" };
@@ -69,7 +70,10 @@ export function CollectionControls({ device }: { device: Device }) {
             <input name={group + "_seconds"} type="number" required min={{ fast: 30, health: 120, network: 300, inventory: 600 }[group]}
               max={group === "fast" ? 3600 : 86400} defaultValue={Number(data.settings[(group + "_seconds") as keyof Polling["settings"]])} /></label>)}
             <label>Hızlı ölçüm kaynağı<select name="preferred_source" defaultValue={data.settings.preferred_source}>
-              <option value="auto">Otomatik · kayıtlıysa SNMPv3</option><option value="ssh">SSH</option><option value="snmp">SNMPv3</option>
+              <option value="auto">Otomatik · kullanılabilir güvenli kanal</option>
+              {data.available_transports.includes("ssh") && <option value="ssh">SSH</option>}
+              {data.available_transports.includes("snmp") && <option value="snmp">SNMPv3</option>}
+              {data.available_transports.includes("api") && <option value="api">Controller API</option>}
             </select></label></div>
           <button disabled={saving}>Toplama ayarlarını kaydet</button>
         </form></details>}

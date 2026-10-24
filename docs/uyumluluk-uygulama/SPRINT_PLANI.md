@@ -602,6 +602,22 @@ eşlemesi, egress, redirect/DNS, rate limit ve secret lifecycle.
 - Controller credential'ı cihaz credential'ından ayrı secret türüdür.
 - Üretici sandbox/simülatörü fiziksel switch kabulü sayılmaz.
 
+### Uygulama durumu
+
+**Tamamlandı — 24 Ekim 2026.** ADR-COMPAT-004 kabul edilerek URL'siz
+controller kayıt modeli, controller'a özel şifreli secret, TLS doğrulamalı ve
+bounded API transportu, site/vendor/device binding'i, worker/provenance
+birleştirmesi ve katalog/UI akışı uygulanmıştır. Meraki, FortiLink, UniFi,
+UniFi no-SNMP, Omada ve Omada Pro profilleri `experimental` ve
+`fixture_verified`; EdgeSwitch ayrı SSH/SNMP profili olarak aynı seviyededir.
+Aruba Instant On, belgelenmiş genel yönetim API'si kanıtlanmadığından
+`vendor_public_api_unavailable` ile fail-closed kalır. Ayrıntılar
+[`S08_TESLIM_RAPORU.md`](S08_TESLIM_RAPORU.md), operatör sözleşmesi
+[`CONTROLLER_API_PROFILLERI.md`](CONTROLLER_API_PROFILLERI.md) ve kabul edilen
+[`ADR-COMPAT-004`](adr/ADR-COMPAT-004-controller-api-guven-modeli.md) içindedir.
+Fiziksel cihaz ve production kabulü yapılmamıştır. `Ana tasarım etkisi: yok`;
+README ekran görüntüleri yenilenmemiştir.
+
 ---
 
 ## S09 — P3: İleri, legacy ve Linux tabanlı NOS profilleri

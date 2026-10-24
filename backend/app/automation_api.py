@@ -128,16 +128,33 @@ def install(app, context, device_for):
                 .where(store.ssh_cache.c.device_id == device.id)).scalar_one_or_none()
         row["worker_available"] = workers > 0
         row["generated_at"] = now().isoformat()
+        from .worker import implemented_transports
+        transports = implemented_transports(device)
+        ready = []
+        if "api" in transports and device.api_configured:
+            ready.append("api")
+        if "snmp" in transports and device.snmp_configured:
+            ready.append("snmp")
+        if "ssh" in transports and device.credential_configured and device.host_key_fingerprint:
+            ready.append("ssh")
         row["readiness"] = ("external" if device.collector == "external" else
             "collector_platform_unsupported" if device.collector not in {"auto", *DRIVERS} else
-            "credentials_missing" if not device.credential_configured else
-            "host_key_not_trusted" if not device.host_key_fingerprint else "ready")
+            "ready" if ready else
+            "controller_credentials_missing" if transports == {"api"} else
+            "credentials_missing" if "ssh" in transports and not device.credential_configured else
+            "host_key_not_trusted" if "ssh" in transports and not device.host_key_fingerprint else
+            "transport_credentials_missing")
+        row["ready_transports"] = ready
+        row["available_transports"] = sorted(transports)
         return row
 
     @app.put("/api/v1/devices/{device_id}/polling")
     def set_polling(device_id: str, value: PollingSettings, request: Request):
         auth, device = device_for(request, device_id, Permission.JOB_CREATE, True)
         store = app.state.store
+        from .worker import implemented_transports
+        if value.preferred_source != "auto" and value.preferred_source not in implemented_transports(device):
+            fail("polling_transport_not_supported", 422)
         with transaction(store) as conn:
             ensure_policy(store, device, auth.user.user_id, conn)
             conn.execute(store.polling.update().where(store.polling.c.device_id == device.id).values(

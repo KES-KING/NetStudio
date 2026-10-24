@@ -1,0 +1,23 @@
+{
+  "source_permission": "project_generated_test_fixture",
+  "physical_acceptance": false,
+  "production_accepted": false,
+  "profile_id": "ubiquiti_edgeswitch",
+  "runtime_driver_id": "ubiquiti_edgeswitch",
+  "outputs": {
+    "show version": "Ubiquiti EdgeSwitch OS\nMachine Model : ES-48-500W\nSoftware Version : 1.10.4\nSerial Number : ES48TEST0001\n",
+    "show interfaces": "Interface : 0/1\n Admin Status : enabled\n Link Status : up\n Speed : 1000 Mbps\n Duplex : full\n Rx Bytes : 8589934605\n Tx Bytes : 8589934606\n Rx Errors : 0\n Rx Discards : 1\n Tx Errors : 0\n Tx Discards : 2\n",
+    "show vlan": "10 | Users | 0/1 | access\n",
+    "show mac-addr-table": "10 | 02:00:00:00:10:01 | dynamic | 0/1\n",
+    "show arp": "192.0.2.10 | 02:00:00:00:10:01 | 0/1\n",
+    "show lldp remote-device all": "0/1 | 02:00:00:00:20:01 | Gi1/0/1 | access-1\n",
+    "show system": "System Temperature : 41 C\n"
+  },
+  "expected": {
+    "vendor": "Ubiquiti",
+    "model": "ES-48-500W",
+    "os_version": "1.10.4",
+    "serial": "ES48TEST0001",
+    "interface_name": "0/1"
+  }
+}

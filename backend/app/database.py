@@ -107,6 +107,9 @@ class Store:
         from .compatibility_schema_v1 import define_tables as compatibility_tables
         for name, table in compatibility_tables(self.meta).items():
             setattr(self, name, table)
+        from .controller_schema_v1 import define_tables as controller_tables
+        for name, table in controller_tables(self.meta).items():
+            setattr(self, name, table)
 
     @contextmanager
     def user_transaction(self):
@@ -162,7 +165,7 @@ class Store:
         values = {key: getattr(device, key) for key in (
             "id", "name", "management_address", "site", "vendor", "platform", "model", "serial", "read_only", "support_status")}
         values["payload"] = device.model_dump(mode="json", exclude={
-            "credential_configured", "host_key_fingerprint", "snmp_configured",
+            "credential_configured", "host_key_fingerprint", "snmp_configured", "api_configured",
             "configured_profile_id", "resolved_profile_id", "profile_revision",
             "management_mode", "profile_resolution_status",
         })
@@ -193,6 +196,12 @@ class Store:
             keys = dict(conn.execute(sa.select(self.host_keys.c.device_id, self.host_keys.c.fingerprint)).all())
             snmp = set(conn.execute(sa.select(self.protocol_secrets.c.device_id)
                 .where(self.protocol_secrets.c.protocol == "snmp")).scalars())
+            api = set(conn.execute(sa.select(self.device_controller_bindings.c.device_id)
+                .join(self.api_controller_secrets,
+                    self.api_controller_secrets.c.controller_id == self.device_controller_bindings.c.controller_id)
+                .join(self.api_controllers,
+                    self.api_controllers.c.id == self.device_controller_bindings.c.controller_id)
+                .where(self.api_controllers.c.enabled.is_(True))).scalars())
         result = []
         for row in rows:
             payload = row["payload"]
@@ -202,6 +211,7 @@ class Store:
                 "credential_configured": payload["id"] in credentials,
                 "host_key_fingerprint": keys.get(payload["id"]),
                 "snmp_configured": payload["id"] in snmp,
+                "api_configured": payload["id"] in api,
                 "configured_profile_id": row["configured_profile_id"],
                 "resolved_profile_id": row["resolved_profile_id"],
                 "profile_revision": row["profile_revision"],
@@ -228,11 +238,19 @@ class Store:
                 .where(self.devices.c.id == device_id)).mappings().first()
             snmp = conn.execute(sa.select(self.protocol_secrets.c.device_id).where(
                 self.protocol_secrets.c.device_id == device_id, self.protocol_secrets.c.protocol == "snmp")).first()
+            api = conn.execute(sa.select(self.device_controller_bindings.c.device_id)
+                .join(self.api_controller_secrets,
+                    self.api_controller_secrets.c.controller_id == self.device_controller_bindings.c.controller_id)
+                .join(self.api_controllers,
+                    self.api_controllers.c.id == self.device_controller_bindings.c.controller_id)
+                .where(self.device_controller_bindings.c.device_id == device_id,
+                    self.api_controllers.c.enabled.is_(True))).first()
         if not row or not row["payload"] or row["payload"].get("support_status") == "demo_fixture":
             return None
         return ManagedDevice.model_validate(row["payload"]).model_copy(update={
             "credential_configured": bool(row["credential_id"]),
             "host_key_fingerprint": row["fingerprint"], "snmp_configured": bool(snmp),
+            "api_configured": bool(api),
             "configured_profile_id": row["configured_profile_id"],
             "resolved_profile_id": row["resolved_profile_id"],
             "profile_revision": row["profile_revision"],

@@ -1,0 +1,27 @@
+{
+  "fixture_set": "S08-CONTROLLER-API-ECOSYSTEM-SYNTHETIC-001",
+  "generated_at": "2026-10-24T00:00:00+03:00",
+  "source_permission": "project_generated_test_fixture",
+  "sanitization_method": "deterministic_project_synthetic_v1",
+  "review_status": "project_synthetic_no_external_raw_evidence",
+  "capabilities": ["identity", "interfaces", "64_bit_counters", "vlan", "inventory"],
+  "known_exceptions": [
+    "fixtures exercise normalized API and EdgeSwitch parser contracts and are not recordings of vendor devices or controllers",
+    "vendor API fidelity, authentication lifecycle and physical controller behavior are not asserted",
+    "controller profiles remain experimental until isolated vendor sandboxes and physical devices pass the acceptance gates",
+    "Aruba Instant On has no fixture because the general management API is blocked pending a vendor-supported public contract"
+  ],
+  "sensitive_term_scan": "manual_bounded_pattern_scan_pass",
+  "physical_acceptance": false,
+  "production_accepted": false,
+  "files": [
+    {
+      "path": "controller_profiles.json",
+      "sha256": "f14510bdf2643a28eb47a4f28b830e816cce53affcb82b219b42e076b90a2ee7"
+    },
+    {
+      "path": "ubiquiti_edgeswitch_es48_1_10_4.json",
+      "sha256": "545ed178e431ff0bddd5735aea1d36477662ad96e6c582295ab0bd1136600363"
+    }
+  ]
+}

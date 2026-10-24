@@ -414,6 +414,7 @@
   "accepted_adrs": [
     "ADR-COMPAT-001",
     "ADR-COMPAT-002",
+    "ADR-COMPAT-004",
     "ADR-COMPAT-005",
     "ADR-COMPAT-006"
   ],
@@ -427,17 +428,6 @@
       ],
       "deadline_milestone": "before_S10_definition_of_ready",
       "blocks": "S10",
-      "does_not_block": "S01"
-    },
-    {
-      "id": "ADR-COMPAT-004",
-      "topic": "controller and cloud API target and TLS trust model",
-      "owner_roles": [
-        "security_owner",
-        "backend_api_adapter_owner"
-      ],
-      "deadline_milestone": "before_S08_definition_of_ready",
-      "blocks": "S08",
       "does_not_block": "S01"
     }
   ]

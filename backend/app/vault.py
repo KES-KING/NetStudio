@@ -1,5 +1,6 @@
 """AES-256-GCM envelope encryption with per-record AAD and versioned file keys."""
 import base64
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -71,6 +72,44 @@ class CredentialVault:
             _, keys = self.keyring()
             raw = decrypt_credential(keys[row["key_id"]], row["nonce"], row["ciphertext"], device_id, row["key_id"], protocol)
             return json.loads(raw)
+        except SecretStoreError:
+            raise
+        except Exception as error:
+            raise SecretStoreError("credential_decryption_failed") from error
+
+    def save_controller(self, controller_id, credentials, *, auth_kind, scopes, expires_at, conn):
+        """Store API credentials in a controller-scoped envelope, never a device secret."""
+        key_id, keys = self.keyring()
+        nonce = os.urandom(12)
+        purpose = f"netstudio:controller:{controller_id}:{key_id}:api"
+        ciphertext = AESGCM(keys[key_id]).encrypt(
+            nonce, json.dumps(credentials).encode(), purpose.encode()
+        )
+        table = self.store.api_controller_secrets
+        conn.execute(table.delete().where(table.c.controller_id == controller_id))
+        conn.execute(table.insert().values(
+            controller_id=controller_id, auth_kind=auth_kind, scopes=scopes,
+            expires_at=expires_at, key_id=key_id, nonce=nonce,
+            ciphertext=ciphertext, updated_at=datetime.now(timezone.utc),
+        ))
+
+    def get_controller(self, controller_id):
+        table = self.store.api_controller_secrets
+        with self.store.engine.connect() as conn:
+            row = conn.execute(sa.select(table).where(
+                table.c.controller_id == controller_id)).mappings().first()
+        if not row:
+            raise SecretStoreError("controller_credentials_missing")
+        try:
+            _, keys = self.keyring()
+            purpose = f"netstudio:controller:{controller_id}:{row['key_id']}:api"
+            raw = AESGCM(keys[row["key_id"]]).decrypt(
+                row["nonce"], row["ciphertext"], purpose.encode()
+            )
+            return json.loads(raw), {
+                "auth_kind": row["auth_kind"], "scopes": list(row["scopes"]),
+                "expires_at": row["expires_at"],
+            }
         except SecretStoreError:
             raise
         except Exception as error:

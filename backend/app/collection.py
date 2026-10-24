@@ -41,10 +41,10 @@ def metadata(group, driver, *, quality="ok", reason=None, complete=True, source=
 
 
 SOURCE_PRIORITY = {
-    "fast": {"manual": 0, "ssh": 1, "netconf": 2, "snmp": 3},
-    "network": {"manual": 0, "ssh": 1, "netconf": 2, "snmp": 3},
-    "health": {"manual": 0, "snmp": 1, "ssh": 2, "netconf": 3},
-    "inventory": {"manual": 0, "snmp": 1, "ssh": 2, "netconf": 3},
+    "fast": {"manual": 0, "ssh": 1, "netconf": 2, "api": 3, "snmp": 4},
+    "network": {"manual": 0, "ssh": 1, "netconf": 2, "api": 3, "snmp": 4},
+    "health": {"manual": 0, "snmp": 1, "ssh": 2, "netconf": 3, "api": 4},
+    "inventory": {"manual": 0, "snmp": 1, "ssh": 2, "netconf": 3, "api": 4},
 }
 
 
@@ -155,10 +155,30 @@ def merge_read_results(*results: ReadResult) -> ReadResult:
         candidates.sort(key=lambda pair: SOURCE_PRIORITY[group].get(pair[1].source, -1))
         payload, chosen = {}, candidates[-1][1]
         fields, sources, clocks, diagnostics = {}, {}, {}, {}
+        field_evidence: dict[str, list[tuple[str, object]]] = {}
         complete = False
         observed = None
         for result, details in candidates:
             proposed = result.payloads.get(group, {})
+            for name, status in details.fields.items():
+                if status not in {"ok", "partial"}:
+                    continue
+                if group in {"fast", "network"}:
+                    value = sorted(
+                        (str(row.get("interface_id")), row.get(name))
+                        for row in proposed.get("interfaces", [])
+                        if isinstance(row, dict) and row.get(name) is not None
+                    )
+                    if not value and name in {"fdb", "arp", "ndp"}:
+                        value = proposed.get("endpoints")
+                    elif not value and name in {"lldp", "cdp"}:
+                        value = proposed.get("neighbors")
+                elif group == "health":
+                    value = proposed.get("health", {}).get(name)
+                else:
+                    value = proposed.get(name)
+                if value not in (None, [], {}, ""):
+                    field_evidence.setdefault(name, []).append((details.source, value))
             payload = merge_group_payload(group, payload, proposed, details.fields,
                                           replace=details.complete and not payload)
             for name, status in details.fields.items():
@@ -175,6 +195,10 @@ def merge_read_results(*results: ReadResult) -> ReadResult:
             complete = complete or details.complete
             if details.observed_at and (observed is None or details.observed_at > observed):
                 observed = details.observed_at
+        for name, evidence in field_evidence.items():
+            serialized = {json.dumps(value, sort_keys=True, default=str) for _, value in evidence}
+            if len(evidence) > 1 and len(serialized) > 1:
+                diagnostics[f"conflict:{name}"] = ",".join(source for source, _ in evidence)
         quality = "ok" if complete and not diagnostics else "partial" if payload else chosen.quality
         merged.payloads[group] = payload
         merged.metadata[group] = chosen.model_copy(update={

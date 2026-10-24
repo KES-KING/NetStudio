@@ -32,6 +32,7 @@ from .vault import CredentialVault, credential_values
 from . import updates
 from .settings_api import install as install_settings
 from .network_probe import install as install_network_probe
+from .controller_api import install as install_controllers
 from .collection import upsert
 from .driver_profiles import REGISTRY
 from .profile_resolution import (
@@ -245,6 +246,7 @@ def create_app(store=None, key_file=None):
         return auth, device
 
     install_automation(app, context, device_for)
+    install_controllers(app, context, device_for)
 
     @app.get("/healthz")
     def healthz():
@@ -264,6 +266,9 @@ def create_app(store=None, key_file=None):
                 conn.execute(sa.select(app.state.store.driver_bindings.c.device_id).limit(1))
                 conn.execute(sa.select(app.state.store.capability_observations_v2.c.device_id).limit(1))
                 conn.execute(sa.select(app.state.store.driver_acceptance.c.id).limit(1))
+                conn.execute(sa.select(app.state.store.api_controllers.c.id).limit(1))
+                conn.execute(sa.select(app.state.store.api_controller_secrets.c.controller_id).limit(1))
+                conn.execute(sa.select(app.state.store.device_controller_bindings.c.device_id).limit(1))
         except Exception:
             fail("persistence_unavailable", 503)
         return {"status": "ready", "service": "netstudio-api", "revision": getenv("NETSTUDIO_BUILD_REVISION", "unknown")}

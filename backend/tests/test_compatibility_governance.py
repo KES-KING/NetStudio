@@ -83,15 +83,17 @@ def test_s00_accepted_and_pending_adrs_have_owners_and_milestone_deadlines():
     assert accepted == {
         "ADR-COMPAT-001",
         "ADR-COMPAT-002",
+        "ADR-COMPAT-004",
         "ADR-COMPAT-005",
         "ADR-COMPAT-006",
     }
     for identifier in accepted:
         path = next((DOCS / "adr").glob(f"{identifier}-*.md"))
         text = path.read_text()
-        assert "| Durum | Kabul edildi |" in text
+        assert "| Durum | Kabul edildi" in text
     pending = SCOPE["pending_decision_gates"]
-    assert {item["id"] for item in pending} == {"ADR-COMPAT-003", "ADR-COMPAT-004"}
+    assert {item["id"] for item in pending} == {"ADR-COMPAT-003"}
+    assert "ADR-COMPAT-004" in SCOPE["accepted_adrs"]
     for item in pending:
         assert len(item["owner_roles"]) >= 2
         assert item["deadline_milestone"].startswith("before_S")

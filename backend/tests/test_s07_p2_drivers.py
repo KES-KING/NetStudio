@@ -60,8 +60,8 @@ def test_seven_s07_profiles_are_independent_experimental_runtime_contracts():
         transport for transport in profiles["fortinet_fortiswitchos"].transports
         if transport.kind == "api"
     )
-    assert fortiswitch_api.state == "blocked"
-    assert fortiswitch_api.decision_gate == "ADR-COMPAT-004"
+    assert fortiswitch_api.state == "planned"
+    assert fortiswitch_api.decision_gate == "vendor_api_adapter_not_implemented"
     fabric_snmp = next(
         transport for transport in profiles["extreme_fabric_engine"].transports
         if transport.kind == "snmp"
@@ -240,7 +240,7 @@ def test_conditional_legacy_alias_resolution_preserves_secret_and_host_key(syste
     assert store.get_device(original.id).name == "Alias switch"
 
 
-def test_catalog_and_create_api_expose_s07_profiles_but_not_fortilink(system):
+def test_catalog_and_create_api_expose_s07_profiles_and_s08_owns_fortilink(system):
     client, *_ = system
     login(client)
     value = catalog(include_v2=True)
@@ -248,7 +248,8 @@ def test_catalog_and_create_api_expose_s07_profiles_but_not_fortilink(system):
     assert set(entries) == set(P2)
     assert all(entry["selectable"] and entry["release_status"] == "experimental" for entry in entries.values())
     fortilink = next(entry for entry in value["profiles"] if entry["id"] == "fortinet_fortiswitch_fortilink")
-    assert fortilink["selectable"] is False
+    assert fortilink["selectable"] is True
+    assert fortilink["runtime_selection_id"] == "fortinet_fortilink_api"
     response = client.post("/api/v1/devices", json={
         "name": "OS6 test", "management_address": "127.0.0.1", "site": "lab",
         "configured_profile_id": "dell_os6", "management_mode": "standalone",

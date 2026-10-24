@@ -4,6 +4,9 @@ import {
   type APIRequestContext,
   type Page,
 } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 test.describe.configure({ mode: "serial" });
 test.skip(
@@ -14,10 +17,14 @@ test.skip(
 const origin = process.env.PLAYWRIGHT_BASE_URL!;
 const password = "qa-compatibility-password-123";
 const suffix = Date.now();
+const evidenceDir = join(tmpdir(), "netstudio-qa");
 const viewer = `qa-compat-viewer-${suffix}`;
 const legacyName = `QA-Legacy-Huawei-${suffix}`;
+const controllerDeviceName = `QA-Meraki-Controller-${suffix}`;
 let viewerId = "";
 let legacyDeviceId = "";
+let controllerDeviceId = "";
+let controllerId = "";
 
 async function adminHeaders(request: APIRequestContext) {
   expect(new URL(origin).hostname).toBe("127.0.0.1");
@@ -33,6 +40,7 @@ async function adminHeaders(request: APIRequestContext) {
 }
 
 test.beforeAll(async ({ request }) => {
+  mkdirSync(evidenceDir, { recursive: true });
   const headers = await adminHeaders(request);
   const userResponse = await request.post("/api/v1/users", {
     headers,
@@ -62,17 +70,39 @@ test.beforeAll(async ({ request }) => {
   });
   expect(deviceResponse.status()).toBe(201);
   legacyDeviceId = (await deviceResponse.json()).id;
+
+  const controllerDeviceResponse = await request.post("/api/v1/devices", {
+    headers,
+    data: {
+      name: controllerDeviceName,
+      management_address: "192.0.2.241",
+      site: "TEST FIXTURE / isolated",
+      vendor: "Cisco Meraki",
+      model: "MS225-24P",
+      configured_profile_id: "cisco_meraki_ms",
+      management_mode: "cloud_managed",
+    },
+  });
+  expect(controllerDeviceResponse.status()).toBe(201);
+  controllerDeviceId = (await controllerDeviceResponse.json()).id;
   await request.post("/api/v1/session/logout", { headers });
 });
 
 test.afterAll(async ({ request }) => {
-  if (!viewerId) return;
   const headers = await adminHeaders(request);
-  const response = await request.delete(`/api/v1/users/${viewerId}`, {
-    headers,
-    data: { confirmation_username: viewer },
-  });
-  expect([200, 404]).toContain(response.status());
+  if (controllerDeviceId)
+    await request.delete(`/api/v1/devices/${controllerDeviceId}/controller-binding`, { headers });
+  if (controllerId) {
+    const response = await request.delete(`/api/v1/controllers/${controllerId}`, { headers });
+    expect([200, 404]).toContain(response.status());
+  }
+  if (viewerId) {
+    const response = await request.delete(`/api/v1/users/${viewerId}`, {
+      headers,
+      data: { confirmation_username: viewer },
+    });
+    expect([200, 404]).toContain(response.status());
+  }
   await request.post("/api/v1/session/logout", { headers });
 });
 
@@ -166,11 +196,17 @@ test("catalog-driven add form exposes supported, experimental, planned and unsup
   await expect(profile.locator("option[value=fortinet_fortiswitchos]")).toBeEnabled();
   await expect(
     profile.locator("option[value=fortinet_fortiswitch_fortilink]"),
-  ).toHaveAttribute("disabled", "");
+  ).toBeEnabled();
 
   await vendor.selectOption({ value: "TP-Link" });
-  await expect(profile.locator("option[value=tplink_omada_managed]")).toHaveAttribute("disabled", "");
+  await expect(profile.locator("option[value=tplink_omada_managed]")).toBeEnabled();
+  await expect(profile.locator("option[value=tplink_omada_pro]")).toBeEnabled();
   await expect(profile.locator("option[value=tplink_easy_smart]")).toHaveAttribute("disabled", "");
+  await vendor.selectOption({ value: "Cisco Meraki" });
+  await profile.selectOption("cisco_meraki_ms");
+  await expect(dialog.getByRole("radio", { name: /Üretici \/ controller API/ })).toBeEnabled();
+  await vendor.selectOption({ value: "HPE Aruba Networking" });
+  await expect(profile.locator("option[value=aruba_instant_on]")).toHaveAttribute("disabled", "");
   await expect(dialog.getByText(/henüz seçilemeyen profiller/)).toBeVisible();
 
   await dialog.getByRole("button", { name: "Cihazı kaydet", exact: true }).click();
@@ -181,6 +217,70 @@ test("catalog-driven add form exposes supported, experimental, planned and unsup
   expect(await dialog.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("controller API settings create a redacted credential and bind the device", async ({
+  page,
+}) => {
+  const errors = observeErrors(page);
+  await page.setViewportSize({ width: 1536, height: 900 });
+  await login(page, "qa-admin", "test-only-password-1234");
+  await page.goto(`/devices/${controllerDeviceId}`);
+  await expect(page).toHaveTitle("NetStudio");
+  await expect(page.getByRole("heading", { name: controllerDeviceName, exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Bağlantı bilgileri", exact: true }).click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("API yönetimi SSH’den ayrıdır");
+  await dialog.getByLabel("Kayıt adı", { exact: true }).fill(`QA Meraki ${suffix}`);
+  await dialog.getByLabel("Organization ID", { exact: true }).fill("org-test");
+  await dialog.getByLabel("Controller site / network ID", { exact: true }).fill("N_test");
+  const created = page.waitForResponse((response) =>
+    response.url().endsWith("/api/v1/controllers") && response.request().method() === "POST",
+  );
+  await dialog.getByRole("button", { name: "Controller kaydını oluştur", exact: true }).click();
+  const createdResponse = await created;
+  expect(createdResponse.status()).toBe(201);
+  controllerId = (await createdResponse.json()).id;
+  await expect(dialog.getByRole("status")).toContainText("Controller kaydı oluşturuldu");
+
+  await dialog.getByLabel("Bearer erişim tokenı", { exact: true }).fill("test-only-meraki-bearer-token-12345");
+  const credentialSaved = page.waitForResponse((response) =>
+    response.url().endsWith(`/api/v1/controllers/${controllerId}/credentials`) &&
+    response.request().method() === "PUT",
+  );
+  await dialog.getByRole("button", { name: "API erişimini kaydet", exact: true }).click();
+  expect((await credentialSaved).status()).toBe(200);
+  await expect(dialog.getByText(/Salt-okunur API erişimi · tanımlı$/)).toBeVisible();
+
+  await dialog.getByLabel("Controller cihaz kimliği / seri numarası", { exact: true }).fill("Q2XX-TEST-E2E");
+  const bound = page.waitForResponse((response) =>
+    response.url().endsWith(`/api/v1/devices/${controllerDeviceId}/controller-binding`) &&
+    response.request().method() === "PUT",
+  );
+  await dialog.getByRole("button", { name: "Cihaz eşlemesini kaydet", exact: true }).click();
+  expect((await bound).status()).toBe(200);
+  await expect(dialog.getByRole("status")).toContainText("controller içindeki kimliği");
+  await expect(dialog.locator('input[name="token"]')).toHaveValue("");
+  await page.screenshot({
+    path: join(evidenceDir, "s08-controller-desktop.png"),
+    fullPage: false,
+    animations: "disabled",
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectNoHorizontalOverflow(page, 390);
+  const bounds = await dialog.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+  await page.screenshot({
+    path: join(evidenceDir, "s08-controller-mobile.png"),
+    fullPage: false,
+    animations: "disabled",
+  });
+  await expect(page.locator("nextjs-portal")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

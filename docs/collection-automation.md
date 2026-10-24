@@ -25,6 +25,10 @@ Bir markanın katalogda yer alması bütün modellerinin desteklendiği anlamın
    istenen–etkin aralık gösterilir. Otomatik toplamayı aynı yerden durdurabilirsiniz.
 5. SNMPv3 isteğe bağlıdır. Mevcut salt okunur `authPriv` hesabını girin.
    Cihaz üzerinde SNMP etkinleştirilmez; SNMPv1/v2c kullanılmaz.
+6. Controller/API profillerinde cihazı kaydettikten sonra bağlantı bilgilerinden
+   site-scoped controller kaydı, read-only token ve controller cihaz kimliği
+   eşlemesini tamamlayın. URL/hostname kabul edilmez; ayrıntılar
+   [controller/API profil sözleşmesindedir](uyumluluk-uygulama/CONTROLLER_API_PROFILLERI.md).
 
 ## Sürücü ve veri doğrulama seviyesi
 
@@ -48,6 +52,12 @@ Bir markanın katalogda yer alması bütün modellerinin desteklendiği anlamın
 | Extreme Fabric Engine / VOSS | Ayrı Fabric Engine manifesti ve koşullu `extreme_vsp` çözümü | 5520-48T/9.3.2.0 proje-sentetik fixture; SSH secure mode SNMP kısıtı görünür, fiziksel kabul yok |
 | Extreme SLX-OS | EXOS/VOSS'tan ayrı manifest ve CLI grameri; interface/64-bit sayaç, VLAN/FDB/ARP/LLDP | SLX 9150-48Y/20.6.3b proje-sentetik fixture; fiziksel kabul yok |
 | FortiSwitchOS standalone | Standalone kimlik kapısı; physical-port sayaçları, VLAN/FDB/ARP/LLDP | FortiSwitch-124F/7.6.2 proje-sentetik fixture; FortiLink/FortiOS ayrıdır, API kapalı, fiziksel kabul yok |
+| FortiLink-managed FortiSwitch | FortiGate controller API üzerinden identity, port/sayaç, VLAN ve sınırlı health | Proje-sentetik API fixture; standalone/FortiOS ayrıdır, fiziksel kabul yok |
+| Cisco Meraki MS | Sabit bölge origin'li Dashboard API; identity, port durumu/kapasitesi, 300 saniyelik trafik oranı ve VLAN | Proje-sentetik API fixture + TLS/pagination negatifleri; oranlar octet sayacı değildir, SSH yok, fiziksel kabul yok |
+| Ubiquiti UniFi Switch | Yerel controller API; identity, port durumu/kapasitesi ve sınırlı health | Normal ve Flex/Ultra no-SNMP profilleri ayrıdır; belgelenmeyen octet/seri alanı türetilmez, fixture kanıtı, fiziksel kabul yok |
+| Ubiquiti EdgeSwitch | Standalone SSH grameri + SNMPv3; identity, 64-bit sayaç, VLAN/FDB/ARP/LLDP | ES-48/1.10.4 proje-sentetik fixture; UniFi fallback'i yok, fiziksel kabul yok |
+| TP-Link Omada / Omada Pro | OAuth access token kullanan ayrı controller API runtime'ları; identity, port/sayaç, VLAN ve sınırlı health | İki ayrı proje-sentetik fixture; token edinme/yenileme dışarıdadır, standalone/Pro eşitliği yok, fiziksel kabul yok |
+| Aruba Instant On | Çalışan transport yok | Resmi genel yönetim API sözleşmesi kanıtlanmadığı için politika gereği kapalı |
 | Linux | iproute2 JSON, sayaçlar, IP, ARP/NDP, uptime | Mevcut izole SSH sözleşmesi korunur |
 
 NTC şablonları `ntc-templates==9.3.0` / `textfsm==2.1.0` ile sabittir.
@@ -288,11 +298,12 @@ sözleşmesini kendiliğinden genişletmez.
 | P0 kanonik manifestleri; IOS/IOS-XE ayrımı, Huawei V200 alias, Junos/NX-OS | Uygulandı; bütün profiller deneysel ve fiziksel kabul bekliyor |
 | P1 AOS-CX/AOS-Switch, EOS, HPE/H3C Comware V7 ve RouterOS manifestleri | Uygulandı; proje-sentetik fixture doğrulandı, fiziksel kabul bekliyor |
 | S07 Dell OS6/9/10, Extreme EXOS/Fabric/SLX ve standalone FortiSwitchOS | Uygulandı; proje-sentetik fixture doğrulandı, controller/FortiLink ayrı ve fiziksel kabul bekliyor |
+| S08 controller/cloud API, UniFi/Omada/FortiLink/Meraki ve EdgeSwitch | Uygulandı; ayrı controller secret/site binding, izole TLS ve sentetik fixture doğrulandı; Instant On politika gereği kapalı, fiziksel kabul bekliyor |
 | Host key keşfi/onayı, ortak SSH profilleri | Uygulandı; yerel gerçek SSH ve tarayıcı testi |
 | Kalıcı kuyruk, zamanlayıcı, worker, standard MIB SNMPv3 çekirdeği | Uygulandı; ortak fencing/deadline, bounded reader ve yerel gerçek UDP testi |
 | Arayüz, kalite tanıları, sınırlı geçmiş, saklama | Uygulandı; gerçek tarayıcı ve yerel saklama testleri |
 | Fiziksel pilot, 100 cihaz gerçek 24 saat kabulü | Çalıştırılmadı; kapasite/üretim kabulü değildir |
-| Controller/API, ileri/legacy NOS ve sınırlı protokol dalgaları | Planlandı; çalışan sürücü değil |
+| İleri/legacy NOS ve sınırlı protokol dalgaları | Planlandı; çalışan sürücü değil |
 
 - Birim/yerel SSH testleri fiziksel cihaz kabulü değildir. 100 cihaz ×24 saat
   hızlandırılmış zamanlayıcı testi gerçek 24 saatlik PostgreSQL/ağ yük testi

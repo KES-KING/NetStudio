@@ -36,7 +36,7 @@ class Observation(BaseModel):
     observed_at: datetime | None
     received_at: datetime = Field(default_factory=utc_now)
     stale_after_seconds: int = Field(ge=1)
-    source: Literal["snmp", "ssh", "netconf", "manual", "fixture"]
+    source: Literal["snmp", "ssh", "api", "netconf", "manual", "fixture"]
     quality: ReadQuality
     poll_id: UUID = Field(default_factory=uuid4)
 
@@ -141,7 +141,7 @@ class PollSnapshot(BaseModel):
     device_id: str
     observed_at: datetime
     received_at: datetime = Field(default_factory=utc_now)
-    source: Literal["snmp", "ssh", "netconf", "manual", "fixture"]
+    source: Literal["snmp", "ssh", "api", "netconf", "manual", "fixture"]
     quality: ReadQuality
     observations: list[InterfaceObservation]
     error: str | None = None

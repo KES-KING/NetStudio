@@ -71,6 +71,7 @@ export function DeviceFacts({ row }: { row: Projection }) {
         <Fact label="Kimlik bilgisi">{d.credential_configured ? "Tanımlı · şifreli" : "Tanımlı değil"}</Fact>
         <Fact label="Host anahtarı">{d.host_key_fingerprint ? "Doğrulanmış anahtar kayıtlı" : "Güven kaydı gerekli"}</Fact>
         <Fact label="SNMPv3">{d.snmp_configured ? "Yapılandırılmış" : "Yapılandırılmamış"}</Fact>
+        <Fact label="Controller API">{d.api_configured ? "Yapılandırılmış" : "Yapılandırılmamış"}</Fact>
         <Fact label="Erişim politikası">{d.read_only ? "Salt okunur" : "Salt okunur kısıtı yok"}</Fact>
       </dl></section>
     </div>

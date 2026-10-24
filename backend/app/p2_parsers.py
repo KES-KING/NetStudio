@@ -20,6 +20,7 @@ from .structured_parsers import merge
 P2_DRIVERS = {
     "dell_os10", "dell_force10", "dell_os6", "extreme_exos",
     "extreme_vsp", "extreme_slxos", "fortinet_fortiswitchos",
+    "ubiquiti_edgeswitch",
 }
 IDENTITY_COMMANDS = {
     "dell_os10": "show version",
@@ -29,6 +30,7 @@ IDENTITY_COMMANDS = {
     "extreme_vsp": "show sys-info",
     "extreme_slxos": "show version",
     "fortinet_fortiswitchos": "get system status",
+    "ubiquiti_edgeswitch": "show version",
 }
 INTERFACE_COMMANDS = {
     "dell_os10": "show interface",
@@ -38,6 +40,7 @@ INTERFACE_COMMANDS = {
     "extreme_vsp": "show interfaces",
     "extreme_slxos": "show interface",
     "fortinet_fortiswitchos": "diagnose switch physical-ports list",
+    "ubiquiti_edgeswitch": "show interfaces",
 }
 
 
@@ -246,6 +249,23 @@ def _fortiswitch_interfaces(raw: str) -> list[dict]:
     return _require_interfaces(result)
 
 
+def _edgeswitch_interfaces(raw: str) -> list[dict]:
+    result = []
+    for header, block in _blocks(raw, r"^Interface\s*:\s*(\S+)\s*$"):
+        result.append(_entry(
+            header.group(1), _value(block, r"^\s*Admin Status\s*:\s*([^\n]+)"),
+            _value(block, r"^\s*Link Status\s*:\s*([^\n]+)"),
+            _value(block, r"^\s*Speed\s*:\s*([^\n]+)"),
+            _value(block, r"^\s*Duplex\s*:\s*([^\n]+)"),
+            tuple(_value(block, pattern) for pattern in (
+                r"^\s*Rx Bytes\s*:\s*([\d,]+)", r"^\s*Tx Bytes\s*:\s*([\d,]+)",
+                r"^\s*Rx Errors\s*:\s*([\d,]+)", r"^\s*Rx Discards\s*:\s*([\d,]+)",
+                r"^\s*Tx Errors\s*:\s*([\d,]+)", r"^\s*Tx Discards\s*:\s*([\d,]+)",
+            )),
+        ))
+    return _require_interfaces(result)
+
+
 def _require_interfaces(result: list[dict]) -> list[dict]:
     if not result or len(result) > 8192:
         raise ValueError("interfaces_empty")
@@ -260,6 +280,7 @@ INTERFACE_PARSERS = {
     "extreme_vsp": _extreme_fabric_interfaces,
     "extreme_slxos": _extreme_slx_interfaces,
     "fortinet_fortiswitchos": _fortiswitch_interfaces,
+    "ubiquiti_edgeswitch": _edgeswitch_interfaces,
 }
 
 
@@ -299,6 +320,12 @@ def _identity(driver: str, raw: str) -> dict:
             _value(raw, r"^\s*System Type\s*:\s*([^\n]+)"),
             _value(raw, r"^\s*SLX-OS Version\s*:\s*([^\n]+)"),
             _value(raw, r"^\s*Chassis Serial Number\s*:\s*(\S+)"), "Extreme Networks",
+        )
+    elif driver == "ubiquiti_edgeswitch":
+        model, version, serial, vendor = (
+            _value(raw, r"^\s*Machine Model\s*:\s*([^\n]+)"),
+            _value(raw, r"^\s*Software Version\s*:\s*([^\n]+)"),
+            _value(raw, r"^\s*Serial Number\s*:\s*(\S+)"), "Ubiquiti",
         )
     else:
         version_line = _value(raw, r"^\s*Version\s*:\s*(FortiSwitch-\S+\s+v[^,\n]+)")

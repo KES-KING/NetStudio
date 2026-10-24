@@ -18,7 +18,7 @@
 |---|---|---|
 | S06-01 | Tamamlandı | `aruba_aoscx` ayrı manifest ve JSON CLI parser'ı kullanır; AOS-Switch text gramerine veya REST'e düşmez. |
 | S06-02 | Tamamlandı | `aruba_aoss` runtime uyumluluk ID'si `hp_procurve` olarak korunur. Toplama kimliği kanonik profile çözer; test secret, host key ve cihaz kimliğinin korunmasını doğrular. |
-| S06-03 | Tamamlandı | EOS yapılandırılmış JSON çıktısı SSH üzerinden ayrıştırılır. eAPI seçilmedi; API transportu ADR-COMPAT-004 ile `blocked` kalır. |
+| S06-03 | Tamamlandı | EOS yapılandırılmış JSON çıktısı SSH üzerinden ayrıştırılır. eAPI seçilmedi. S08'de güven ADR'si kabul edildi; EOS vendor API adaptörü ayrıca `planned` kalır. |
 | S06-04 | Tamamlandı | HPE Comware ayrı vendor kimliği, runtime ID, fixture ve acceptance tuple'ı taşır. |
 | S06-05 | Tamamlandı | H3C Comware V7 ayrı profildir; V5/V9 banner'ı ayrı catalog-only profile tanınır ve V7 parser'ı çalıştırılmaz. |
 | S06-06 | Tamamlandı | RouterOS yalnız `/... print` allowlist'i ve key/value parser'ı kullanır; Cisco parser çağrısı negatif testle yasaklanmıştır. |

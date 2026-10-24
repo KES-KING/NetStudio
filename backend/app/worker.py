@@ -22,6 +22,16 @@ from .ssh import ConnectionPolicyError, connect, discover_host_key, error_code, 
 from .ssh_profiles import target_signature
 from .transport import SSHTransportAdapter, TransportContext
 from .vault import CredentialVault
+from .driver_profiles import REGISTRY
+
+
+def implemented_transports(device):
+    runtime = device.resolved_collector if device.collector == "auto" else device.collector
+    profile = REGISTRY.runtime_profile(runtime) if runtime else None
+    if not profile:
+        # Legacy auto/external handling retains the existing SSH/SNMP behavior.
+        return {"ssh", "snmp"}
+    return {item.kind for item in profile.transports if item.state == "implemented"}
 
 
 class Worker:
@@ -85,7 +95,8 @@ class Worker:
         def authorize():
             if lost.is_set():
                 raise ConnectionPolicyError("worker_lease_lost")
-            target_allowed(self.store, device)
+            if implemented_transports(device) & {"ssh", "snmp"}:
+                target_allowed(self.store, device)
             if target_signature(device) != context["target_signature"]:
                 raise ConnectionPolicyError("device_connection_changed")
             with self.store.engine.connect() as conn:
@@ -114,22 +125,46 @@ class Worker:
                         public_key=key.export_public_key().decode(), fingerprint=key.get_fingerprint("sha256"), profile=profile))
                 result = {"candidate_id": context["candidate_id"], "profile": profile}
             elif job.kind == "connection_test":
-                async with connect(self.store, self.vault, device):
-                    authorize()
-                result = {"reachable": True, "source": "ssh"}
+                transports = implemented_transports(device)
+                if transports == {"api"}:
+                    from .controller_transport import ControllerAPITransportAdapter
+                    transport_context = TransportContext.create(
+                        self.store, self.vault, device, authorize, timeout_seconds=60
+                    )
+                    await ControllerAPITransportAdapter().collect(transport_context, {"inventory"})
+                    result = {"reachable": True, "source": "api"}
+                else:
+                    async with connect(self.store, self.vault, device):
+                        authorize()
+                    result = {"reachable": True, "source": "ssh"}
             else:
                 groups = set(context["groups"])
                 with self.store.engine.connect() as conn:
                     policy_row = conn.execute(sa.select(self.store.polling).where(self.store.polling.c.device_id == device.id)).mappings().first()
                     policy = policy_row["settings"] if policy_row else {}
                     channel_state = policy_row["state"] if policy_row else {}
-                snmp_read = ssh_read = None
-                snmp_error = ssh_error = None
+                snmp_read = ssh_read = api_read = None
+                snmp_error = ssh_error = api_error = None
                 preference = policy.get("preferred_source", "auto")
+                transports = implemented_transports(device)
                 transport_context = TransportContext.create(
                     self.store, self.vault, device, authorize, timeout_seconds=180
                 )
-                if groups and device.snmp_configured and preference != "ssh" and scheduler.channel_ready(channel_state, "snmp"):
+                if groups and "api" in transports and device.api_configured and preference not in {"ssh", "snmp"} and scheduler.channel_ready(channel_state, "api"):
+                    from .controller_transport import ControllerAPITransportAdapter
+                    try:
+                        api_read = await ControllerAPITransportAdapter().collect(transport_context, groups)
+                        channel_outcomes["api"] = None
+                    except ConnectionPolicyError as exc:
+                        api_error = str(exc)
+                        if api_error in {"device_connection_changed", "worker_lease_lost", "session_revoked", "collection_policy_changed"}:
+                            raise
+                        channel_outcomes["api"] = api_error
+                elif preference == "api" and not device.api_configured:
+                    api_error = "controller_credentials_missing"
+                    channel_outcomes["api"] = api_error
+
+                if groups and "snmp" in transports and device.snmp_configured and preference not in {"ssh", "api"} and scheduler.channel_ready(channel_state, "snmp"):
                     from .snmp import SNMPTransportAdapter
                     try:
                         snmp_read = await SNMPTransportAdapter().collect(transport_context, groups)
@@ -144,7 +179,7 @@ class Worker:
                     channel_outcomes["snmp"] = snmp_error
 
                 ssh_ready = device.credential_configured and device.host_key_fingerprint
-                if groups and preference != "snmp" and ssh_ready and scheduler.channel_ready(channel_state, "ssh"):
+                if groups and "ssh" in transports and preference not in {"snmp", "api"} and ssh_ready and scheduler.channel_ready(channel_state, "ssh"):
                     try:
                         ssh_read = await SSHTransportAdapter().collect(transport_context, groups)
                         channel_outcomes["ssh"] = None
@@ -157,13 +192,13 @@ class Worker:
                     ssh_error = "credentials_missing" if not device.credential_configured else "host_key_required"
                     channel_outcomes["ssh"] = ssh_error
 
-                reads = [value for value in (ssh_read, snmp_read) if value]
+                reads = [value for value in (ssh_read, api_read, snmp_read) if value]
                 if reads:
                     read = merge_read_results(*reads)
                     reboot = bool(snmp_read and snmp_read.reboot_detected)
-                    for channel, channel_error in (("snmp", snmp_error), ("ssh", ssh_error)):
+                    for channel, channel_error in (("snmp", snmp_error), ("api", api_error), ("ssh", ssh_error)):
                         if channel_error:
-                            failed_source = "snmp" if channel == "snmp" else "ssh"
+                            failed_source = channel
                             read.capability_evidence.extend((group, metadata(
                                 group, f"{channel}_transport", source=failed_source,
                                 quality="error", complete=False, reason=channel_error,
@@ -174,8 +209,10 @@ class Worker:
                                     details.quality = "partial"
                                 details.reason = f"{channel}_failed_using_alternate"
                 else:
-                    source = "snmp" if preference == "snmp" or (snmp_error and not ssh_error) else "ssh"
-                    reason = snmp_error if source == "snmp" else ssh_error
+                    source = preference if preference in {"ssh", "snmp", "api"} else (
+                        "api" if api_error else "snmp" if snmp_error else "ssh"
+                    )
+                    reason = {"api": api_error, "snmp": snmp_error, "ssh": ssh_error}[source]
                     read = ReadResult(device, metadata={group: metadata(
                         group, f"{source}_transport", source=source,
                         quality="error", complete=False,

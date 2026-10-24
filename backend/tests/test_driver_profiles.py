@@ -25,7 +25,7 @@ S00 = json.loads(
 SNAPSHOT = json.loads(
     (Path(__file__).parent / "snapshots" / "driver_catalog_v2.json").read_text()
 )
-LEGACY_V1_SHA256 = "6bdbf6359709e2fc18395e2a6129dba9bbfdd7dbb9b07302c37a5432998ade82"
+LEGACY_V1_SHA256 = "50be67067d089f01025b7c96a4ac98306c61bdf21aeee9b32c949ecd3aea14a1"
 
 
 def _snapshot(value: dict) -> dict:
@@ -58,7 +58,7 @@ def test_registry_has_exact_s00_scope_and_statuses_do_not_regress():
         profile = actual[identifier]
         if profile.implementation_status != decision["implementation_status"]:
             assert decision["implementation_status"] == "catalog_only"
-            assert profile.implementation_status == "implemented"
+            assert profile.implementation_status in {"implemented", "blocked"}
         levels = [
             "not_tested", "unit_verified", "fixture_verified",
             "transport_lab_validated", "physical_validated",

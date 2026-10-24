@@ -31,11 +31,12 @@ from .driver_manifests import (
     juniper_junos as junos_manifest,
     linux_ssh as linux_manifest,
     mikrotik_routeros as routeros_manifest,
+    ubiquiti_edgeswitch as edgeswitch_manifest,
 )
 
 
-DRIVER_VERSION = "2026.10.24.2"
-CATALOG_REVISION = "2026.10.24.2"
+DRIVER_VERSION = "2026.10.24.3"
+CATALOG_REVISION = "2026.10.24.3"
 NTC_VERSION = "9.3.0"
 GROUPS = ("fast", "health", "network", "inventory")
 DATA_CONTRACT = {
@@ -74,6 +75,11 @@ REFERENCES = {
     "extreme_fabric_engine": "https://documentation.extremenetworks.com/Fabric%20Engine%20v9.3%20User%20Guide/content/documents/Switch_Operating_Systems/VOSS_and_Fabric_Engine/fabric_engine_user_guide/ssh_version_2.shtml",
     "extreme_slxos": "https://documentation.extremenetworks.com/Extreme%20SLX-OS%2020.7.2%20Troubleshooting%20Guide/DatacenterNetworking/SLX-OS/Master-Source/extreme_slx_os_troubleshooting_guide/using_show_commands_slxc.shtml",
     "fortiswitchos": "https://docs.fortinet.com/document/fortiswitch/7.6.2/fortiswitchos-cli-reference/896953/get",
+    "edgeswitch": "https://dl.ui.com/guides/edgemax/EdgeSwitch_CLI_Command_Reference_UG.pdf",
+    "meraki_api": "https://developer.cisco.com/meraki/api-v1/get-organization-devices/",
+    "unifi_api": "https://developer.ui.com/network/v9.4.17",
+    "fortilink_api": "https://docs.fortinet.com/document/fortigate/7.6.2/cli-reference/308952696/config-switch-controller-managed-switch",
+    "omada_api": "https://www.tp-link.com/us/support/download/omada-software-controller/",
 }
 IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
 
@@ -234,6 +240,7 @@ EXTREME_FABRIC_ENGINE = commands(
 )
 EXTREME_SLXOS = commands("extreme_slxos", extreme_slxos_manifest.COMMAND_ROWS)
 FORTISWITCHOS = commands("fortiswitchos", fortiswitchos_manifest.COMMAND_ROWS)
+EDGESWITCH = commands("edgeswitch", edgeswitch_manifest.COMMAND_ROWS)
 
 P0_CAPABILITIES = {
     "cisco_ios": ios_manifest.CAPABILITIES,
@@ -260,6 +267,7 @@ P2_CLI_CAPABILITIES = {
     "extreme_fabric_engine": extreme_fabric_engine_manifest.CAPABILITIES,
     "extreme_slxos": extreme_slxos_manifest.CAPABILITIES,
     "fortinet_fortiswitchos": fortiswitchos_manifest.CAPABILITIES,
+    "ubiquiti_edgeswitch": edgeswitch_manifest.CAPABILITIES,
 }
 
 
@@ -304,13 +312,59 @@ SNMP_IMPLEMENTED_FABRIC_CONDITIONAL = _transport(
 )
 SSH_PLANNED = _transport("ssh", "planned", versions=("ssh2",))
 SNMP_PLANNED = _transport("snmp", "planned", versions=("v3_authpriv",))
-API_BLOCKED = _transport("api", "blocked", decision_gate="ADR-COMPAT-004")
+API_PLANNED = _transport("api", "planned", decision_gate="vendor_api_adapter_not_implemented")
+API_IMPLEMENTED = _transport("api", "implemented", versions=("https_json",))
+API_VENDOR_BLOCKED = _transport(
+    "api", "unsupported_by_policy", decision_gate="vendor_public_api_unavailable"
+)
+SSH_CONTROLLER_UNSUPPORTED = _transport(
+    "ssh", "unsupported_by_policy", decision_gate="controller_api_is_management_plane"
+)
 SSH_UNSUPPORTED = _transport("ssh", "unsupported_by_protocol")
 SNMP_UNSUPPORTED = _transport("snmp", "unsupported_by_protocol")
 API_UNSUPPORTED = _transport("api", "unsupported_by_protocol")
 SNMP_V2C_BLOCKED = _transport(
     "snmp", "blocked", versions=("v2c",), decision_gate="ADR-COMPAT-003",
 )
+
+MERAKI_API = commands("meraki_api", (
+    ("GET /api/v1/organizations/{organizationId}/devices", "inventory", "meraki.devices", True),
+    ("GET /api/v1/devices/{serial}/switch/ports/statuses?timespan=300", "fast", "meraki.port_status", True),
+    ("GET /api/v1/devices/{serial}/switch/ports", "network", "meraki.ports", False),
+))
+UNIFI_API = commands("unifi_api", (
+    ("GET /proxy/network/integration/v1/sites/{siteId}/devices", "inventory", "unifi.devices", True),
+    ("GET /proxy/network/integration/v1/sites/{siteId}/devices/{deviceId}", "inventory", "unifi.device_details", True),
+    ("GET /proxy/network/integration/v1/sites/{siteId}/devices/{deviceId}/statistics/latest", "health", "unifi.device_statistics", False),
+))
+FORTILINK_API = commands("fortilink_api", (
+    ("GET /api/v2/monitor/switch-controller/managed-switch", "inventory", "fortilink.devices", True),
+    ("GET managed FortiSwitch port state", "fast", "fortilink.port_status", True),
+))
+OMADA_API = commands("omada_api", (
+    ("GET /openapi/v1/{controllerId}/sites/{siteId}/switches", "inventory", "omada.switches", True),
+    ("GET managed switch port state", "fast", "omada.port_status", True),
+))
+
+API_CAPABILITIES = {
+    "fast": {"api": (
+        "admin_up", "oper_up", "capacity_bps", "in_octets", "out_octets",
+        "errors", "discards", "tx_errors", "tx_discards",
+    )},
+    "health": {"api": ("cpu_percent", "memory_percent", "temperature_c")},
+    "network": {"api": ("vlan",)},
+    "inventory": {"api": ("model", "serial", "os_version", "system_identity", "chassis")},
+}
+MERAKI_API_CAPABILITIES = {
+    "fast": {"api": ("admin_up", "oper_up", "capacity_bps", "rx_bps", "tx_bps")},
+    "network": {"api": ("vlan",)},
+    "inventory": {"api": ("model", "serial", "os_version", "system_identity", "chassis")},
+}
+UNIFI_API_CAPABILITIES = {
+    "fast": {"api": ("oper_up", "capacity_bps")},
+    "health": {"api": ("cpu_percent", "memory_percent")},
+    "inventory": {"api": ("model", "os_version", "system_identity", "chassis")},
+}
 
 
 def _capabilities(
@@ -426,7 +480,7 @@ PROFILES = (
     _profile(
         "aruba_aoscx", "Aruba AOS-CX", "P1",
         _identity("HPE Aruba Networking", "AOS-CX", models=("JL658A", "6300M*"), versions=("FL.10.*",)),
-        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED, API_BLOCKED), implementation="implemented",
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED, API_PLANNED), implementation="implemented",
         verification="fixture_verified", release="experimental",
         runtime_driver_id="aruba_aoscx", adapter="ssh_cli_json",
         command_plan=AOSCX, capability_groups=P1_CAPABILITIES["aruba_aoscx"],
@@ -446,7 +500,7 @@ PROFILES = (
     _profile(
         "arista_eos", "Arista EOS", "P1",
         _identity("Arista Networks", "EOS", models=("DCS-7050SX3-*",), versions=("4.31.*",)),
-        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED, API_BLOCKED), implementation="implemented",
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED, API_PLANNED), implementation="implemented",
         verification="fixture_verified", release="experimental",
         runtime_driver_id="arista_eos", adapter="ssh_cli_json",
         command_plan=EOS, capability_groups=P1_CAPABILITIES["arista_eos"],
@@ -476,7 +530,7 @@ PROFILES = (
     _profile(
         "mikrotik_routeros", "MikroTik RouterOS", "P1",
         _identity("MikroTik", "RouterOS", models=("CRS326-24G-2S+",), versions=("7.*",)),
-        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED, API_BLOCKED), implementation="implemented",
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED, API_PLANNED), implementation="implemented",
         verification="fixture_verified", release="experimental",
         runtime_driver_id="mikrotik_routeros", adapter="ssh_cli_routeros",
         command_plan=ROUTEROS, capability_groups=P1_CAPABILITIES["mikrotik_routeros"],
@@ -547,7 +601,7 @@ PROFILES = (
     _profile(
         "fortinet_fortiswitchos", "Fortinet FortiSwitchOS", "P2",
         _identity("Fortinet", "FortiSwitchOS", models=("FortiSwitch-124F",), versions=("7.6.*",)),
-        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED, API_BLOCKED),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED, API_PLANNED),
         implementation="implemented", verification="fixture_verified",
         release="experimental", runtime_driver_id="fortinet_fortiswitchos",
         adapter="ssh_cli", command_plan=FORTISWITCHOS,
@@ -555,24 +609,87 @@ PROFILES = (
         tested_versions=("FortiSwitch-124F / FortiSwitchOS 7.6.2 project-synthetic fixture",),
         profile_revision=2,
     ),
-    _profile("fortinet_fortiswitch_fortilink", "Fortinet FortiSwitchOS (FortiLink)", "P2", _identity("Fortinet", "FortiSwitchOS", ("controller_managed",)), (API_BLOCKED, SNMP_PLANNED)),
-    _profile("tplink_omada_managed", "TP-Link Omada Managed", "P2", _identity("TP-Link", "Omada Managed"), (SSH_PLANNED, SNMP_PLANNED, API_BLOCKED)),
-    _profile("tplink_omada_pro", "TP-Link Omada Pro", "P2", _identity("TP-Link", "Omada Pro"), (SSH_PLANNED, SNMP_PLANNED, API_BLOCKED)),
-    _profile("ubiquiti_unifi_switch", "Ubiquiti UniFi Switch", "P2", _identity("Ubiquiti", "UniFi Switch", ("controller_managed",)), (API_BLOCKED, SNMP_PLANNED)),
-    _profile("ubiquiti_unifi_no_snmp", "Ubiquiti UniFi Switch (SNMP yok)", "P2", _identity("Ubiquiti", "UniFi Switch", ("controller_managed",)), (API_BLOCKED, SNMP_UNSUPPORTED)),
-    _profile("ubiquiti_edgeswitch", "Ubiquiti EdgeSwitch", "P2", _identity("Ubiquiti", "EdgeSwitch OS"), (SSH_PLANNED, SNMP_PLANNED)),
+    _profile(
+        "fortinet_fortiswitch_fortilink", "Fortinet FortiSwitchOS (FortiLink)", "P2",
+        _identity("Fortinet", "FortiSwitchOS", ("controller_managed",)),
+        (API_IMPLEMENTED, SNMP_PLANNED, SSH_CONTROLLER_UNSUPPORTED),
+        implementation="implemented", verification="fixture_verified", release="experimental",
+        runtime_driver_id="fortinet_fortilink_api", adapter="controller_https",
+        command_plan=FORTILINK_API, capability_groups=API_CAPABILITIES,
+        tested_versions=("FortiGate managed FortiSwitch project-synthetic API fixture",), profile_revision=2,
+    ),
+    _profile(
+        "tplink_omada_managed", "TP-Link Omada Managed", "P2",
+        _identity("TP-Link", "Omada Managed", ("controller_managed",)),
+        (API_IMPLEMENTED, SNMP_PLANNED, SSH_CONTROLLER_UNSUPPORTED),
+        implementation="implemented", verification="fixture_verified", release="experimental",
+        runtime_driver_id="tplink_omada_api", adapter="controller_https",
+        command_plan=OMADA_API, capability_groups=API_CAPABILITIES,
+        tested_versions=("Omada SDN project-synthetic Open API fixture",), profile_revision=2,
+    ),
+    _profile(
+        "tplink_omada_pro", "TP-Link Omada Pro", "P2",
+        _identity("TP-Link", "Omada Pro", ("controller_managed",)),
+        (API_IMPLEMENTED, SNMP_PLANNED, SSH_CONTROLLER_UNSUPPORTED),
+        implementation="implemented", verification="fixture_verified", release="experimental",
+        runtime_driver_id="tplink_omada_pro_api", adapter="controller_https",
+        command_plan=OMADA_API, capability_groups=API_CAPABILITIES,
+        tested_versions=("Omada Pro project-synthetic Open API fixture",), profile_revision=2,
+    ),
+    _profile(
+        "ubiquiti_unifi_switch", "Ubiquiti UniFi Switch", "P2",
+        _identity("Ubiquiti", "UniFi Switch", ("controller_managed",)),
+        (API_IMPLEMENTED, SNMP_PLANNED, SSH_CONTROLLER_UNSUPPORTED),
+        implementation="implemented", verification="fixture_verified", release="experimental",
+        runtime_driver_id="unifi_api", adapter="controller_https",
+        command_plan=UNIFI_API, capability_groups=UNIFI_API_CAPABILITIES,
+        tested_versions=("UniFi Network 9.4 project-synthetic integration API fixture",), profile_revision=2,
+    ),
+    _profile(
+        "ubiquiti_unifi_no_snmp", "Ubiquiti UniFi Flex/Ultra (SNMP yok)", "P2",
+        _identity("Ubiquiti", "UniFi Switch", ("controller_managed",), models=("USW-Flex*", "USW-Ultra*")),
+        (API_IMPLEMENTED, SNMP_UNSUPPORTED, SSH_CONTROLLER_UNSUPPORTED),
+        implementation="implemented", verification="fixture_verified", release="experimental",
+        runtime_driver_id="unifi_no_snmp_api", adapter="controller_https",
+        command_plan=UNIFI_API, capability_groups=UNIFI_API_CAPABILITIES,
+        tested_versions=("UniFi Flex/Ultra project-synthetic API fixture",), profile_revision=2,
+    ),
+    _profile(
+        "ubiquiti_edgeswitch", "Ubiquiti EdgeSwitch", "P2",
+        _identity("Ubiquiti", "EdgeSwitch OS", models=("ES-*",), versions=("1.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="ubiquiti_edgeswitch", adapter="ssh_cli",
+        command_plan=EDGESWITCH,
+        capability_groups=P2_CLI_CAPABILITIES["ubiquiti_edgeswitch"],
+        tested_versions=("ES-48-500W / EdgeSwitch 1.10.4 project-synthetic fixture",),
+        profile_revision=2,
+    ),
     _profile("h3c_comware5", "H3C Comware V5", "P3", _identity("H3C", "Comware V5"), (SSH_PLANNED, SNMP_PLANNED)),
     _profile("h3c_comware9", "H3C Comware V9", "P3", _identity("H3C", "Comware V9"), (SSH_PLANNED, SNMP_PLANNED)),
     _profile("huawei_vrp_v600", "Huawei VRP V600", "P3", _identity("Huawei", "VRP V600"), (SSH_PLANNED, SNMP_PLANNED)),
     _profile("juniper_junos_evolved", "Juniper Junos OS Evolved", "P3", _identity("Juniper", "Junos OS Evolved"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("dell_sonic", "Dell Enterprise SONiC", "P3", _identity("Dell Technologies", "Enterprise SONiC"), (SSH_PLANNED, SNMP_PLANNED, API_BLOCKED)),
-    _profile("nvidia_cumulus_linux", "NVIDIA Cumulus Linux", "P3", _identity("NVIDIA Networking", "Cumulus Linux"), (SSH_PLANNED, SNMP_PLANNED, API_BLOCKED)),
+    _profile("dell_sonic", "Dell Enterprise SONiC", "P3", _identity("Dell Technologies", "Enterprise SONiC"), (SSH_PLANNED, SNMP_PLANNED, API_PLANNED)),
+    _profile("nvidia_cumulus_linux", "NVIDIA Cumulus Linux", "P3", _identity("NVIDIA Networking", "Cumulus Linux"), (SSH_PLANNED, SNMP_PLANNED, API_PLANNED)),
     _profile("nvidia_onyx", "NVIDIA Onyx", "P3", _identity("NVIDIA Networking", "Onyx"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("sonic_nos", "SONiC NOS", "P3", _identity("Multiple", "SONiC"), (SSH_PLANNED, SNMP_PLANNED, API_BLOCKED)),
+    _profile("sonic_nos", "SONiC NOS", "P3", _identity("Multiple", "SONiC"), (SSH_PLANNED, SNMP_PLANNED, API_PLANNED)),
     _profile("cisco_business", "Cisco Business Switch", "P3", _identity("Cisco", "Cisco Business firmware"), (SSH_PLANNED, SNMP_PLANNED)),
     _profile("mikrotik_swos", "MikroTik SwOS", "P4", _identity("MikroTik", "SwOS"), (SSH_UNSUPPORTED, SNMP_V2C_BLOCKED), implementation="blocked"),
-    _profile("cisco_meraki_ms", "Cisco Meraki MS", "P4", _identity("Cisco Meraki", "Meraki MS", ("cloud_managed",)), (API_BLOCKED, SNMP_PLANNED)),
-    _profile("aruba_instant_on", "Aruba Instant On", "P4", _identity("HPE Aruba Networking", "Instant On", ("cloud_managed", "local_managed")), (API_BLOCKED, SNMP_PLANNED)),
+    _profile(
+        "cisco_meraki_ms", "Cisco Meraki MS", "P4",
+        _identity("Cisco Meraki", "Meraki MS", ("cloud_managed",), models=("MS*",)),
+        (API_IMPLEMENTED, SNMP_PLANNED, SSH_UNSUPPORTED),
+        implementation="implemented", verification="fixture_verified", release="experimental",
+        runtime_driver_id="meraki_dashboard", adapter="controller_https",
+        command_plan=MERAKI_API, capability_groups=MERAKI_API_CAPABILITIES,
+        tested_versions=("Meraki Dashboard API v1 project-synthetic fixture",), profile_revision=2,
+    ),
+    _profile(
+        "aruba_instant_on", "Aruba Instant On", "P4",
+        _identity("HPE Aruba Networking", "Instant On", ("cloud_managed", "local_managed")),
+        (API_VENDOR_BLOCKED, SNMP_PLANNED, SSH_UNSUPPORTED),
+        implementation="blocked", verification="not_tested", release="hidden", profile_revision=2,
+    ),
     _profile("tplink_easy_smart", "TP-Link Easy Smart", "P4", _identity("TP-Link", "Easy Smart"), (SSH_UNSUPPORTED, SNMP_UNSUPPORTED, API_UNSUPPORTED), implementation="unsupported_by_protocol"),
     _profile("unmanaged_switch", "Yönetilemeyen switch", "P4", _identity("Multiple", "Unmanaged switch", ("unknown",)), (SSH_UNSUPPORTED, SNMP_UNSUPPORTED, API_UNSUPPORTED), implementation="unsupported_by_protocol"),
 )

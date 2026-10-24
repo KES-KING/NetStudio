@@ -35,6 +35,9 @@ Collector = Literal[
     "hp_comware", "h3c_comware7", "mikrotik_routeros", "fortinet",
     "dell_os10", "dell_force10", "dell_os6", "extreme_exos", "extreme_vsp",
     "extreme_slxos", "fortinet_fortiswitchos",
+    "meraki_dashboard", "fortinet_fortilink_api", "unifi_api",
+    "unifi_no_snmp_api", "tplink_omada_api", "tplink_omada_pro_api",
+    "ubiquiti_edgeswitch",
 ]
 SSHProfile = Literal["auto", "standard", "huawei_legacy", "legacy_sha1", "legacy_cbc", "advanced"]
 CollectionGroup = Literal["fast", "health", "network", "inventory"]
@@ -76,7 +79,7 @@ class PollingSettings(StrictModel):
     health_seconds: int = Field(default=120, ge=120, le=86400)
     network_seconds: int = Field(default=300, ge=300, le=86400)
     inventory_seconds: int = Field(default=3600, ge=600, le=86400)
-    preferred_source: Literal["auto", "ssh", "snmp"] = "auto"
+    preferred_source: Literal["auto", "ssh", "snmp", "api"] = "auto"
 
 
 class SNMPCredentials(StrictModel):
@@ -150,6 +153,7 @@ class ManagedDevice(Device):
     profile_resolution_status: ProfileResolutionStatus = "unresolved"
     validation_level: Literal["experimental", "fixture_tested", "lab_validated", "physical_validated"] = "experimental"
     snmp_configured: bool = False
+    api_configured: bool = False
 
 
 class Inventory(StrictModel):
@@ -159,7 +163,7 @@ class Inventory(StrictModel):
     bindings: list[PortBinding] = Field(default_factory=list, max_length=8192)
     os_version: str = Field(default="", max_length=160)
     serial: str = Field(default="", max_length=160)
-    source: Literal["ssh", "snmp", "netconf", "manual"] = "manual"
+    source: Literal["ssh", "snmp", "api", "netconf", "manual"] = "manual"
     observed_at: datetime
 
     @model_validator(mode="after")
@@ -226,7 +230,7 @@ class InterfaceSample(StrictModel):
     temperature_c: float | None = Field(default=None, ge=-100, le=250)
     field_quality: dict[str, CollectionQuality] = Field(default_factory=dict, max_length=64)
     observed_at: datetime | None = None
-    source: Literal["ssh", "snmp", "netconf", "manual"] | None = None
+    source: Literal["ssh", "snmp", "api", "netconf", "manual"] | None = None
     counter_bits: Literal[32, 64] | None = None
 
     @field_validator("addresses")
@@ -313,7 +317,7 @@ class EndpointCollection(StrictModel):
     # A complete endpoint table can refresh independently of optional network commands.
     observed_at: datetime | None = None
     stale_after_seconds: int | None = Field(default=None, ge=10, le=259200)
-    source: Literal["ssh", "snmp", "netconf", "manual"] | None = None
+    source: Literal["ssh", "snmp", "api", "netconf", "manual"] | None = None
 
     @model_validator(mode="after")
     def valid_entries(self):
@@ -329,8 +333,8 @@ class GroupObservation(StrictModel):
     observed_at: datetime | None = None
     attempted_at: datetime
     stale_after_seconds: int = Field(default=120, ge=10, le=259200)
-    source: Literal["ssh", "snmp", "netconf", "manual"] = "ssh"
-    attempted_source: Literal["ssh", "snmp", "netconf", "manual"] | None = None
+    source: Literal["ssh", "snmp", "api", "netconf", "manual"] = "ssh"
+    attempted_source: Literal["ssh", "snmp", "api", "netconf", "manual"] | None = None
     driver: str = Field(default="", max_length=80)
     parser_version: str = Field(default="", max_length=80)
     attempted_driver: str | None = Field(default=None, max_length=80)
@@ -338,7 +342,7 @@ class GroupObservation(StrictModel):
     reason: str | None = Field(default=None, max_length=160)
     diagnostics: dict[str, str] = Field(default_factory=dict, max_length=100)
     fields: dict[str, CollectionQuality] = Field(default_factory=dict, max_length=100)
-    field_sources: dict[str, Literal["ssh", "snmp", "netconf", "manual"]] = Field(
+    field_sources: dict[str, Literal["ssh", "snmp", "api", "netconf", "manual"]] = Field(
         default_factory=dict, max_length=100
     )
     field_observed_at: dict[str, datetime] = Field(default_factory=dict, max_length=100)
@@ -347,7 +351,7 @@ class GroupObservation(StrictModel):
 
 class Telemetry(StrictModel):
     observed_at: datetime
-    source: Literal["ssh", "snmp", "netconf", "manual"]
+    source: Literal["ssh", "snmp", "api", "netconf", "manual"]
     stale_after_seconds: int = Field(default=120, ge=10, le=86400)
     reachability: Literal["reachable", "unreachable", "unknown"] = "unknown"
     error: str | None = Field(default=None, max_length=160)

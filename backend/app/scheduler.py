@@ -15,6 +15,9 @@ PAUSE = {"authentication_failed", "host_key_changed", "host_key_required", "host
 CHANNEL_ERRORS = PAUSE | {
     "snmp_authentication_failed", "snmp_context_mismatch", "snmp_timeout",
     "snmp_read_failed", "connection_timeout", "connection_failed",
+    "controller_credentials_missing", "controller_authentication_failed",
+    "controller_scope_insufficient", "controller_token_expired", "controller_timeout",
+    "controller_tls_or_connection_failed", "controller_rate_limited",
 }
 
 
@@ -125,11 +128,15 @@ def schedule(store):
             if device.collector not in {"auto", *DRIVERS}:
                 continue
             preference = row["settings"].get("preferred_source", "auto")
-            ssh_ready = device.credential_configured and device.host_key_fingerprint and channel_ready(row["state"], "ssh", at)
-            snmp_ready = device.snmp_configured and channel_ready(row["state"], "snmp", at)
+            from .worker import implemented_transports
+            transports = implemented_transports(device)
+            ssh_ready = "ssh" in transports and device.credential_configured and device.host_key_fingerprint and channel_ready(row["state"], "ssh", at)
+            snmp_ready = "snmp" in transports and device.snmp_configured and channel_ready(row["state"], "snmp", at)
+            api_ready = "api" in transports and device.api_configured and channel_ready(row["state"], "api", at)
             if ((preference == "ssh" and not ssh_ready)
                     or (preference == "snmp" and not snmp_ready)
-                    or (preference == "auto" and not (ssh_ready or snmp_ready))):
+                    or (preference == "api" and not api_ready)
+                    or (preference == "auto" and not (ssh_ready or snmp_ready or api_ready))):
                 retries = [value.get("retry_at") for value in row["state"].get("channels", {}).values()
                            if isinstance(value, dict) and value.get("retry_at")]
                 if retries:

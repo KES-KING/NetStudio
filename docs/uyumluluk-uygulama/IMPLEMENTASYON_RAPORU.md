@@ -782,7 +782,7 @@ label'ı olmaz. Audit olayları en az şunları içermelidir:
 | [ADR-COMPAT-001](adr/ADR-COMPAT-001-kanonik-profil-ve-durum-modeli.md) | Kanonik profil ID, alias ve üç eksenli durum modeli | Kabul edildi | S01 |
 | [ADR-COMPAT-002](adr/ADR-COMPAT-002-provenance-ve-last-good.md) | Capability/provenance ve alan bazlı last-good | Kabul edildi | S02/S04 |
 | [ADR-COMPAT-003](adr/ADR-COMPAT-003-snmpv2c-karar-kapisi.md) | SNMPv2c açık opt-in kabul/reddetme kararı | Karar bekliyor | S10 Definition of Ready |
-| [ADR-COMPAT-004](adr/ADR-COMPAT-004-controller-api-guven-modeli.md) | Controller/cloud API hedef ve TLS güven modeli | Karar bekliyor | S08 Definition of Ready |
+| [ADR-COMPAT-004](adr/ADR-COMPAT-004-controller-api-guven-modeli.md) | Controller/cloud API hedef ve TLS güven modeli | Kabul edildi ve S08 ile uygulandı | URL'siz hedef, TLS/CA, scope, site ve secret sınırı |
 | [ADR-COMPAT-005](adr/ADR-COMPAT-005-fiziksel-kabul-ve-yayin-kapisi.md) | Fiziksel kabul tuple'ı, expiry ve release statüsü | Kabul edildi | Bütün destek yayınları |
 | [ADR-COMPAT-006](adr/ADR-COMPAT-006-kod-sahipli-manifest.md) | İlk sürümde kod sahipli manifest | Kabul edildi | S01 |
 

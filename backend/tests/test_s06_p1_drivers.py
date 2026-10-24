@@ -55,7 +55,7 @@ def test_six_p1_profiles_are_independent_experimental_runtime_contracts():
         assert {capability.group for capability in profile.capabilities} >= {"fast", "network", "inventory"}
     for identifier in ("aruba_aoscx", "arista_eos", "mikrotik_routeros"):
         api = next(transport for transport in profiles[identifier].transports if transport.kind == "api")
-        assert api.state == "blocked" and api.decision_gate == "ADR-COMPAT-004"
+        assert api.state == "planned" and api.decision_gate == "vendor_api_adapter_not_implemented"
 
 
 @pytest.mark.parametrize("fixture", load_fixtures(), ids=lambda value: value["profile_id"])

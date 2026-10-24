@@ -1,0 +1,76 @@
+{
+  "source_permission": "project_generated_test_fixture",
+  "physical_acceptance": false,
+  "production_accepted": false,
+  "profiles": [
+    {
+      "profile_id": "cisco_meraki_ms",
+      "runtime_driver_id": "meraki_dashboard",
+      "record": {
+        "serial": "Q2XX-TEST-0001",
+        "networkId": "N_lab",
+        "model": "MS225-24P",
+        "firmware": "MS 18.211.2",
+        "ports": [{"portId": "1", "enabled": true, "status": "Connected", "speed": "1 Gbps", "trafficInKbps": {"recv": 1250, "sent": 750}, "vlan": 10, "type": "access"}],
+        "health": {"temperatureC": 42.5}
+      }
+    },
+    {
+      "profile_id": "fortinet_fortiswitch_fortilink",
+      "runtime_driver_id": "fortinet_fortilink_api",
+      "record": {
+        "serial": "S124FTEST0001",
+        "siteId": "root",
+        "model": "FortiSwitch-124F",
+        "firmwareVersion": "7.6.2",
+        "ports": [{"name": "port1", "adminUp": true, "operUp": true, "speedMbps": 1000, "rxBytes": 8589934595, "txBytes": 8589934596, "pvid": 10, "mode": "access"}]
+      }
+    },
+    {
+      "profile_id": "ubiquiti_unifi_switch",
+      "runtime_driver_id": "unifi_api",
+      "record": {
+        "id": "unifi-switch-1",
+        "siteId": "site-lab",
+        "model": "USW-Pro-24-PoE",
+        "firmwareVersion": "7.1.26",
+        "interfaces": {"ports": [{"idx": 1, "state": "UP", "connector": "RJ45", "maxSpeedMbps": 1000, "speedMbps": 1000}], "radios": []},
+        "statistics": {"cpuUtilizationPct": 12.5, "memoryUtilizationPct": 31.25, "uptimeSec": 86400, "interfaces": {"radios": []}}
+      }
+    },
+    {
+      "profile_id": "ubiquiti_unifi_no_snmp",
+      "runtime_driver_id": "unifi_no_snmp_api",
+      "record": {
+        "id": "unifi-flex-1",
+        "siteId": "site-lab",
+        "model": "USW-Flex-Mini",
+        "firmwareVersion": "2.1.0",
+        "interfaces": {"ports": [{"idx": 1, "state": "UP", "connector": "RJ45", "maxSpeedMbps": 1000, "speedMbps": 1000}], "radios": []},
+        "statistics": {"cpuUtilizationPct": 8.5, "memoryUtilizationPct": 28.0, "uptimeSec": 43200, "interfaces": {"radios": []}}
+      }
+    },
+    {
+      "profile_id": "tplink_omada_managed",
+      "runtime_driver_id": "tplink_omada_api",
+      "record": {
+        "deviceId": "omada-switch-1",
+        "siteId": "site-lab",
+        "model": "SG3428XMP",
+        "softwareVersion": "1.0.1",
+        "port_table": [{"port": "1/0/1", "adminStatus": "enabled", "linkStatus": "up", "speed": 1000, "inOctets": 8589934601, "outOctets": 8589934602, "vlan": 10, "type": "access"}]
+      }
+    },
+    {
+      "profile_id": "tplink_omada_pro",
+      "runtime_driver_id": "tplink_omada_pro_api",
+      "record": {
+        "deviceId": "omada-pro-switch-1",
+        "siteId": "site-pro",
+        "model": "S5500-48GP4XF",
+        "softwareVersion": "6.2.0",
+        "port_table": [{"port": "1/0/1", "adminStatus": "enabled", "linkStatus": "up", "speed": 1000, "inOctets": 8589934603, "outOctets": 8589934604, "vlan": 10, "type": "access"}]
+      }
+    }
+  ]
+}

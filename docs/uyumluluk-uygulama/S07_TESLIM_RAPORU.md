@@ -33,8 +33,9 @@ alanlarını yayımlar. Ortak SNMPv3 çekirdeği system, IF/IF-X, Q-BRIDGE, LLDP
 sınırlı ENTITY alanlarını sağlar. S07 SSH sözleşmesi fan/PSU/PoE/DOM alanı
 uydurmaz.
 
-FortiSwitch API transportu ADR-COMPAT-004 beklediği için `blocked` kalır.
-FortiLink-managed profil S08 kapsamındadır. Fabric Engine SSH secure mode
+S07 teslim anında FortiSwitch API transportu ADR-COMPAT-004 beklediği için
+`blocked` idi. S08 sonrasında standalone vendor API `planned`, FortiLink-managed
+profil ise ayrı controller API runtime'ıyla `experimental` durumundadır. Fabric Engine SSH secure mode
 gözlemi `snmp=blocked_by_ssh_secure_mode` transport kısıtı olarak kaydedilir;
 uygulama cihaz yapılandırmasını değiştirmez.
 

@@ -133,6 +133,10 @@ def identify_platform(outputs):
         return PlatformIdentity(
             "extreme_slxos", "extreme_slxos", "Extreme Networks", "SLX-OS"
         )
+    if re.search(r"\bEdgeSwitch\b|EdgeSwitch OS", text, re.I):
+        return PlatformIdentity(
+            "ubiquiti_edgeswitch", "ubiquiti_edgeswitch", "Ubiquiti", "EdgeSwitch OS"
+        )
     if re.search(r"\bFabric Engine\b|\bVOSS(?: Software)?\b", text, re.I):
         return PlatformIdentity(
             "extreme_fabric_engine", "extreme_vsp",

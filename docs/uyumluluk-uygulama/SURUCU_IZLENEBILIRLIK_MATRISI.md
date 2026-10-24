@@ -5,7 +5,7 @@
 | Belge kimliği | `NETSTUDIO-COMPAT-TRACE-001` |
 | Kaynak kapsam | [Switch OS / SSH / SNMP uyumluluk matrisi](../NetStudio_Switch_OS_SSH_SNMP_Uyumluluk_Matrisi.md) |
 | Başlangıç kaynak kod tabanı | `fa1a40f` |
-| Güncel uygulama | S07, 24 Ekim 2026; katalog `2026.10.24.2`, P0/P1/P2 uygulanan profil revizyonu `2` |
+| Güncel uygulama | S08, 24 Ekim 2026; katalog `2026.10.24.3`, uygulanan profil revizyonu `2` |
 | Kullanım | Her hedef profilin implementasyon, sprint ve kabul izini tutmak |
 
 ## 1. Okuma kuralı
@@ -67,12 +67,12 @@ proje-sentetik parser girdileridir.
 | `extreme_fabric_engine` | `extreme_vsp` | I+F; rev2 5520-48T/9.3.2.0 sentetik fixture; secure-mode SNMP kısıtı; `experimental` | SSH + SNMPv3 koşullu | S01, S02, S07 tamamlandı, S11 | VOSS/Fabric Engine kimliği, security mode ve exact tuple P |
 | `extreme_slxos` | Ayrı kanonik/runtime ID | I+F; rev2 SLX 9150-48Y/20.6.3b sentetik fixture; EXOS/VOSS'tan ayrı; `experimental` | SSH + SNMPv3 | S07 tamamlandı, S11 | SLX exact model/sürüm P |
 | `fortinet_fortiswitchos` | Yeni runtime ID; `fortinet` unresolved | I+F; rev2 FortiSwitch-124F/7.6.2 standalone sentetik fixture; FortiLink/FortiOS fail-closed; `experimental` | SSH + SNMPv3; API ADR-COMPAT-004 ile kapalı | S01, S02, S07 tamamlandı, S11 | Standalone mode + FortiSwitchOS exact tuple P |
-| `fortinet_fortiswitch_fortilink` | Yok | Not implemented | FortiGate/controller API + koşullu SNMP | S08, S11 | Controller/switch identity ayrımı + managed mode P |
-| `tplink_omada_managed` | Yok | Not implemented | Controller/SSH + SNMPv3 koşullu | S08, S11 | Exact JetStream/Omada model, firmware ve mode P |
-| `tplink_omada_pro` | Yok | Not implemented | Controller/SSH + SNMPv3 koşullu | S08, S11 | Pro firmware/modeli klasik Omada'dan ayrı P |
-| `ubiquiti_unifi_switch` | Yok | Not implemented | UniFi controller API + SNMP koşullu | S08, S11 | Destekli exact model/controller/firmware/mode P |
-| `ubiquiti_unifi_no_snmp` | Yok | Not implemented; istisna profili | Controller API | S08, S10, S11 | Flex/Ultra istisna kimliği ve API capability P; SNMP U |
-| `ubiquiti_edgeswitch` | Yok | Not implemented | SSH + SNMPv3 koşullu | S08, S11 | EdgeSwitch exact model/firmware P |
+| `fortinet_fortiswitch_fortilink` | `fortinet_fortilink_api` | I+F; rev2 controller/switch binding ayrımı; `experimental` | FortiGate/controller API; SNMP planlı; SSH management yok | S08 tamamlandı, S11 | Controller/switch identity ayrımı + managed mode P |
+| `tplink_omada_managed` | `tplink_omada_api` | I+F; rev2 site-scoped controller API fixture; `experimental` | Controller API; SNMP planlı; SSH management yok | S08 tamamlandı, S11 | Exact JetStream/Omada model, firmware ve mode P |
+| `tplink_omada_pro` | `tplink_omada_pro_api` | I+F; klasik Omada'dan ayrı runtime/fixture; `experimental` | Ayrı Pro controller API; SNMP planlı | S08 tamamlandı, S11 | Pro firmware/modeli klasik Omada'dan ayrı P |
+| `ubiquiti_unifi_switch` | `unifi_api` | I+F; rev2 local controller/API-key fixture; `experimental` | UniFi controller API; SNMP planlı; debug SSH management değil | S08 tamamlandı, S11 | Destekli exact model/controller/firmware/mode P |
+| `ubiquiti_unifi_no_snmp` | `unifi_no_snmp_api` | I+F; Flex/Ultra model istisnası; `experimental` | Controller API; SNMP U | S08 tamamlandı, S11 | Flex/Ultra istisna kimliği ve API capability P |
+| `ubiquiti_edgeswitch` | Aynı runtime ID | I+F; ayrı SSH grameri ve ES-48/1.10.4 sentetik fixture; `experimental` | SSH + SNMPv3 | S08 tamamlandı, S11 | EdgeSwitch exact model/firmware P |
 
 ## 5. P3 — İleri ve legacy NOS profilleri
 
@@ -93,8 +93,8 @@ proje-sentetik parser girdileridir.
 | Hedef profil | Eski/mevcut karşılık | Mevcut durum | Hedef transport | Sprint | Minimum çıkış |
 |---|---|---|---|---|---|
 | `mikrotik_swos` | Yok | Not implemented; mevcut güvenlik v2c'yi yasaklar | SNMPv2c read-only, ADR'ye bağlı | S10, S11 | ADR kabulü + security test + exact SwOS tuple P; ret halinde policy U |
-| `cisco_meraki_ms` | Yok | Not implemented | Dashboard API / koşullu SNMP | S08, S11 | API güven kapısı + exact org/network/model/firmware mode P |
-| `aruba_instant_on` | Yok | Not implemented | Local SNMP/web veya cloud API, mode'a bağlı | S08, S10, S11 | Local/cloud mode ve exact model ayrı P veya U |
+| `cisco_meraki_ms` | `meraki_dashboard` | I+F; rev2 fixed-origin Dashboard API fixture; `experimental`; SSH yok | Dashboard API; SNMP planlı | S08 tamamlandı, S11 | Exact org/network/model/firmware mode P |
+| `aruba_instant_on` | Yok | `blocked`; resmi genel yönetim API sözleşmesi kanıtlanmadı | API policy U; SNMP S10 değerlendirmesi | S08 kararı tamamlandı, S10/S11 | Resmi local/cloud API kanıtı gelirse yeni ADR/P; aksi halde U |
 | `tplink_easy_smart` | Yok | Not implemented | Genel durumda yerel SSH/SNMP yok | S10 | Model bazlı kanıt yoksa U; yanlış credential formu gösterilmez |
 | `unmanaged_switch` | Yok | Yönetim adapter'ı mümkün değil | Yok | S10 | `unsupported_by_protocol`; yalnız dolaylı LLDP/FDB görünürlüğü açıklanır |
 

@@ -20,6 +20,7 @@ def system(tmp_path, monkeypatch):
     monkeypatch.setenv("NETSTUDIO_UPDATES_CHECK_ENABLED", "0")
     monkeypatch.setenv("NETSTUDIO_ALLOWED_ORIGINS", ORIGIN)
     monkeypatch.setenv("NETSTUDIO_SSH_ALLOWED_CIDRS", "127.0.0.1/32")
+    monkeypatch.setenv("NETSTUDIO_CONTROLLER_ALLOWED_CIDRS", "127.0.0.1/32")
     monkeypatch.setenv("NETSTUDIO_EMBEDDED_WORKER", "1")
     monkeypatch.setenv("NETSTUDIO_SCHEDULER_ENABLED", "0")
     store = Store(f"sqlite+pysqlite:///{tmp_path / 'test.db'}")

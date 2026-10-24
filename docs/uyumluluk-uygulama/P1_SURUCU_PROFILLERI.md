@@ -22,8 +22,8 @@ değildir.
    SET, SNMPv1/v2c ve runtime MIB indirme yoktur. SNMP FDB, FID/VLAN ve
    bridge-port/ifIndex zinciri kanıtlanmadan kabul edilmez.
 5. AOS-CX/EOS bu sprintte SSH oturumu içindeki yapılandırılmış JSON CLI'ı
-   kullanır. REST/eAPI seçilmemiştir; API transportu ADR-COMPAT-004 tamamlanana
-   kadar `blocked` kalır.
+   kullanır. REST/eAPI seçilmemiştir; ADR-COMPAT-004 artık kabul edilmiş olsa da
+   bu profillere vendor API adaptörü uygulanmadığından transport `planned` kalır.
 
 ## Profil ve kimlik matrisi
 

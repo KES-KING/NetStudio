@@ -132,11 +132,12 @@ diagnose lldprx neighbor summary
 ```
 
 `get system status` standalone yönetim modunu kanıtlamalıdır. FortiLink-managed
-switch `fortinet_fortiswitch_fortilink` olarak tanınır ama S08 tamamlanana kadar
-toplanmaz. FortiGate/FortiOS aynı sürücü değildir. Eski `fortinet` kimliği bu üç
-olasılıktan birine otomatik çevrilmez ve yönetici çözümü ister. API transportu
-TLS/CA, token scope ve controller modeli tanımlayan ADR-COMPAT-004 tamamlanana
-kadar `blocked` kalır.
+switch `fortinet_fortiswitch_fortilink` olarak tanınır ve S08'de uygulanan ayrı
+FortiGate/controller API runtime'ına bağlanır; bu S07 SSH parser'ına düşmez.
+FortiGate/FortiOS aynı sürücü değildir. Eski `fortinet` kimliği bu üç
+olasılıktan birine otomatik çevrilmez ve yönetici çözümü ister. TLS/CA, token
+scope, site binding ve secret sınırı kabul edilen ADR-COMPAT-004 ve
+[`CONTROLLER_API_PROFILLERI.md`](CONTROLLER_API_PROFILLERI.md) içindedir.
 
 ## Capability ve hata davranışı
 
