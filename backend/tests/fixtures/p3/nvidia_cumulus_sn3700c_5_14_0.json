@@ -1,0 +1,20 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "nvidia_cumulus_linux",
+  "runtime_driver_id": "nvidia_cumulus_linux",
+  "model": "SN3700C",
+  "os_version": "5.14.0",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "nv show system --output json": "{\"os\":\"Cumulus Linux\",\"version\":\"5.14.0\",\"model\":\"SN3700C\",\"serial\":\"TEST-CUMULUS-001\"}",
+    "nv show interface --output json": "{\"interfaces\":[{\"name\":\"swp1s0\",\"type\":\"swp\",\"admin_state\":\"up\",\"oper_state\":\"up\",\"speed\":\"100000 Mbps\",\"duplex\":\"full\",\"front_panel_port\":\"1/1\",\"breakout_parent\":\"1\",\"counters\":{\"in_octets\":8589934598,\"out_octets\":8589934698,\"errors\":1,\"discards\":2,\"tx_errors\":3,\"tx_discards\":4}},{\"name\":\"bond1\",\"type\":\"bond\",\"admin_state\":\"up\",\"oper_state\":\"up\",\"speed\":\"100000 Mbps\",\"duplex\":\"full\",\"counters\":{\"in_octets\":10,\"out_octets\":20,\"errors\":0,\"discards\":0,\"tx_errors\":0,\"tx_discards\":0}},{\"name\":\"br_default\",\"type\":\"bridge\",\"admin_state\":\"up\",\"oper_state\":\"up\",\"speed\":\"unknown\",\"duplex\":\"unknown\",\"counters\":{\"in_octets\":10,\"out_octets\":20,\"errors\":0,\"discards\":0,\"tx_errors\":0,\"tx_discards\":0}},{\"name\":\"BLUE\",\"type\":\"vrf\",\"admin_state\":\"up\",\"oper_state\":\"up\",\"speed\":\"unknown\",\"duplex\":\"unknown\",\"counters\":{\"in_octets\":10,\"out_octets\":20,\"errors\":0,\"discards\":0,\"tx_errors\":0,\"tx_discards\":0}}]}",
+    "bridge -j vlan show": "10 | Users | swp1s0 | untagged\n",
+    "bridge -j fdb show": "10 | 02:00:00:00:10:10 | dynamic | swp1s0\n",
+    "ip -j neigh show": "192.0.2.10 | 02:00:00:00:10:10 | swp1s0\n",
+    "nv show interface --view=lldp --output json": "swp1s0 | 02:00:00:00:10:02 | Ethernet1 | cumulus-peer.example.test\n"
+  },
+  "expected": {"vendor": "NVIDIA Networking", "model": "SN3700C", "parsed_os_version": "5.14.0", "serial": "TEST-CUMULUS-001", "interface_name": "swp1s0"}
+}

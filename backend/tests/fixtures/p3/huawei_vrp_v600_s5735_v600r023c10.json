@@ -1,0 +1,20 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "huawei_vrp_v600",
+  "runtime_driver_id": "huawei_vrp_v600",
+  "model": "S5735-L24P4XE-A-V2",
+  "os_version": "V600R023C10",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "display version": "Huawei CloudEngine VRP V600R023C10\nDevice model : S5735-L24P4XE-A-V2\nDevice serial number : TEST-V600-001\n",
+    "display interface": "Interface : 25GE1/0/1\n Admin state : UP\n Oper state : UP\n Speed : 25000 Mbps\n Duplex : Full\n Input octets : 8589934595\n Output octets : 8589934695\n Input errors : 1\n Input discards : 2\n Output errors : 3\n Output discards : 4\n",
+    "display vlan": "10 | Users | 25GE1/0/1 | untagged\n",
+    "display mac-address": "10 | 02:00:00:00:10:10 | dynamic | 25GE1/0/1\n",
+    "display arp all": "192.0.2.10 | 02:00:00:00:10:10 | 25GE1/0/1\n",
+    "display lldp neighbor brief": "25GE1/0/1 | 02:00:00:00:10:02 | Ethernet1 | v600-peer.example.test\n"
+  },
+  "expected": {"vendor": "Huawei", "model": "S5735-L24P4XE-A-V2", "parsed_os_version": "V600R023C10", "serial": "TEST-V600-001", "interface_name": "25GE1/0/1"}
+}

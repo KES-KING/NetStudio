@@ -1,0 +1,21 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "sonic_nos",
+  "runtime_driver_id": "sonic_nos",
+  "model": "x86_64-acme_switch-r0",
+  "os_version": "202405",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "show version": "Distribution : Community SONiC\nSONiC Software Version : 202405\nPlatform : x86_64-acme_switch-r0\nSerial Number : TEST-SONIC-001\nDocker images : sonic-mgmt-framework:202405\n",
+    "show interfaces status": "Ethernet0 | up | up | 100000 | full\n",
+    "show interfaces counters": "Ethernet0 | 8589934600 | 8589934700 | 1 | 2 | 3 | 4\n",
+    "show vlan brief": "10 | Users | Ethernet0 | untagged\n",
+    "show mac": "10 | 02:00:00:00:10:10 | dynamic | Ethernet0\n",
+    "show arp": "192.0.2.10 | 02:00:00:00:10:10 | Ethernet0\n",
+    "show lldp table": "Ethernet0 | 02:00:00:00:10:02 | Ethernet4 | sonic-peer.example.test\n"
+  },
+  "expected": {"vendor": "Unknown", "model": "x86_64-acme_switch-r0", "parsed_os_version": "202405", "serial": "TEST-SONIC-001", "interface_name": "Ethernet0"}
+}

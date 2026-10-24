@@ -19,6 +19,7 @@ from .database import now
 from .driver_catalog import DRIVERS, GROUPS, SUPPORTED, VERSION
 from .p1_parsers import P1_DRIVERS, parse_p1
 from .p2_parsers import P2_DRIVERS, parse_p2
+from .p3_parsers import P3_DRIVERS, parse_p3
 from .ssh import ConnectionPolicyError, connect
 from .structured_parsers import parse_structured
 from .fixture_drivers import DeviceDriver, FixtureDriver, GenericReadOnlyDriver, UnsupportedCapability
@@ -101,14 +102,22 @@ class PlatformIdentity:
 
 AUTO_IDENTITY_PROBES = (
     "show version", "display version", "show sys-info", "get system status",
-    "/system resource print without-paging",
+    "/system resource print without-paging", "nv show system --output json",
 )
 
 
 def identify_platform(outputs):
     text = "\n".join(outputs.values())
-    if re.search(r"Dell(?: EMC)? Enterprise SONiC|SONiC Software Version", text, re.I):
-        return PlatformIdentity("dell_sonic", None, "Dell Technologies", "Enterprise SONiC")
+    if re.search(r"Dell(?: EMC)? Enterprise SONiC|Distribution\s*:\s*Dell Enterprise SONiC", text, re.I):
+        runtime = "dell_sonic" if re.search(
+            r"SONiC Software Version\s*:\s*\S+", text, re.I
+        ) and re.search(r"Distribution\s*:\s*Dell Enterprise SONiC", text, re.I) else None
+        return PlatformIdentity("dell_sonic", runtime, "Dell Technologies", "Enterprise SONiC")
+    if re.search(r"SONiC Software Version\s*:\s*\S+", text, re.I):
+        runtime = "sonic_nos" if re.search(r"^Distribution\s*:\s*\S.+$", text, re.I | re.M) and re.search(
+            r"^Docker images\s*:\s*\S.+$", text, re.I | re.M
+        ) else None
+        return PlatformIdentity("sonic_nos", runtime, "Unknown", "SONiC")
     if re.search(r"SmartFabric\s+OS10|OS10 Enterprise Edition|Dell EMC Networking OS10", text, re.I):
         return PlatformIdentity("dell_os10", "dell_os10", "Dell Technologies", "SmartFabric OS10")
     if re.search(r"Dell(?: EMC)? Networking OS9|\bFTOS\b", text, re.I):
@@ -160,27 +169,42 @@ def identify_platform(outputs):
     if re.search(r"H3C\s+Comware Software,\s*Version\s+7\.", text, re.I):
         return PlatformIdentity("h3c_comware7", "h3c_comware7", "H3C", "Comware V7")
     if re.search(r"H3C\s+Comware Software,\s*Version\s+5\.", text, re.I):
-        return PlatformIdentity("h3c_comware5", None, "H3C", "Comware V5")
+        return PlatformIdentity("h3c_comware5", "h3c_comware5", "H3C", "Comware V5")
     if re.search(r"H3C\s+Comware Software,\s*Version\s+9\.", text, re.I):
-        return PlatformIdentity("h3c_comware9", None, "H3C", "Comware V9")
+        return PlatformIdentity("h3c_comware9", "h3c_comware9", "H3C", "Comware V9")
     if re.search(r"^\s*platform\s*:\s*MikroTik\s*$", text, re.I | re.M) and re.search(
         r"^\s*version\s*:\s*(?:6|7)\.", text, re.I | re.M
     ):
         return PlatformIdentity("mikrotik_routeros", "mikrotik_routeros", "MikroTik", "RouterOS")
     if re.search(r"IOS[ -]?XE|CAT9K_IOSXE", text, re.I):
         return PlatformIdentity("cisco_iosxe", "cisco_iosxe", "Cisco", "IOS-XE")
-    if re.search(r"VRP[^\n]{0,100}\bV600\b|CloudEngine[^\n]{0,100}\bV600\b", text, re.I):
-        return PlatformIdentity("huawei_vrp_v600", None, "Huawei", "VRP V600")
+    if re.search(r"VRP[^\n]{0,100}\bV600\w*|CloudEngine[^\n]{0,100}\bV600\w*", text, re.I):
+        return PlatformIdentity("huawei_vrp_v600", "huawei_vrp_v600", "Huawei", "VRP V600")
     if re.search(r"VRP\s*\(R\)|Huawei Versatile Routing", text, re.I):
         if not re.search(r"\bV200\w*\b|Version\s+5\.\d+", text, re.I):
             raise ConnectionPolicyError("collector_platform_unsupported")
         return PlatformIdentity("huawei_vrp_v200", "huawei_vrp", "Huawei", "VRP V200")
     if re.search(r"Junos OS Evolved|JUNOS Evolved", text, re.I):
-        return PlatformIdentity("juniper_junos_evolved", None, "Juniper", "Junos OS Evolved")
+        return PlatformIdentity("juniper_junos_evolved", "juniper_junos_evolved", "Juniper", "Junos OS Evolved")
     if re.search(r"Junos:|JUNOS|<junos-version>", text):
         return PlatformIdentity("juniper_junos", "juniper_junos", "Juniper", "Junos OS")
     if re.search(r"NX-OS|NXOS|nxos_ver_str", text):
         return PlatformIdentity("cisco_nxos", "cisco_nxos", "Cisco", "NX-OS")
+    if re.search(r"\bCumulus Linux\b", text, re.I):
+        return PlatformIdentity(
+            "nvidia_cumulus_linux", "nvidia_cumulus_linux",
+            "NVIDIA Networking", "Cumulus Linux",
+        )
+    if re.search(r"\bOnyx version\s*:\s*\S+|Mellanox Onyx", text, re.I):
+        return PlatformIdentity(
+            "nvidia_onyx", "nvidia_onyx", "NVIDIA Networking", "Onyx"
+        )
+    if re.search(r"System Description\s*:\s*CBS\d", text, re.I) and re.search(
+        r"Firmware Version\s*:\s*\S+", text, re.I
+    ):
+        return PlatformIdentity(
+            "cisco_business", "cisco_business", "Cisco", "Cisco Business firmware"
+        )
     if re.search(r"Cisco IOS", text, re.I):
         return PlatformIdentity("cisco_ios", "cisco_ios", "Cisco", "IOS")
     raise ConnectionPolicyError("collector_platform_unsupported")
@@ -315,6 +339,8 @@ async def collect(store, vault, device, groups=GROUPS, authorize=lambda: None):
         result = parse_p1(device, driver, outputs, unavailable, requested)
     elif driver in P2_DRIVERS:
         result = parse_p2(device, driver, outputs, unavailable, requested)
+    elif driver in P3_DRIVERS:
+        result = parse_p3(device, driver, outputs, unavailable, requested)
     elif driver in {"juniper_junos", "cisco_nxos"}:
         result = parse_structured(device, driver, outputs, unavailable, requested)
     else:

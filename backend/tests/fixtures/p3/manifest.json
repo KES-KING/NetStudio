@@ -1,0 +1,18 @@
+{
+  "fixture_schema": 1,
+  "wave": "P3",
+  "evidence_kind": "project_synthetic_sanitized",
+  "physical_acceptance": false,
+  "production_accepted": false,
+  "files": [
+    {"path": "cisco_business_cbs350_3_4_0_17.json", "sha256": "a63e25682762d67360b9bd0ec5fb26c8659aa40097ef9cd36b1747575d539f42"},
+    {"path": "dell_sonic_s5248f_4_4_0.json", "sha256": "1c18adb749f344463a536bc519589b60e597019cb4338a3cedfead6b4e173326"},
+    {"path": "h3c_comware5_s5500_5_20_r2222p02.json", "sha256": "ff78f89e79daddcbd7779b9f249479e4b1371eed9acb5644a0c04bd9a160f36c"},
+    {"path": "h3c_comware9_s6520x_9_1_r9126p01.json", "sha256": "e17219fdce879a75cc40abbe164cf7f38b1ce666e4e801b2af12c5f479d09d08"},
+    {"path": "huawei_vrp_v600_s5735_v600r023c10.json", "sha256": "7b097caca33b3b195c4a1c5b34c1b21d51fee2dd3e8c1ce036d64392ef4a653d"},
+    {"path": "juniper_junos_evolved_qfx5130_23_4r2.json", "sha256": "00f3594ceff8a7ced6efc10675d5361d1a5c1dbe1b0d37d4d1e5d27f66d27d0d"},
+    {"path": "nvidia_cumulus_sn3700c_5_14_0.json", "sha256": "b9df21fb44730e7679ece7434acb013c5ac858d75091cca63777e33dd226377a"},
+    {"path": "nvidia_onyx_sn2700_3_10_4404.json", "sha256": "337ca4672c3676647823a001b4089334bced2ccd0915da0d678f7a1cc8026ed8"},
+    {"path": "sonic_nos_community_202405.json", "sha256": "e811b2c87506d8a4f59807d1f4acc66d28f70ad76c209cbc0994ae5e6b68c98e"}
+  ]
+}

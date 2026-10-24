@@ -1,0 +1,21 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "dell_sonic",
+  "runtime_driver_id": "dell_sonic",
+  "model": "S5248F-ON",
+  "os_version": "4.4.0",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "show version": "Dell EMC Enterprise SONiC\nDistribution : Dell Enterprise SONiC\nSONiC Software Version : 4.4.0\nPlatform : S5248F-ON\nService Tag : TEST-DSONIC-001\nDocker images : dell-sonic:4.4.0\n",
+    "show interfaces status": "Eth1/1 | up | up | 25000 | full\n",
+    "show interfaces counters": "Eth1/1 | 8589934597 | 8589934697 | 1 | 2 | 3 | 4\n",
+    "show vlan brief": "10 | Users | Eth1/1 | untagged\n",
+    "show mac": "10 | 02:00:00:00:10:10 | dynamic | Eth1/1\n",
+    "show arp": "192.0.2.10 | 02:00:00:00:10:10 | Eth1/1\n",
+    "show lldp table": "Eth1/1 | 02:00:00:00:10:02 | Ethernet1 | dell-sonic-peer.example.test\n"
+  },
+  "expected": {"vendor": "Dell Technologies", "model": "S5248F-ON", "parsed_os_version": "4.4.0", "serial": "TEST-DSONIC-001", "interface_name": "Eth1/1"}
+}

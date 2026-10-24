@@ -15,28 +15,37 @@ from .driver_manifests import (
     arista_eos as eos_manifest,
     aruba_aoscx as aoscx_manifest,
     aruba_aoss as aoss_manifest,
+    cisco_business as cisco_business_manifest,
     cisco_ios as ios_manifest,
     cisco_iosxe as iosxe_manifest,
     cisco_nxos as nxos_manifest,
     dell_os10 as dell_os10_manifest,
     dell_os6 as dell_os6_manifest,
     dell_os9 as dell_os9_manifest,
+    dell_sonic as dell_sonic_manifest,
     extreme_exos as extreme_exos_manifest,
     extreme_fabric_engine as extreme_fabric_engine_manifest,
     extreme_slxos as extreme_slxos_manifest,
     fortinet_fortiswitchos as fortiswitchos_manifest,
     h3c_comware7 as h3c_comware7_manifest,
+    h3c_comware5 as h3c_comware5_manifest,
+    h3c_comware9 as h3c_comware9_manifest,
     hpe_comware as hpe_comware_manifest,
     huawei_vrp_v200 as vrp_v200_manifest,
+    huawei_vrp_v600 as vrp_v600_manifest,
     juniper_junos as junos_manifest,
+    juniper_junos_evolved as junos_evolved_manifest,
     linux_ssh as linux_manifest,
     mikrotik_routeros as routeros_manifest,
+    nvidia_cumulus_linux as cumulus_manifest,
+    nvidia_onyx as onyx_manifest,
+    sonic_nos as sonic_manifest,
     ubiquiti_edgeswitch as edgeswitch_manifest,
 )
 
 
-DRIVER_VERSION = "2026.10.24.3"
-CATALOG_REVISION = "2026.10.24.3"
+DRIVER_VERSION = "2026.10.24.4"
+CATALOG_REVISION = "2026.10.24.4"
 NTC_VERSION = "9.3.0"
 GROUPS = ("fast", "health", "network", "inventory")
 DATA_CONTRACT = {
@@ -80,6 +89,15 @@ REFERENCES = {
     "unifi_api": "https://developer.ui.com/network/v9.4.17",
     "fortilink_api": "https://docs.fortinet.com/document/fortigate/7.6.2/cli-reference/308952696/config-switch-controller-managed-switch",
     "omada_api": "https://www.tp-link.com/us/support/download/omada-software-controller/",
+    "comware5": "https://www.h3c.com/en/Support/Resource_Center/EN/Switches/Catalog/S5500/S5500-EI/Technical_Documents/Reference_Guides/Command_References/H3C_S5500-EI_CR-Release_2208/",
+    "comware9": "https://www.h3c.com/en/Support/Resource_Center/EN/Home/Public/00-Public/Technical_Documents/Reference_Guides/Command_References/H3C_CR-24948/03/202502/2364078_294551_0.htm",
+    "vrp_v600": "https://info.support.huawei.com/info-finder/vue/en/enterprise/openSearch?keyword=CloudEngine%20V600R023",
+    "junos_evolved": "https://www.juniper.net/documentation/us/en/software/junos/overview-evo/topics/concept/evo-how-it-differs-from-junos.html",
+    "dell_sonic": "https://infohub.delltechnologies.com/en-us/l/enterprise-sonic-distribution-by-dell-technologies-lifecycle-management/management-framework-cli/",
+    "cumulus": "https://docs.nvidia.com/networking-ethernet-software/nvue-reference/Show-Commands/Interface/",
+    "onyx": "https://docs.nvidia.com/networking/display/onyxv3104006/commands",
+    "sonic": "https://github.com/sonic-net/SONiC/blob/master/doc/user-manual/SONiC-User-Manual.md",
+    "cisco_business": "https://www.cisco.com/c/en/us/td/docs/switches/lan/csbms/CBS_250_350/CLI/cbs-350-cli-/ethernet-configuration-commands.html",
 }
 IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
 
@@ -241,6 +259,15 @@ EXTREME_FABRIC_ENGINE = commands(
 EXTREME_SLXOS = commands("extreme_slxos", extreme_slxos_manifest.COMMAND_ROWS)
 FORTISWITCHOS = commands("fortiswitchos", fortiswitchos_manifest.COMMAND_ROWS)
 EDGESWITCH = commands("edgeswitch", edgeswitch_manifest.COMMAND_ROWS)
+H3C_COMWARE5 = commands("comware5", h3c_comware5_manifest.COMMAND_ROWS)
+H3C_COMWARE9 = commands("comware9", h3c_comware9_manifest.COMMAND_ROWS)
+VRP_V600 = commands("vrp_v600", vrp_v600_manifest.COMMAND_ROWS)
+JUNOS_EVOLVED = commands("junos_evolved", junos_evolved_manifest.COMMAND_ROWS)
+DELL_SONIC = commands("dell_sonic", dell_sonic_manifest.COMMAND_ROWS)
+CUMULUS = commands("cumulus", cumulus_manifest.COMMAND_ROWS)
+ONYX = commands("onyx", onyx_manifest.COMMAND_ROWS)
+SONIC = commands("sonic", sonic_manifest.COMMAND_ROWS)
+CISCO_BUSINESS = commands("cisco_business", cisco_business_manifest.COMMAND_ROWS)
 
 P0_CAPABILITIES = {
     "cisco_ios": ios_manifest.CAPABILITIES,
@@ -268,6 +295,18 @@ P2_CLI_CAPABILITIES = {
     "extreme_slxos": extreme_slxos_manifest.CAPABILITIES,
     "fortinet_fortiswitchos": fortiswitchos_manifest.CAPABILITIES,
     "ubiquiti_edgeswitch": edgeswitch_manifest.CAPABILITIES,
+}
+
+P3_CAPABILITIES = {
+    "h3c_comware5": h3c_comware5_manifest.CAPABILITIES,
+    "h3c_comware9": h3c_comware9_manifest.CAPABILITIES,
+    "huawei_vrp_v600": vrp_v600_manifest.CAPABILITIES,
+    "juniper_junos_evolved": junos_evolved_manifest.CAPABILITIES,
+    "dell_sonic": dell_sonic_manifest.CAPABILITIES,
+    "nvidia_cumulus_linux": cumulus_manifest.CAPABILITIES,
+    "nvidia_onyx": onyx_manifest.CAPABILITIES,
+    "sonic_nos": sonic_manifest.CAPABILITIES,
+    "cisco_business": cisco_business_manifest.CAPABILITIES,
 }
 
 
@@ -305,13 +344,25 @@ def _transport(
 
 
 SSH_IMPLEMENTED = _transport("ssh", "implemented", versions=("ssh2",))
+SSH_LEGACY_DEVICE_OPT_IN = _transport(
+    "ssh", "implemented", versions=("ssh2",),
+    decision_gate="legacy_ssh_device_opt_in_required",
+)
 SNMP_IMPLEMENTED = _transport("snmp", "implemented", versions=("v3_authpriv",))
+SNMP_IMPLEMENTED_MODEL_CONDITIONAL = _transport(
+    "snmp", "implemented", versions=("v3_authpriv",),
+    decision_gate="exact_model_firmware_snmpv3_evidence_required",
+)
 SNMP_IMPLEMENTED_FABRIC_CONDITIONAL = _transport(
     "snmp", "implemented", versions=("v3_authpriv",),
     decision_gate="fabric_engine_ssh_secure_mode_block_snmp",
 )
 SSH_PLANNED = _transport("ssh", "planned", versions=("ssh2",))
 SNMP_PLANNED = _transport("snmp", "planned", versions=("v3_authpriv",))
+SNMP_DISTRIBUTION_PLANNED = _transport(
+    "snmp", "planned", versions=("v3_authpriv",),
+    decision_gate="distribution_snmpv3_evidence_required",
+)
 API_PLANNED = _transport("api", "planned", decision_gate="vendor_api_adapter_not_implemented")
 API_IMPLEMENTED = _transport("api", "implemented", versions=("https_json",))
 API_VENDOR_BLOCKED = _transport(
@@ -665,15 +716,87 @@ PROFILES = (
         tested_versions=("ES-48-500W / EdgeSwitch 1.10.4 project-synthetic fixture",),
         profile_revision=2,
     ),
-    _profile("h3c_comware5", "H3C Comware V5", "P3", _identity("H3C", "Comware V5"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("h3c_comware9", "H3C Comware V9", "P3", _identity("H3C", "Comware V9"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("huawei_vrp_v600", "Huawei VRP V600", "P3", _identity("Huawei", "VRP V600"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("juniper_junos_evolved", "Juniper Junos OS Evolved", "P3", _identity("Juniper", "Junos OS Evolved"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("dell_sonic", "Dell Enterprise SONiC", "P3", _identity("Dell Technologies", "Enterprise SONiC"), (SSH_PLANNED, SNMP_PLANNED, API_PLANNED)),
-    _profile("nvidia_cumulus_linux", "NVIDIA Cumulus Linux", "P3", _identity("NVIDIA Networking", "Cumulus Linux"), (SSH_PLANNED, SNMP_PLANNED, API_PLANNED)),
-    _profile("nvidia_onyx", "NVIDIA Onyx", "P3", _identity("NVIDIA Networking", "Onyx"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("sonic_nos", "SONiC NOS", "P3", _identity("Multiple", "SONiC"), (SSH_PLANNED, SNMP_PLANNED, API_PLANNED)),
-    _profile("cisco_business", "Cisco Business Switch", "P3", _identity("Cisco", "Cisco Business firmware"), (SSH_PLANNED, SNMP_PLANNED)),
+    _profile(
+        "h3c_comware5", "H3C Comware V5", "P3",
+        _identity("H3C", "Comware V5", versions=("5.*",)),
+        (SSH_LEGACY_DEVICE_OPT_IN, SNMP_IMPLEMENTED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="h3c_comware5", adapter="ssh_cli_legacy_opt_in",
+        command_plan=H3C_COMWARE5, capability_groups=P3_CAPABILITIES["h3c_comware5"],
+        tested_versions=("S5500-28C-EI / Comware 5.20 R2222P02 project-synthetic fixture",), profile_revision=2,
+    ),
+    _profile(
+        "h3c_comware9", "H3C Comware V9", "P3",
+        _identity("H3C", "Comware V9", versions=("9.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="h3c_comware9", adapter="ssh_cli",
+        command_plan=H3C_COMWARE9, capability_groups=P3_CAPABILITIES["h3c_comware9"],
+        tested_versions=("S6520X-30HC-HI / Comware 9.1 R9126P01 project-synthetic fixture",), profile_revision=2,
+    ),
+    _profile(
+        "huawei_vrp_v600", "Huawei VRP V600", "P3",
+        _identity("Huawei", "VRP V600", models=("S57*-V2",), versions=("V600R*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="huawei_vrp_v600", adapter="ssh_cli",
+        command_plan=VRP_V600, capability_groups=P3_CAPABILITIES["huawei_vrp_v600"],
+        tested_versions=("S5735-L24P4XE-A-V2 / V600R023C10 project-synthetic fixture",), profile_revision=2,
+    ),
+    _profile(
+        "juniper_junos_evolved", "Juniper Junos OS Evolved", "P3",
+        _identity("Juniper", "Junos OS Evolved", versions=("23.*-EVO",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="juniper_junos_evolved", adapter="ssh_xml_evolved",
+        command_plan=JUNOS_EVOLVED, capability_groups=P3_CAPABILITIES["juniper_junos_evolved"],
+        tested_versions=("QFX5130-48C / 23.4R2-EVO project-synthetic XML fixture",), profile_revision=2,
+    ),
+    _profile(
+        "dell_sonic", "Dell Enterprise SONiC", "P3",
+        _identity("Dell Technologies", "Enterprise SONiC", versions=("4.*",)),
+        (SSH_IMPLEMENTED, SNMP_DISTRIBUTION_PLANNED, API_PLANNED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="dell_sonic", adapter="ssh_cli_sonic_dell",
+        command_plan=DELL_SONIC, capability_groups=P3_CAPABILITIES["dell_sonic"],
+        tested_versions=("S5248F-ON / Dell Enterprise SONiC 4.4.0 project-synthetic fixture",), profile_revision=2,
+    ),
+    _profile(
+        "nvidia_cumulus_linux", "NVIDIA Cumulus Linux", "P3",
+        _identity("NVIDIA Networking", "Cumulus Linux", versions=("5.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED, API_PLANNED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="nvidia_cumulus_linux", adapter="ssh_nvue_json",
+        command_plan=CUMULUS, capability_groups=P3_CAPABILITIES["nvidia_cumulus_linux"],
+        tested_versions=("SN3700C / Cumulus Linux 5.14.0 project-synthetic NVUE fixture",), profile_revision=2,
+    ),
+    _profile(
+        "nvidia_onyx", "NVIDIA Onyx", "P3",
+        _identity("NVIDIA Networking", "Onyx", versions=("3.10.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="nvidia_onyx", adapter="ssh_cli",
+        command_plan=ONYX, capability_groups=P3_CAPABILITIES["nvidia_onyx"],
+        tested_versions=("SN2700 / Onyx 3.10.4404 project-synthetic fixture",), profile_revision=2,
+    ),
+    _profile(
+        "sonic_nos", "SONiC NOS", "P3",
+        _identity("Unknown", "SONiC", versions=("distribution+image required",)),
+        (SSH_IMPLEMENTED, SNMP_DISTRIBUTION_PLANNED, API_PLANNED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="sonic_nos", adapter="ssh_cli_sonic_distribution_qualified",
+        command_plan=SONIC, capability_groups=P3_CAPABILITIES["sonic_nos"],
+        tested_versions=("community SONiC 202405 / image tuple project-synthetic fixture",), profile_revision=2,
+    ),
+    _profile(
+        "cisco_business", "Cisco Business Switch", "P3",
+        _identity("Cisco", "Cisco Business firmware", models=("CBS*",), versions=("3.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED_MODEL_CONDITIONAL), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="cisco_business", adapter="ssh_cli_cisco_business",
+        command_plan=CISCO_BUSINESS, capability_groups=P3_CAPABILITIES["cisco_business"],
+        tested_versions=("CBS350-24T-4G / 3.4.0.17 project-synthetic fixture",), profile_revision=2,
+    ),
     _profile("mikrotik_swos", "MikroTik SwOS", "P4", _identity("MikroTik", "SwOS"), (SSH_UNSUPPORTED, SNMP_V2C_BLOCKED), implementation="blocked"),
     _profile(
         "cisco_meraki_ms", "Cisco Meraki MS", "P4",

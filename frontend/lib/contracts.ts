@@ -51,7 +51,16 @@ export type DeviceCollector =
   | "unifi_no_snmp_api"
   | "tplink_omada_api"
   | "tplink_omada_pro_api"
-  | "ubiquiti_edgeswitch";
+  | "ubiquiti_edgeswitch"
+  | "h3c_comware5"
+  | "h3c_comware9"
+  | "huawei_vrp_v600"
+  | "juniper_junos_evolved"
+  | "dell_sonic"
+  | "nvidia_cumulus_linux"
+  | "nvidia_onyx"
+  | "sonic_nos"
+  | "cisco_business";
 export type DeviceManagementMode =
   | "standalone"
   | "controller_managed"

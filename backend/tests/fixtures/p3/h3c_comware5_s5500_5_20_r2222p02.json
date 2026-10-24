@@ -1,0 +1,20 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "h3c_comware5",
+  "runtime_driver_id": "h3c_comware5",
+  "model": "S5500-28C-EI",
+  "os_version": "5.20 R2222P02",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "display version": "H3C Comware Software, Version 5.20, Release R2222P02\nDevice model : S5500-28C-EI\nDevice serial number : TEST-CW5-001\n",
+    "display interface": "GigabitEthernet1/0/1 current state: UP\n Line protocol current state: UP\n Speed : 1000 Mbps\n Duplex : Full\n Input bytes : 8589934593\n Output bytes : 8589934693\n Input errors : 1\n Input discards : 2\n Output errors : 3\n Output discards : 4\n",
+    "display vlan all": "10 | Users | GigabitEthernet1/0/1 | untagged\n",
+    "display mac-address": "10 | 02:00:00:00:10:10 | dynamic | GigabitEthernet1/0/1\n",
+    "display arp": "192.0.2.10 | 02:00:00:00:10:10 | GigabitEthernet1/0/1\n",
+    "display lldp neighbor-information": "GigabitEthernet1/0/1 | 02:00:00:00:10:02 | Ethernet1 | cw5-peer.example.test\n"
+  },
+  "expected": {"vendor": "H3C", "model": "S5500-28C-EI", "parsed_os_version": "5.20 R2222P02", "serial": "TEST-CW5-001", "interface_name": "GigabitEthernet1/0/1"}
+}

@@ -1,0 +1,21 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "cisco_business",
+  "runtime_driver_id": "cisco_business",
+  "model": "CBS350-24T-4G",
+  "os_version": "3.4.0.17",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "show version": "Cisco Business Switch\nSystem Description : CBS350-24T-4G\nFirmware Version : 3.4.0.17\nSerial Number : TEST-CBS-001\n",
+    "show interfaces status": "gi1/0/1 | up | up | 1000 | full\n",
+    "show interfaces counters": "gi1/0/1 | 8589934601 | 8589934701 | 1 | 2 | 3 | 4\n",
+    "show vlan": "10 | Users | gi1/0/1 | untagged\n",
+    "show mac address-table": "10 | 02:00:00:00:10:10 | dynamic | gi1/0/1\n",
+    "show arp": "192.0.2.10 | 02:00:00:00:10:10 | gi1/0/1\n",
+    "show lldp neighbors": "gi1/0/1 | 02:00:00:00:10:02 | gi1/0/2 | cbs-peer.example.test\n"
+  },
+  "expected": {"vendor": "Cisco", "model": "CBS350-24T-4G", "parsed_os_version": "3.4.0.17", "serial": "TEST-CBS-001", "interface_name": "gi1/0/1"}
+}

@@ -92,6 +92,7 @@ def junos_interfaces(root):
             kind = "port_channel" if name.startswith(("ae", "reth")) else "loopback" if name.startswith("lo") else "svi" if name.startswith(("irb", "vlan")) else "subinterface" if "." in name else "ethernet"
             sample = dict(admin_up=state(text(node, "admin-status")), oper_up=state(text(node, "oper-status")),
                 capacity_bps=speed(text(node, "speed")), vrf_known=False, counter_epoch_known=False,
+                counter_bits=64,
                 in_octets=number(text(node, "traffic-statistics/input-bytes")),
                 out_octets=number(text(node, "traffic-statistics/output-bytes")),
                 errors=number(text(node, "input-error-list/input-errors")),
@@ -311,10 +312,32 @@ def merge(device, driver, entries):
             speed_mbps=observation(sample.capacity_bps / 1_000_000 if sample.capacity_bps else None)))
         samples.append(sample)
         if entry["physical"]:
-            port_id = f"{device.id}:{driver}:port:{suffix}"
+            # A Linux kernel interface, front-panel identity and breakout lane
+            # are different namespaces. Profiles which can prove that mapping
+            # provide explicit physical keys; traditional CLIs keep the
+            # historical name-derived behavior.
+            physical_key = entry.get("physical_port_key", name).lower()
+            port_suffix = sha256(physical_key.encode()).hexdigest()[:20]
+            port_id = f"{device.id}:{driver}:port:{port_suffix}"
             group, _, label = name.rpartition("/")
-            ports.append(PhysicalPort(id=port_id, component_id=chassis, label=label, group=group or "Interfaces",
-                                      ordinal=len(ports) + 1, connector="unknown"))
+            parent_id = None
+            if parent_key := entry.get("parent_port_key"):
+                parent_suffix = sha256(parent_key.lower().encode()).hexdigest()[:20]
+                parent_id = f"{device.id}:{driver}:port:{parent_suffix}"
+                if all(port.id != parent_id for port in ports):
+                    ports.append(PhysicalPort(
+                        id=parent_id, component_id=chassis,
+                        label=entry.get("parent_port_label", parent_key),
+                        group=entry.get("physical_port_group", "Front panel"),
+                        ordinal=len(ports) + 1, connector="unknown",
+                    ))
+            ports.append(PhysicalPort(
+                id=port_id, component_id=chassis,
+                label=entry.get("physical_port_label", label),
+                group=entry.get("physical_port_group", group or "Interfaces"),
+                ordinal=len(ports) + 1, connector="unknown",
+                parent_port_id=parent_id,
+            ))
             bindings.append(PortBinding(id=port_id + ":binding", physical_port_id=port_id,
                                         interface_id=identifier, binding_quality="explicit"))
     updates = {"interfaces": interfaces}

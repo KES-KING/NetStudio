@@ -657,6 +657,20 @@ README ekran görüntüleri yenilenmemiştir.
 `linux_ssh` fallback'i “tam NOS desteği” olarak sunulmaz. Her ileri/legacy profil
 kesin dağıtım/sürüm kanıtına bağlıdır.
 
+### Uygulama durumu
+
+**Tamamlandı — 24 Ekim 2026.** Dokuz P3 profili ayrı runtime, manifest,
+kimlik/interface grameri ve SHA-256 sabitli proje-sentetik fixture ile
+`fixture_verified/experimental` olarak uygulanmıştır. Comware V5 legacy SSH
+fallback'i cihaz opt-in'ine bağlıdır; VRP V600 ve Junos Evolved klasik ailelere
+alias olmaz; Dell/genel SONiC distribution sınırı fail-closed'dur. Cumulus NVUE
+mapper'ı kernel interface, front-panel ve breakout kimliklerini ayırır; bond,
+bridge ve VRF fiziksel port sayılmaz. Ayrıntılar
+[`S09_TESLIM_RAPORU.md`](S09_TESLIM_RAPORU.md) ve
+[`P3_SURUCU_PROFILLERI.md`](P3_SURUCU_PROFILLERI.md) içindedir. Fiziksel cihaz,
+transport laboratuvarı ve production kabulü yapılmamıştır. `Ana tasarım etkisi:
+yok`; README ekran görüntüleri yenilenmemiştir.
+
 ---
 
 ## S10 — P4: SNMPv2c opt-in ve protokol kapsamı dışı cihazlar

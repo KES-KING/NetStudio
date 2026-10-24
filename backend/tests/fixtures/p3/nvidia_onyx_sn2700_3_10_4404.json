@@ -1,0 +1,20 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "nvidia_onyx",
+  "runtime_driver_id": "nvidia_onyx",
+  "model": "SN2700",
+  "os_version": "3.10.4404",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "show version": "Mellanox Onyx\nOnyx version : 3.10.4404\nSystem model : SN2700\nSystem serial number : TEST-ONYX-001\n",
+    "show interfaces ethernet": "Interface ethernet 1/1\n Admin state : up\n Operational state : up\n Speed : 100000 Mbps\n Duplex : full\n Rx bytes : 8589934599\n Tx bytes : 8589934699\n Rx errors : 1\n Rx discards : 2\n Tx errors : 3\n Tx discards : 4\n",
+    "show vlan": "10 | Users | Eth1/1 | untagged\n",
+    "show mac-address-table": "10 | 02:00:00:00:10:10 | dynamic | Eth1/1\n",
+    "show ip arp": "192.0.2.10 | 02:00:00:00:10:10 | Eth1/1\n",
+    "show lldp remote": "Eth1/1 | 02:00:00:00:10:02 | Ethernet1 | onyx-peer.example.test\n"
+  },
+  "expected": {"vendor": "NVIDIA Networking", "model": "SN2700", "parsed_os_version": "3.10.4404", "serial": "TEST-ONYX-001", "interface_name": "Eth1/1"}
+}

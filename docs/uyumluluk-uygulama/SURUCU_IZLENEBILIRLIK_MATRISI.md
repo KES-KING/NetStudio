@@ -5,7 +5,7 @@
 | Belge kimliği | `NETSTUDIO-COMPAT-TRACE-001` |
 | Kaynak kapsam | [Switch OS / SSH / SNMP uyumluluk matrisi](../NetStudio_Switch_OS_SSH_SNMP_Uyumluluk_Matrisi.md) |
 | Başlangıç kaynak kod tabanı | `fa1a40f` |
-| Güncel uygulama | S08, 24 Ekim 2026; katalog `2026.10.24.3`, uygulanan profil revizyonu `2` |
+| Güncel uygulama | S09, 24 Ekim 2026; katalog `2026.10.24.4`, uygulanan profil revizyonu `2` |
 | Kullanım | Her hedef profilin implementasyon, sprint ve kabul izini tutmak |
 
 ## 1. Okuma kuralı
@@ -78,15 +78,15 @@ proje-sentetik parser girdileridir.
 
 | Hedef profil | Eski/mevcut karşılık | Mevcut durum | Hedef transport | Sprint | Minimum destek çıkışı |
 |---|---|---|---|---|---|
-| `h3c_comware5` | Ortak planned Comware dışında ayrı ID yok | Not implemented | Legacy SSH koşullu + SNMPv3 | S09, S11 | Legacy güven izni + exact V5 tuple P |
-| `h3c_comware9` | Yok | Not implemented | SSH + SNMPv3 | S09, S11 | V7'den ayrı exact V9 tuple P |
-| `huawei_vrp_v600` | `huawei_vrp` ile temsil edilmemeli | Not implemented | SSH + SNMPv3 | S09, S11 | V200 parser'ından ayrı fixture + exact CloudEngine/VRP tuple P |
-| `juniper_junos_evolved` | `juniper_junos` ile temsil edilmemeli | Not implemented | SSH XML/NETCONF + SNMPv3 | S09, S11 | Klasik Junos'tan ayrı exact Evolved tuple P |
-| `dell_sonic` | `linux_ssh` tam destek değildir | Not implemented | SSH/API + SNMP dağıtıma bağlı | S09, S11 | Dell distribution/image/model exact tuple P |
-| `nvidia_cumulus_linux` | Yalnız `linux_ssh` temel fallback | Generic Linux L; NOS capability yok | SSH/NVUE + SNMPv3 | S09, S11 | NVUE/FRR/ASIC port eşlemesi + exact Cumulus tuple P |
-| `nvidia_onyx` | Yok | Not implemented | SSH + SNMPv3 | S09, S11 | Exact Onyx model/sürüm P |
-| `sonic_nos` | `linux_ssh` tam destek değildir | Not implemented | SSH/API + SNMP image'a bağlı | S09, S11 | Distribution/image/vendor/model tuple ayrı P |
-| `cisco_business` | Cisco IOS ile temsil edilmemeli | Not implemented | SSH + SNMP koşullu | S09, S11 | Exact CBS model/firmware tuple P |
+| `h3c_comware5` | Ayrı runtime ID | I+F; rev2 S5500/5.20 sentetik fixture; legacy algoritma cihaz opt-in; `experimental` | Legacy SSH koşullu + SNMPv3 | S09 tamamlandı, S11 | Legacy güven izni + exact V5 tuple P |
+| `h3c_comware9` | Ayrı runtime ID | I+F; rev2 S6520X/9.1 sentetik fixture; V7 parser/kanıtı ayrı; `experimental` | SSH + SNMPv3 | S09 tamamlandı, S11 | V7'den ayrı exact V9 tuple P |
+| `huawei_vrp_v600` | Ayrı runtime ID; `huawei_vrp` alias değil | I+F; rev2 S5735-V2/V600R023C10 sentetik fixture; `experimental` | SSH + SNMPv3 | S09 tamamlandı, S11 | V200 parser'ından ayrı exact CloudEngine/VRP tuple P |
+| `juniper_junos_evolved` | Ayrı runtime ID | I+F; rev2 QFX5130/23.4R2-EVO XML sentetik fixture; `experimental` | SSH XML + SNMPv3; NETCONF planlı | S09 tamamlandı, S11 | Klasik Junos'tan ayrı exact Evolved tuple P |
+| `dell_sonic` | Ayrı runtime ID; `linux_ssh` değil | I+F; Dell distribution+image kapısı, S5248F-ON/4.4.0 sentetik fixture; `experimental` | SSH; SNMP/API dağıtım kanıtı bekler | S09 tamamlandı, S11 | Dell distribution/image/model exact tuple P |
+| `nvidia_cumulus_linux` | Ayrı NVUE runtime; `linux_ssh` yalnız fallback | I+F; SN3700C/5.14 NVUE fixture; kernel/front-panel/breakout ayrımı; `experimental` | SSH/NVUE + SNMPv3; API planlı | S09 tamamlandı, S11 | NVUE/ASIC port eşlemesi + exact Cumulus tuple P |
+| `nvidia_onyx` | Ayrı runtime ID | I+F; SN2700/3.10.4404 sentetik fixture; NVUE fallback yok; `experimental` | SSH + SNMPv3 | S09 tamamlandı, S11 | Exact Onyx model/sürüm P |
+| `sonic_nos` | Ayrı runtime ID; `linux_ssh` değil | I+F; distribution+image zorunlu, vendor `Unknown`, 202405 sentetik fixture; `experimental` | SSH; SNMP/API image kanıtı bekler | S09 tamamlandı, S11 | Distribution/image/vendor/model tuple ayrı P |
+| `cisco_business` | Ayrı runtime ID; IOS/Meraki değil | I+F; CBS350/3.4.0.17 sentetik fixture; model+firmware kapısı; `experimental` | SSH + SNMPv3 koşullu | S09 tamamlandı, S11 | Exact CBS model/firmware tuple P |
 
 ## 6. P4 — API/SNMPv2c ve protokol kapsamı dışı profiller
 

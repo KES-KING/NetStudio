@@ -1,0 +1,20 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "h3c_comware9",
+  "runtime_driver_id": "h3c_comware9",
+  "model": "S6520X-30HC-HI",
+  "os_version": "9.1 R9126P01",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "display version": "H3C Comware Software, Version 9.1, Release R9126P01\nDevice model : S6520X-30HC-HI\nDevice serial number : TEST-CW9-001\n",
+    "display interface": "100GE1/0/1 current state is UP\n Protocol state is UP\n Current speed : 100000 Mbps\n Current duplex : Full\n Input octets : 8589934594\n Output octets : 8589934694\n Input errors : 1\n Input drops : 2\n Output errors : 3\n Output drops : 4\n",
+    "display vlan": "10 | Users | 100GE1/0/1 | untagged\n",
+    "display mac-address": "10 | 02:00:00:00:10:10 | dynamic | 100GE1/0/1\n",
+    "display arp": "192.0.2.10 | 02:00:00:00:10:10 | 100GE1/0/1\n",
+    "display lldp neighbor-information verbose": "100GE1/0/1 | 02:00:00:00:10:02 | Ethernet1 | cw9-peer.example.test\n"
+  },
+  "expected": {"vendor": "H3C", "model": "S6520X-30HC-HI", "parsed_os_version": "9.1 R9126P01", "serial": "TEST-CW9-001", "interface_name": "100GE1/0/1"}
+}

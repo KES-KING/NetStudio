@@ -58,7 +58,14 @@ Bir markanın katalogda yer alması bütün modellerinin desteklendiği anlamın
 | Ubiquiti EdgeSwitch | Standalone SSH grameri + SNMPv3; identity, 64-bit sayaç, VLAN/FDB/ARP/LLDP | ES-48/1.10.4 proje-sentetik fixture; UniFi fallback'i yok, fiziksel kabul yok |
 | TP-Link Omada / Omada Pro | OAuth access token kullanan ayrı controller API runtime'ları; identity, port/sayaç, VLAN ve sınırlı health | İki ayrı proje-sentetik fixture; token edinme/yenileme dışarıdadır, standalone/Pro eşitliği yok, fiziksel kabul yok |
 | Aruba Instant On | Çalışan transport yok | Resmi genel yönetim API sözleşmesi kanıtlanmadığı için politika gereği kapalı |
-| Linux | iproute2 JSON, sayaçlar, IP, ARP/NDP, uptime | Mevcut izole SSH sözleşmesi korunur |
+| H3C Comware V5 / V9 | Ayrı generation manifestleri; identity, interface/64-bit sayaç, VLAN/FDB/ARP/LLDP | V5 legacy algoritmaları cihaz opt-in; V7 fallback yok; sentetik fixture, fiziksel kabul yok |
+| Huawei VRP V600 | V200'den ayrı identity/interface grameri ve network tabloları | S5735-V2/V600R023C10 proje-sentetik fixture; V200 alias/legacy izni taşınmaz |
+| Juniper Junos OS Evolved | Evolved kimlikli XML/no-more planı; interface/64-bit sayaç ve network tabloları | QFX5130/23.4R2-EVO sentetik fixture; klasik Junos fallback ve NETCONF adapter yok |
+| Dell / genel SONiC | Distribution-qualified identity, interface/64-bit sayaç ve network tabloları | Dell ve community ayrı; generic vendor `Unknown`; SNMP/API dağıtım kanıtı bekler |
+| NVIDIA Cumulus Linux | NVUE JSON interface ve kernel/front-panel/breakout mapper'ı | Bond/bridge/VRF fiziksel değildir; SN3700C/5.14 sentetik fixture, fiziksel kabul yok |
+| NVIDIA Onyx | Cumulus'tan ayrı Onyx CLI/kimlik grameri | SN2700/3.10.4404 proje-sentetik fixture; NVUE fallback yok |
+| Cisco Business | CBS+firmware kimlik kapısı; interface/64-bit sayaç ve network tabloları | CBS350/3.4.0.17 sentetik fixture; IOS/Meraki değildir, SNMP exact tuple'a koşullu |
+| Linux | iproute2 JSON, sayaçlar, IP, ARP/NDP, uptime | Genel altyapı adapter'ı; Cumulus/SONiC tam NOS desteği değildir |
 
 NTC şablonları `ntc-templates==9.3.0` / `textfsm==2.1.0` ile sabittir.
 Sadece katalogdaki salt okunur komutlar çalıştırılır; şablon paketinin bütün
@@ -69,10 +76,9 @@ yalnız doğrulanmış alanlar ve güvenli hata kodlarıdır.
 
 `GET /api/v1/driver-catalog` additive v2 sözleşmesi döndürür:
 
-- `drivers`, 15 çalışan + 1 çözülmemiş legacy kimliği, komutları ve eski
-  alanları korur; legacy listede olmayan `h3c_comware7`, `dell_os6`,
-  `extreme_slxos` ve `fortinet_fortiswitchos` kanonik `profiles` dizisinden
-  seçilir;
+- `drivers`, geriye uyumlu 15 çalışan + 1 çözülmemiş legacy kimliği ve eski
+  alanları korur; legacy listede olmayan uygulanmış kanonik profiller
+  `profiles` dizisinden seçilir;
 - `profiles`, uyumluluk programındaki 38 kanonik profili ayrı uygulama,
   doğrulama ve yayın durumlarıyla taşır;
 - `infrastructure_adapters`, `linux_ssh` değerini NOS profillerinden ayrı tutar;
@@ -173,8 +179,9 @@ Extreme EXOS/Fabric Engine/SLX ve FortiSwitch standalone/FortiLink/FortiOS
 birbirine parser fallback'i yapmaz. H3C V5/V9, V7 parser'ına; RouterOS, Cisco
 parser'ına yönlendirilmez.
 Gözlenen implemented profil farklıysa gerçek profilin allowlist'i kullanılır ve
-yapılandırılmış binding çelişki olarak kaydedilir; catalog-only ailede toplama
-`collector_platform_unsupported` ile durur. Tanınabilir SNMP `sysDescr` ayrı
+yapılandırılmış binding çelişki olarak kaydedilir; eksik dağıtım/image kanıtı
+veya catalog-only ailede toplama `collector_platform_unsupported` ile durur.
+Tanınabilir SNMP `sysDescr` ayrı
 kimlik kanıtıdır; SSH ve SNMP farklı kanonik profil gösterirse
 `transport_identity_mismatch` ile fail-closed olur.
 

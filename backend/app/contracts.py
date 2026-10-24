@@ -38,6 +38,9 @@ Collector = Literal[
     "meraki_dashboard", "fortinet_fortilink_api", "unifi_api",
     "unifi_no_snmp_api", "tplink_omada_api", "tplink_omada_pro_api",
     "ubiquiti_edgeswitch",
+    "h3c_comware5", "h3c_comware9", "huawei_vrp_v600",
+    "juniper_junos_evolved", "dell_sonic", "nvidia_cumulus_linux",
+    "nvidia_onyx", "sonic_nos", "cisco_business",
 ]
 SSHProfile = Literal["auto", "standard", "huawei_legacy", "legacy_sha1", "legacy_cbc", "advanced"]
 CollectionGroup = Literal["fast", "health", "network", "inventory"]

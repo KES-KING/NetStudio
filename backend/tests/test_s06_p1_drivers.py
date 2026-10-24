@@ -107,8 +107,8 @@ def test_hpe_and_h3c_share_only_comware7_mapping_not_identity_or_acceptance():
     assert identify_platform({"display version": "HP Comware Software, Version 7.1.070"}).profile_id == "hpe_comware"
     assert identify_platform({"display version": "H3C Comware Software, Version 5.20"}).profile_id == "h3c_comware5"
     assert identify_platform({"display version": "H3C Comware Software, Version 9.1"}).profile_id == "h3c_comware9"
-    assert identify_platform({"display version": "H3C Comware Software, Version 5.20"}).runtime_driver_id is None
-    assert identify_platform({"display version": "H3C Comware Software, Version 9.1"}).runtime_driver_id is None
+    assert identify_platform({"display version": "H3C Comware Software, Version 5.20"}).runtime_driver_id == "h3c_comware5"
+    assert identify_platform({"display version": "H3C Comware Software, Version 9.1"}).runtime_driver_id == "h3c_comware9"
 
 
 def test_comware_v5_v9_and_cross_brand_identity_fail_closed(system):

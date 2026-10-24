@@ -61,12 +61,13 @@ def test_old_and_canonical_device_payloads_coexist(system):
     })
     assert p1_response.status_code == 201
     assert p1_response.json()["collector"] == "hp_procurve"
-    catalog_only_response = client.post("/api/v1/devices", json={
-        "name": "Catalog only", "management_address": "127.0.0.4",
+    p3_response = client.post("/api/v1/devices", json={
+        "name": "P3 Comware", "management_address": "127.0.0.4",
             "site": "lab", "configured_profile_id": "h3c_comware5",
     })
-    assert catalog_only_response.status_code == 409
-    assert catalog_only_response.json()["detail"]["code"] == "driver_profile_not_selectable"
+    assert p3_response.status_code == 201
+    assert p3_response.json()["collector"] == "h3c_comware5"
+    assert p3_response.json()["configured_profile_id"] == "h3c_comware5"
 
     conflict = client.post("/api/v1/devices", json={
         "name": "Conflict", "management_address": "127.0.0.1", "site": "lab",

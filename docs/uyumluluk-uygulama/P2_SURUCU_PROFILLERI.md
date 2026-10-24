@@ -80,8 +80,9 @@ show lldp remote-device all
 ```
 
 Dell profilleri yalnız bounded alan dönüştürücüleri paylaşır. Kimlik, interface
-ve komut sözleşmeleri ayrıdır. `Dell Enterprise SONiC` tanınır fakat S09'daki
-`dell_sonic` profili uygulanana kadar P2 parser'larından hiçbirine bağlanmaz.
+ve komut sözleşmeleri ayrıdır. `Dell Enterprise SONiC`, S09 ile ayrı
+`dell_sonic` runtime'ı olarak uygulanmıştır; yine de P2 OS6/OS9/OS10
+parser'larından hiçbirine bağlanmaz.
 
 ### ExtremeXOS / Switch Engine
 

@@ -25,7 +25,7 @@ S00 = json.loads(
 SNAPSHOT = json.loads(
     (Path(__file__).parent / "snapshots" / "driver_catalog_v2.json").read_text()
 )
-LEGACY_V1_SHA256 = "50be67067d089f01025b7c96a4ac98306c61bdf21aeee9b32c949ecd3aea14a1"
+LEGACY_V1_SHA256 = "0ab9999a7497477a049ec22195b600f51f7d6375119088156813f77b762fdba3"
 
 
 def _snapshot(value: dict) -> dict:

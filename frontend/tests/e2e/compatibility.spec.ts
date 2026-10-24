@@ -165,7 +165,7 @@ test("catalog-driven add form exposes supported, experimental, planned and unsup
   const profile = dialog.locator('select[name="configured_profile_id"]');
   await expect(vendor).toBeEnabled();
   await vendor.selectOption({ value: "Cisco" });
-  await expect(profile.locator("option[value=cisco_business]")).toHaveAttribute("disabled", "");
+  await expect(profile.locator("option[value=cisco_business]")).toBeEnabled();
   await profile.selectOption("cisco_ios");
   await expect(dialog.getByText("Katalogda desteklenen profil · cihaz kapsamı ayrıca doğrulanır", { exact: true })).toBeVisible();
   await expect(dialog.getByText("Fixture doğrulandı · fiziksel kabul değil", { exact: true })).toBeVisible();
@@ -181,13 +181,24 @@ test("catalog-driven add form exposes supported, experimental, planned and unsup
   await expect(profile.locator("option[value=hpe_comware]")).toBeEnabled();
   await vendor.selectOption({ value: "H3C" });
   await expect(profile.locator("option[value=h3c_comware7]")).toBeEnabled();
-  await expect(profile.locator("option[value=h3c_comware5]")).toHaveAttribute("disabled", "");
-  await expect(profile.locator("option[value=h3c_comware9]")).toHaveAttribute("disabled", "");
+  await expect(profile.locator("option[value=h3c_comware5]")).toBeEnabled();
+  await expect(profile.locator("option[value=h3c_comware9]")).toBeEnabled();
+
+  await vendor.selectOption({ value: "Huawei" });
+  await expect(profile.locator("option[value=huawei_vrp_v600]")).toBeEnabled();
+  await vendor.selectOption({ value: "Juniper" });
+  await expect(profile.locator("option[value=juniper_junos_evolved]")).toBeEnabled();
 
   await vendor.selectOption({ value: "Dell Technologies" });
   await expect(profile.locator("option[value=dell_os10]")).toBeEnabled();
   await expect(profile.locator("option[value=dell_os9]")).toBeEnabled();
   await expect(profile.locator("option[value=dell_os6]")).toBeEnabled();
+  await expect(profile.locator("option[value=dell_sonic]")).toBeEnabled();
+  await vendor.selectOption({ value: "NVIDIA Networking" });
+  await expect(profile.locator("option[value=nvidia_cumulus_linux]")).toBeEnabled();
+  await expect(profile.locator("option[value=nvidia_onyx]")).toBeEnabled();
+  await vendor.selectOption({ value: "Unknown" });
+  await expect(profile.locator("option[value=sonic_nos]")).toBeEnabled();
   await vendor.selectOption({ value: "Extreme Networks" });
   await expect(profile.locator("option[value=extreme_exos]")).toBeEnabled();
   await expect(profile.locator("option[value=extreme_fabric_engine]")).toBeEnabled();

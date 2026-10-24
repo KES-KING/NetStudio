@@ -1,0 +1,20 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "juniper_junos_evolved",
+  "runtime_driver_id": "juniper_junos_evolved",
+  "model": "QFX5130-48C",
+  "os_version": "23.4R2-EVO",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "show version | display xml | no-more": "<software-information><os-name>Junos OS Evolved</os-name><product-model>QFX5130-48C</product-model><junos-version>23.4R2-EVO</junos-version><chassis-serial-number>TEST-EVO-001</chassis-serial-number></software-information>",
+    "show interfaces extensive | display xml | no-more": "<interface-information><physical-interface><name>et-0/0/0</name><admin-status>up</admin-status><oper-status>up</oper-status><speed>100Gbps</speed><snmp-index>501</snmp-index><traffic-statistics><input-bytes>8589934596</input-bytes><output-bytes>8589934696</output-bytes></traffic-statistics><input-error-list><input-errors>1</input-errors><input-drops>2</input-drops></input-error-list><output-error-list><output-errors>3</output-errors><output-drops>4</output-drops></output-error-list></physical-interface></interface-information>",
+    "show vlans terse | no-more": "10 | Users | et-0/0/0 | untagged\n",
+    "show ethernet-switching table brief | no-more": "10 | 02:00:00:00:10:10 | dynamic | et-0/0/0\n",
+    "show arp no-resolve | no-more": "192.0.2.10 | 02:00:00:00:10:10 | et-0/0/0\n",
+    "show lldp neighbors | no-more": "et-0/0/0 | 02:00:00:00:10:02 | Ethernet1 | evo-peer.example.test\n"
+  },
+  "expected": {"vendor": "Juniper", "model": "QFX5130-48C", "parsed_os_version": "23.4R2-EVO", "serial": "TEST-EVO-001", "interface_name": "et-0/0/0"}
+}
