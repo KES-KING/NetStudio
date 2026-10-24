@@ -1,0 +1,20 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "dell_os6",
+  "runtime_driver_id": "dell_os6",
+  "model": "N3248X-ON",
+  "os_version": "6.8.1.0",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "show version": "Dell EMC Networking N-Series\nSystem Model ID : N3248X-ON\nSoftware Version : 6.8.1.0\nSerial Number : TEST-OS6-001\n",
+    "show interfaces": "Interface : Gi1/0/1\n Admin Mode : Enable\n Link Status : Up\n Speed : 1000 Mbps\n Duplex : Full\n Input Octets : 8589934595\n Output Octets : 8589934695\n Input Errors : 1\n Input Discards : 2\n Output Errors : 3\n Output Discards : 4\n",
+    "show vlan": "10 | Users | Gi1/0/1 | untagged\n",
+    "show mac address-table": "10 | 02:00:00:00:06:10 | dynamic | Gi1/0/1\n",
+    "show arp": "192.0.2.10 | 02:00:00:00:06:10 | Gi1/0/1\n",
+    "show lldp remote-device all": "Gi1/0/1 | 02:00:00:00:06:02 | Gi1/0/2 | os6-peer.example.test\n"
+  },
+  "expected": {"vendor": "Dell Technologies", "model": "N3248X-ON", "parsed_os_version": "6.8.1.0", "serial": "TEST-OS6-001", "interface_name": "Gi1/0/1"}
+}

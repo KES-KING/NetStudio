@@ -538,6 +538,24 @@ görüntüleri yenilenmemiştir.
 Her OS ailesi ayrı manifest, parser fixture ve acceptance tuple'ına sahiptir.
 FortiSwitchOS etiketi FortiOS'tan açıkça ayrıdır.
 
+### Uygulama durumu (24 Ekim 2026)
+
+S07-01–S07-08 tamamlandı. Yedi profil ayrı manifest, parser kimlik/interface
+grameri ve SHA-256 sabitli proje-sentetik exact-tuple fixture ile
+`fixture_verified/experimental` olarak katalogda seçilebilir durumdadır.
+`dell_force10` ve `extreme_vsp` runtime kimlikleri kanıtlı kanonik çözümle
+korunur; `fortinet` otomatik alias değildir. Fabric Engine secure mode SNMP
+kısıtı, Dell OS/SONiC ayrımı ve standalone/FortiLink/FortiOS ayrımı negatif
+testlerle sabitlenmiştir. Ayrıntılı kanıt
+[`S07_TESLIM_RAPORU.md`](S07_TESLIM_RAPORU.md), çalışma sözleşmesi
+[`P2_SURUCU_PROFILLERI.md`](P2_SURUCU_PROFILLERI.md) içindedir.
+
+Fiziksel cihaz kabulü çalıştırılmadı ve bütün acceptance kayıtları
+`production_accepted=false` kalır. FortiLink/controller yolu S08, gerçek cihaz
+exact-tuple ve benchmark kapıları S11 kapsamındadır. Ana yerleşim, tema,
+tipografi, navigasyon veya genel kabuk değişmediği için README ekran görüntüleri
+yenilenmemiştir.
+
 ---
 
 ## S08 — Controller/cloud API ve kampüs ekosistemi

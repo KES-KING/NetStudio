@@ -1,0 +1,20 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "dell_os9",
+  "runtime_driver_id": "dell_force10",
+  "model": "S4048-ON",
+  "os_version": "9.14(2.20)",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "show version": "Dell EMC Networking OS9\nDell EMC Networking OS Version : 9.14(2.20)\nSystem Type : S4048-ON\nService Tag : TEST-OS9-001\n",
+    "show interfaces": "TenGigabitEthernet1/0/1 is up, line protocol is up\n LineSpeed : 10000 Mbps\n Duplex : Full\n Input Statistics : 8589934594 bytes, 1 errors, 2 discards\n Output Statistics : 8589934694 bytes, 3 errors, 4 discards\n",
+    "show vlan": "10 | Users | TenGigabitEthernet1/0/1 | untagged\n",
+    "show mac-address-table": "10 | 02:00:00:00:09:10 | dynamic | TenGigabitEthernet1/0/1\n",
+    "show arp": "192.0.2.10 | 02:00:00:00:09:10 | TenGigabitEthernet1/0/1\n",
+    "show lldp neighbors": "TenGigabitEthernet1/0/1 | 02:00:00:00:09:02 | Ethernet1 | os9-peer.example.test\n"
+  },
+  "expected": {"vendor": "Dell Technologies", "model": "S4048-ON", "parsed_os_version": "9.14(2.20)", "serial": "TEST-OS9-001", "interface_name": "TenGigabitEthernet1/0/1"}
+}

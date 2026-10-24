@@ -18,6 +18,13 @@ from .driver_manifests import (
     cisco_ios as ios_manifest,
     cisco_iosxe as iosxe_manifest,
     cisco_nxos as nxos_manifest,
+    dell_os10 as dell_os10_manifest,
+    dell_os6 as dell_os6_manifest,
+    dell_os9 as dell_os9_manifest,
+    extreme_exos as extreme_exos_manifest,
+    extreme_fabric_engine as extreme_fabric_engine_manifest,
+    extreme_slxos as extreme_slxos_manifest,
+    fortinet_fortiswitchos as fortiswitchos_manifest,
     h3c_comware7 as h3c_comware7_manifest,
     hpe_comware as hpe_comware_manifest,
     huawei_vrp_v200 as vrp_v200_manifest,
@@ -27,8 +34,8 @@ from .driver_manifests import (
 )
 
 
-DRIVER_VERSION = "2026.10.24.1"
-CATALOG_REVISION = "2026.10.24.1"
+DRIVER_VERSION = "2026.10.24.2"
+CATALOG_REVISION = "2026.10.24.2"
 NTC_VERSION = "9.3.0"
 GROUPS = ("fast", "health", "network", "inventory")
 DATA_CONTRACT = {
@@ -60,6 +67,13 @@ REFERENCES = {
     "eos": "https://www.arista.com/en/um-eos/eos-section-1-3-command-api-overview",
     "comware": "https://www.h3c.com/en/Support/Resource_Center/EN/Switches/Catalog/S5560X/S5560X-EI/Technical_Documents/Reference_Guides/Command_References/H3C_S5560X-EI_CR_R65xx-18865/",
     "routeros": "https://help.mikrotik.com/docs/spaces/ROS/pages/328134/Command+Line+Interface",
+    "dell_os10": "https://www.dell.com/support/manuals/en-us/dell-emc-smartfabric-os10/smartfabric-os-user-guide-10-5-2-6/show-lldp-neighbors?guid=guid-cf4a7765-02fd-4278-9bcb-c49088ba61e5&lang=en-us",
+    "dell_os9": "https://www.dell.com/support/manuals/en-us/dell-emc-os-9/s6000-on-9.14.2.5-cli-pub/show-version?guid=guid-c13e3d17-f476-4c42-9c42-f69571ad31ad&lang=en-us",
+    "dell_os6": "https://dl.dell.com/manuals/common/n-series-v663_cli_en-us.pdf",
+    "extreme_exos": "https://documentation.extremenetworks.com/Switch%20Engine%20v33.5.1%20User%20Guide/repositories/master/content/documents/Switch_Operating_Systems/Switch_Engine/User_Guide/show_ports_configuration.shtml",
+    "extreme_fabric_engine": "https://documentation.extremenetworks.com/Fabric%20Engine%20v9.3%20User%20Guide/content/documents/Switch_Operating_Systems/VOSS_and_Fabric_Engine/fabric_engine_user_guide/ssh_version_2.shtml",
+    "extreme_slxos": "https://documentation.extremenetworks.com/Extreme%20SLX-OS%2020.7.2%20Troubleshooting%20Guide/DatacenterNetworking/SLX-OS/Master-Source/extreme_slx_os_troubleshooting_guide/using_show_commands_slxc.shtml",
+    "fortiswitchos": "https://docs.fortinet.com/document/fortiswitch/7.6.2/fortiswitchos-cli-reference/896953/get",
 }
 IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
 
@@ -211,6 +225,15 @@ EOS = commands("eos", eos_manifest.COMMAND_ROWS)
 HPE_COMWARE = commands("comware", hpe_comware_manifest.COMMAND_ROWS)
 H3C_COMWARE7 = commands("comware", h3c_comware7_manifest.COMMAND_ROWS)
 ROUTEROS = commands("routeros", routeros_manifest.COMMAND_ROWS)
+DELL_OS10 = commands("dell_os10", dell_os10_manifest.COMMAND_ROWS)
+DELL_OS9 = commands("dell_os9", dell_os9_manifest.COMMAND_ROWS)
+DELL_OS6 = commands("dell_os6", dell_os6_manifest.COMMAND_ROWS)
+EXTREME_EXOS = commands("extreme_exos", extreme_exos_manifest.COMMAND_ROWS)
+EXTREME_FABRIC_ENGINE = commands(
+    "extreme_fabric_engine", extreme_fabric_engine_manifest.COMMAND_ROWS
+)
+EXTREME_SLXOS = commands("extreme_slxos", extreme_slxos_manifest.COMMAND_ROWS)
+FORTISWITCHOS = commands("fortiswitchos", fortiswitchos_manifest.COMMAND_ROWS)
 
 P0_CAPABILITIES = {
     "cisco_ios": ios_manifest.CAPABILITIES,
@@ -229,17 +252,28 @@ P1_CAPABILITIES = {
     "mikrotik_routeros": routeros_manifest.CAPABILITIES,
 }
 
+P2_CLI_CAPABILITIES = {
+    "dell_os10": dell_os10_manifest.CAPABILITIES,
+    "dell_os9": dell_os9_manifest.CAPABILITIES,
+    "dell_os6": dell_os6_manifest.CAPABILITIES,
+    "extreme_exos": extreme_exos_manifest.CAPABILITIES,
+    "extreme_fabric_engine": extreme_fabric_engine_manifest.CAPABILITIES,
+    "extreme_slxos": extreme_slxos_manifest.CAPABILITIES,
+    "fortinet_fortiswitchos": fortiswitchos_manifest.CAPABILITIES,
+}
+
 
 def _identity(
     vendor: str,
     os_family: str,
     modes: tuple[ManagementMode, ...] = ("standalone",),
     *,
+    os_aliases: tuple[str, ...] = (),
     models: tuple[str, ...] = (),
     versions: tuple[str, ...] = (),
 ) -> IdentitySummary:
     return IdentitySummary(
-        vendors=(vendor,), os_families=(os_family,), management_modes=modes,
+        vendors=(vendor,), os_families=(os_family, *os_aliases), management_modes=modes,
         model_patterns=models, version_constraints=versions,
     )
 
@@ -264,6 +298,10 @@ def _transport(
 
 SSH_IMPLEMENTED = _transport("ssh", "implemented", versions=("ssh2",))
 SNMP_IMPLEMENTED = _transport("snmp", "implemented", versions=("v3_authpriv",))
+SNMP_IMPLEMENTED_FABRIC_CONDITIONAL = _transport(
+    "snmp", "implemented", versions=("v3_authpriv",),
+    decision_gate="fabric_engine_ssh_secure_mode_block_snmp",
+)
 SSH_PLANNED = _transport("ssh", "planned", versions=("ssh2",))
 SNMP_PLANNED = _transport("snmp", "planned", versions=("v3_authpriv",))
 API_BLOCKED = _transport("api", "blocked", decision_gate="ADR-COMPAT-004")
@@ -445,13 +483,78 @@ PROFILES = (
         tested_versions=("CRS326-24G-2S+ / RouterOS 7.15.3 project-synthetic fixture",),
         profile_revision=2,
     ),
-    _profile("dell_os10", "Dell SmartFabric OS10", "P2", _identity("Dell Technologies", "SmartFabric OS10"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("dell_os9", "Dell Networking OS9", "P2", _identity("Dell Technologies", "OS9"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("dell_os6", "Dell Networking OS6", "P2", _identity("Dell Technologies", "OS6"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("extreme_exos", "Extreme Switch Engine", "P2", _identity("Extreme Networks", "ExtremeXOS"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("extreme_fabric_engine", "Extreme Fabric Engine", "P2", _identity("Extreme Networks", "Fabric Engine"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("extreme_slxos", "Extreme SLX-OS", "P2", _identity("Extreme Networks", "SLX-OS"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("fortinet_fortiswitchos", "Fortinet FortiSwitchOS", "P2", _identity("Fortinet", "FortiSwitchOS"), (SSH_PLANNED, SNMP_PLANNED, API_BLOCKED)),
+    _profile(
+        "dell_os10", "Dell SmartFabric OS10", "P2",
+        _identity("Dell Technologies", "SmartFabric OS10", models=("S5248F-ON",), versions=("10.5.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="dell_os10", adapter="ssh_cli",
+        command_plan=DELL_OS10, capability_groups=P2_CLI_CAPABILITIES["dell_os10"],
+        tested_versions=("S5248F-ON / SmartFabric OS10 10.5.6.1 project-synthetic fixture",),
+        profile_revision=2,
+    ),
+    _profile(
+        "dell_os9", "Dell Networking OS9", "P2",
+        _identity("Dell Technologies", "OS9", os_aliases=("FTOS",), models=("S4048-ON",), versions=("9.14*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="dell_force10", adapter="ssh_cli",
+        command_plan=DELL_OS9, capability_groups=P2_CLI_CAPABILITIES["dell_os9"],
+        tested_versions=("S4048-ON / Dell Networking OS9 9.14(2.20) project-synthetic fixture",),
+        profile_revision=2,
+    ),
+    _profile(
+        "dell_os6", "Dell Networking OS6", "P2",
+        _identity("Dell Technologies", "OS6", models=("N3248X-ON",), versions=("6.8.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="dell_os6", adapter="ssh_cli",
+        command_plan=DELL_OS6, capability_groups=P2_CLI_CAPABILITIES["dell_os6"],
+        tested_versions=("N3248X-ON / Dell Networking OS6 6.8.1.0 project-synthetic fixture",),
+        profile_revision=2,
+    ),
+    _profile(
+        "extreme_exos", "Extreme Switch Engine", "P2",
+        _identity("Extreme Networks", "ExtremeXOS", os_aliases=("Switch Engine",), models=("X465-48T",), versions=("33.3.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="extreme_exos", adapter="ssh_cli",
+        command_plan=EXTREME_EXOS, capability_groups=P2_CLI_CAPABILITIES["extreme_exos"],
+        tested_versions=("X465-48T / Switch Engine 33.3.1.4 project-synthetic fixture",),
+        profile_revision=2,
+    ),
+    _profile(
+        "extreme_fabric_engine", "Extreme Fabric Engine", "P2",
+        _identity("Extreme Networks", "Fabric Engine", os_aliases=("VOSS",), models=("5520-48T",), versions=("9.3.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED_FABRIC_CONDITIONAL),
+        implementation="implemented", verification="fixture_verified",
+        release="experimental", runtime_driver_id="extreme_vsp",
+        adapter="ssh_cli", command_plan=EXTREME_FABRIC_ENGINE,
+        capability_groups=P2_CLI_CAPABILITIES["extreme_fabric_engine"],
+        tested_versions=("5520-48T / Fabric Engine 9.3.2.0 project-synthetic fixture",),
+        profile_revision=2,
+    ),
+    _profile(
+        "extreme_slxos", "Extreme SLX-OS", "P2",
+        _identity("Extreme Networks", "SLX-OS", models=("SLX 9150-48Y",), versions=("20.6.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="extreme_slxos", adapter="ssh_cli",
+        command_plan=EXTREME_SLXOS, capability_groups=P2_CLI_CAPABILITIES["extreme_slxos"],
+        tested_versions=("SLX 9150-48Y / SLX-OS 20.6.3b project-synthetic fixture",),
+        profile_revision=2,
+    ),
+    _profile(
+        "fortinet_fortiswitchos", "Fortinet FortiSwitchOS", "P2",
+        _identity("Fortinet", "FortiSwitchOS", models=("FortiSwitch-124F",), versions=("7.6.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED, API_BLOCKED),
+        implementation="implemented", verification="fixture_verified",
+        release="experimental", runtime_driver_id="fortinet_fortiswitchos",
+        adapter="ssh_cli", command_plan=FORTISWITCHOS,
+        capability_groups=P2_CLI_CAPABILITIES["fortinet_fortiswitchos"],
+        tested_versions=("FortiSwitch-124F / FortiSwitchOS 7.6.2 project-synthetic fixture",),
+        profile_revision=2,
+    ),
     _profile("fortinet_fortiswitch_fortilink", "Fortinet FortiSwitchOS (FortiLink)", "P2", _identity("Fortinet", "FortiSwitchOS", ("controller_managed",)), (API_BLOCKED, SNMP_PLANNED)),
     _profile("tplink_omada_managed", "TP-Link Omada Managed", "P2", _identity("TP-Link", "Omada Managed"), (SSH_PLANNED, SNMP_PLANNED, API_BLOCKED)),
     _profile("tplink_omada_pro", "TP-Link Omada Pro", "P2", _identity("TP-Link", "Omada Pro"), (SSH_PLANNED, SNMP_PLANNED, API_BLOCKED)),
@@ -566,19 +669,19 @@ LEGACY_CATALOG_BINDINGS = (
         id="fortinet", label="FortiOS", available=False,
     ),
     LegacyCatalogBinding(
-        id="dell_force10", label="Dell OS9", available=False,
+        id="dell_force10", label="Dell OS9", available=True,
         profile_id="dell_os9",
     ),
     LegacyCatalogBinding(
-        id="dell_os10", label="Dell OS10", available=False,
+        id="dell_os10", label="Dell OS10", available=True,
         profile_id="dell_os10",
     ),
     LegacyCatalogBinding(
-        id="extreme_exos", label="Extreme Switch Engine", available=False,
+        id="extreme_exos", label="Extreme Switch Engine", available=True,
         profile_id="extreme_exos",
     ),
     LegacyCatalogBinding(
-        id="extreme_vsp", label="Extreme Fabric Engine", available=False,
+        id="extreme_vsp", label="Extreme Fabric Engine", available=True,
         profile_id="extreme_fabric_engine",
     ),
 )

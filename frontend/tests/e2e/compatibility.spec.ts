@@ -154,6 +154,20 @@ test("catalog-driven add form exposes supported, experimental, planned and unsup
   await expect(profile.locator("option[value=h3c_comware5]")).toHaveAttribute("disabled", "");
   await expect(profile.locator("option[value=h3c_comware9]")).toHaveAttribute("disabled", "");
 
+  await vendor.selectOption({ value: "Dell Technologies" });
+  await expect(profile.locator("option[value=dell_os10]")).toBeEnabled();
+  await expect(profile.locator("option[value=dell_os9]")).toBeEnabled();
+  await expect(profile.locator("option[value=dell_os6]")).toBeEnabled();
+  await vendor.selectOption({ value: "Extreme Networks" });
+  await expect(profile.locator("option[value=extreme_exos]")).toBeEnabled();
+  await expect(profile.locator("option[value=extreme_fabric_engine]")).toBeEnabled();
+  await expect(profile.locator("option[value=extreme_slxos]")).toBeEnabled();
+  await vendor.selectOption({ value: "Fortinet" });
+  await expect(profile.locator("option[value=fortinet_fortiswitchos]")).toBeEnabled();
+  await expect(
+    profile.locator("option[value=fortinet_fortiswitch_fortilink]"),
+  ).toHaveAttribute("disabled", "");
+
   await vendor.selectOption({ value: "TP-Link" });
   await expect(profile.locator("option[value=tplink_omada_managed]")).toHaveAttribute("disabled", "");
   await expect(profile.locator("option[value=tplink_easy_smart]")).toHaveAttribute("disabled", "");

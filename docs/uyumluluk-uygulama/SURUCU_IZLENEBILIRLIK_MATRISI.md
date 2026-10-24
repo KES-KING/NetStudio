@@ -5,7 +5,7 @@
 | Belge kimliği | `NETSTUDIO-COMPAT-TRACE-001` |
 | Kaynak kapsam | [Switch OS / SSH / SNMP uyumluluk matrisi](../NetStudio_Switch_OS_SSH_SNMP_Uyumluluk_Matrisi.md) |
 | Başlangıç kaynak kod tabanı | `fa1a40f` |
-| Güncel uygulama | S05, 23 Ekim 2026; katalog `2026.10.23.3`, P0 profil revizyonu `2` |
+| Güncel uygulama | S07, 24 Ekim 2026; katalog `2026.10.24.2`, P0/P1/P2 uygulanan profil revizyonu `2` |
 | Kullanım | Her hedef profilin implementasyon, sprint ve kabul izini tutmak |
 
 ## 1. Okuma kuralı
@@ -60,13 +60,13 @@ proje-sentetik parser girdileridir.
 
 | Hedef profil | Eski/mevcut karşılık | Mevcut durum | Hedef transport | Sprint | Minimum destek çıkışı |
 |---|---|---|---|---|---|
-| `dell_os10` | Aynı ID planned | C; adapter yok | SSH + SNMPv3 | S07, S11 | Exact OS10 model/sürüm P |
-| `dell_os9` | `dell_force10` | C; adapter yok; alias kimlik kanıtı ister | SSH + SNMPv3 | S01, S02, S07, S11 | FTOS/OS9 banner + exact tuple P |
-| `dell_os6` | Yok | Not implemented | SSH + SNMPv3 | S07, S11 | N-series exact model/OS6 tuple P |
-| `extreme_exos` | Aynı ID planned | C; adapter yok | SSH + SNMPv3 | S07, S11 | EXOS/Switch Engine alias ve exact tuple P |
-| `extreme_fabric_engine` | `extreme_vsp` | C; adapter yok | SSH + SNMPv3 koşullu | S01, S02, S07, S11 | VOSS/Fabric Engine kimliği, security mode ve exact tuple P |
-| `extreme_slxos` | Yok | Not implemented | SSH + SNMPv3 | S07, S11 | SLX exact model/sürüm P |
-| `fortinet_fortiswitchos` | Belirsiz `fortinet` planned | C ancak mevcut etiket FortiOS; güvenli alias değil | SSH/API adayı + SNMPv3 | S01, S02, S07, S11 | Standalone mode + FortiSwitchOS exact tuple P |
+| `dell_os10` | Aynı runtime ID | I+F; rev2 S5248F-ON/10.5.6.1 sentetik fixture; OS9/SONiC fail-closed; `experimental` | SSH + SNMPv3 | S07 tamamlandı, S11 | Exact OS10 model/sürüm P |
+| `dell_os9` | `dell_force10` | I+F; rev2 S4048-ON/9.14(2.20) sentetik fixture; alias kimlik kanıtı ister; `experimental` | SSH + SNMPv3 | S01, S02, S07 tamamlandı, S11 | FTOS/OS9 banner + exact tuple P |
+| `dell_os6` | Ayrı kanonik/runtime ID | I+F; rev2 N3248X-ON/6.8.1.0 sentetik fixture; OS9/10'dan ayrı; `experimental` | SSH + SNMPv3 | S07 tamamlandı, S11 | N-series exact model/OS6 tuple P |
+| `extreme_exos` | Aynı runtime ID | I+F; rev2 X465-48T/33.3.1.4 sentetik fixture; EXOS/Switch Engine metadata; `experimental` | SSH + SNMPv3 | S07 tamamlandı, S11 | EXOS/Switch Engine alias ve exact tuple P |
+| `extreme_fabric_engine` | `extreme_vsp` | I+F; rev2 5520-48T/9.3.2.0 sentetik fixture; secure-mode SNMP kısıtı; `experimental` | SSH + SNMPv3 koşullu | S01, S02, S07 tamamlandı, S11 | VOSS/Fabric Engine kimliği, security mode ve exact tuple P |
+| `extreme_slxos` | Ayrı kanonik/runtime ID | I+F; rev2 SLX 9150-48Y/20.6.3b sentetik fixture; EXOS/VOSS'tan ayrı; `experimental` | SSH + SNMPv3 | S07 tamamlandı, S11 | SLX exact model/sürüm P |
+| `fortinet_fortiswitchos` | Yeni runtime ID; `fortinet` unresolved | I+F; rev2 FortiSwitch-124F/7.6.2 standalone sentetik fixture; FortiLink/FortiOS fail-closed; `experimental` | SSH + SNMPv3; API ADR-COMPAT-004 ile kapalı | S01, S02, S07 tamamlandı, S11 | Standalone mode + FortiSwitchOS exact tuple P |
 | `fortinet_fortiswitch_fortilink` | Yok | Not implemented | FortiGate/controller API + koşullu SNMP | S08, S11 | Controller/switch identity ayrımı + managed mode P |
 | `tplink_omada_managed` | Yok | Not implemented | Controller/SSH + SNMPv3 koşullu | S08, S11 | Exact JetStream/Omada model, firmware ve mode P |
 | `tplink_omada_pro` | Yok | Not implemented | Controller/SSH + SNMPv3 koşullu | S08, S11 | Pro firmware/modeli klasik Omada'dan ayrı P |

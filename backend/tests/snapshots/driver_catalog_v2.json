@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "catalog_revision": "2026.10.24.1",
+  "catalog_revision": "2026.10.24.2",
   "legacy_driver_ids": [
     "cisco_ios",
     "cisco_iosxe",
@@ -13,11 +13,11 @@
     "hp_comware",
     "arista_eos",
     "mikrotik_routeros",
-    "fortinet",
     "dell_force10",
     "dell_os10",
     "extreme_exos",
-    "extreme_vsp"
+    "extreme_vsp",
+    "fortinet"
   ],
   "profiles": [
     {"id": "cisco_ios", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
@@ -31,13 +31,13 @@
     {"id": "hpe_comware", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
     {"id": "h3c_comware7", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
     {"id": "mikrotik_routeros", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
-    {"id": "dell_os10", "implementation": "catalog_only", "verification": "not_tested", "release": "hidden", "available": false, "selectable": false},
-    {"id": "dell_os9", "implementation": "catalog_only", "verification": "not_tested", "release": "hidden", "available": false, "selectable": false},
-    {"id": "dell_os6", "implementation": "catalog_only", "verification": "not_tested", "release": "hidden", "available": false, "selectable": false},
-    {"id": "extreme_exos", "implementation": "catalog_only", "verification": "not_tested", "release": "hidden", "available": false, "selectable": false},
-    {"id": "extreme_fabric_engine", "implementation": "catalog_only", "verification": "not_tested", "release": "hidden", "available": false, "selectable": false},
-    {"id": "extreme_slxos", "implementation": "catalog_only", "verification": "not_tested", "release": "hidden", "available": false, "selectable": false},
-    {"id": "fortinet_fortiswitchos", "implementation": "catalog_only", "verification": "not_tested", "release": "hidden", "available": false, "selectable": false},
+    {"id": "dell_os10", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
+    {"id": "dell_os9", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
+    {"id": "dell_os6", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
+    {"id": "extreme_exos", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
+    {"id": "extreme_fabric_engine", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
+    {"id": "extreme_slxos", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
+    {"id": "fortinet_fortiswitchos", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
     {"id": "fortinet_fortiswitch_fortilink", "implementation": "catalog_only", "verification": "not_tested", "release": "hidden", "available": false, "selectable": false},
     {"id": "tplink_omada_managed", "implementation": "catalog_only", "verification": "not_tested", "release": "hidden", "available": false, "selectable": false},
     {"id": "tplink_omada_pro", "implementation": "catalog_only", "verification": "not_tested", "release": "hidden", "available": false, "selectable": false},

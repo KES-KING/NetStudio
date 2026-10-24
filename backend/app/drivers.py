@@ -18,6 +18,7 @@ from .contracts import Health, InterfaceSample
 from .database import now
 from .driver_catalog import DRIVERS, GROUPS, SUPPORTED, VERSION
 from .p1_parsers import P1_DRIVERS, parse_p1
+from .p2_parsers import P2_DRIVERS, parse_p2
 from .ssh import ConnectionPolicyError, connect
 from .structured_parsers import parse_structured
 from .fixture_drivers import DeviceDriver, FixtureDriver, GenericReadOnlyDriver, UnsupportedCapability
@@ -98,8 +99,49 @@ class PlatformIdentity:
     os_family: str
 
 
+AUTO_IDENTITY_PROBES = (
+    "show version", "display version", "show sys-info", "get system status",
+    "/system resource print without-paging",
+)
+
+
 def identify_platform(outputs):
     text = "\n".join(outputs.values())
+    if re.search(r"Dell(?: EMC)? Enterprise SONiC|SONiC Software Version", text, re.I):
+        return PlatformIdentity("dell_sonic", None, "Dell Technologies", "Enterprise SONiC")
+    if re.search(r"SmartFabric\s+OS10|OS10 Enterprise Edition|Dell EMC Networking OS10", text, re.I):
+        return PlatformIdentity("dell_os10", "dell_os10", "Dell Technologies", "SmartFabric OS10")
+    if re.search(r"Dell(?: EMC)? Networking OS9|\bFTOS\b", text, re.I):
+        return PlatformIdentity("dell_os9", "dell_force10", "Dell Technologies", "OS9")
+    if re.search(r"Dell(?: EMC)? Networking (?:N-Series|OS6)|\bSoftware Version\s*:\s*6\.\d+", text, re.I):
+        return PlatformIdentity("dell_os6", "dell_os6", "Dell Technologies", "OS6")
+    if re.search(r"FortiSwitch", text, re.I) and re.search(
+        r"FortiLink\s+(?:mode|managed)|Managed by FortiGate|Management mode\s*:\s*(?:FortiLink|managed)",
+        text, re.I,
+    ):
+        return PlatformIdentity(
+            "fortinet_fortiswitch_fortilink", None, "Fortinet", "FortiSwitchOS"
+        )
+    if re.search(r"FortiSwitch-\S+\s+v\d|FortiSwitchOS", text, re.I):
+        return PlatformIdentity(
+            "fortinet_fortiswitchos", "fortinet_fortiswitchos",
+            "Fortinet", "FortiSwitchOS",
+        )
+    if re.search(r"\bFortiGate-\S+\s+v\d|\bFortiOS\b", text, re.I):
+        raise ConnectionPolicyError("collector_platform_unsupported")
+    if re.search(r"\bSLX-OS\b", text, re.I):
+        return PlatformIdentity(
+            "extreme_slxos", "extreme_slxos", "Extreme Networks", "SLX-OS"
+        )
+    if re.search(r"\bFabric Engine\b|\bVOSS(?: Software)?\b", text, re.I):
+        return PlatformIdentity(
+            "extreme_fabric_engine", "extreme_vsp",
+            "Extreme Networks", "Fabric Engine",
+        )
+    if re.search(r"\bExtremeXOS\b|\bSwitch Engine version\b", text, re.I):
+        return PlatformIdentity(
+            "extreme_exos", "extreme_exos", "Extreme Networks", "ExtremeXOS"
+        )
     if re.search(r"ArubaOS[- ]CX|AOS-CX|\bFL\.10\.\d+", text, re.I):
         return PlatformIdentity("aruba_aoscx", "aruba_aoscx", "HPE Aruba Networking", "AOS-CX")
     if re.search(r"ArubaOS-Switch|ProVision|\bWC\.16\.\d+", text, re.I):
@@ -195,14 +237,14 @@ async def collect(store, vault, device, groups=GROUPS, authorize=lambda: None):
         async with connect(store, vault, device) as connection:
             authorize()
             process = await connection.create_process(term_type="vt100", term_size=(240, 60))
-            all_commands = {c.text for _, plan, _, _ in DRIVERS.values() for c in plan} | {
-                "show version", "display version", "/system resource print without-paging",
-            }
+            all_commands = {
+                c.text for _, plan, _, _ in DRIVERS.values() for c in plan
+            } | set(AUTO_IDENTITY_PROBES)
             reader = Reader(process, all_commands)
             try:
                 await asyncio.wait_for(reader.read_prompt(), 20)
                 if not driver:
-                    for probe in ("show version", "display version", "/system resource print without-paging"):
+                    for probe in AUTO_IDENTITY_PROBES:
                         authorize()
                         try:
                             outputs[probe] = await reader.command(probe)
@@ -267,6 +309,8 @@ async def collect(store, vault, device, groups=GROUPS, authorize=lambda: None):
         return result
     if driver in P1_DRIVERS:
         result = parse_p1(device, driver, outputs, unavailable, requested)
+    elif driver in P2_DRIVERS:
+        result = parse_p2(device, driver, outputs, unavailable, requested)
     elif driver in {"juniper_junos", "cisco_nxos"}:
         result = parse_structured(device, driver, outputs, unavailable, requested)
     else:

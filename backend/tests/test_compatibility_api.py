@@ -63,7 +63,7 @@ def test_old_and_canonical_device_payloads_coexist(system):
     assert p1_response.json()["collector"] == "hp_procurve"
     catalog_only_response = client.post("/api/v1/devices", json={
         "name": "Catalog only", "management_address": "127.0.0.4",
-        "site": "lab", "configured_profile_id": "dell_os10",
+        "site": "lab", "configured_profile_id": "tplink_omada_managed",
     })
     assert catalog_only_response.status_code == 409
     assert catalog_only_response.json()["detail"]["code"] == "driver_profile_not_selectable"
@@ -101,7 +101,7 @@ def test_compatibility_is_site_scoped_and_profile_mutation_is_strict(system):
     login(client, "viewer")
     assert client.get(path + "/compatibility").status_code == 200
     assert client.put(path + "/driver-profile", json={
-        "configured_profile_id": "fortinet_fortiswitchos"
+        "configured_profile_id": "fortinet_fortiswitch_fortilink"
     }).status_code == 404
 
     login(client, "outsider")
@@ -109,22 +109,17 @@ def test_compatibility_is_site_scoped_and_profile_mutation_is_strict(system):
 
     login(client)
     not_selectable = client.put(path + "/driver-profile", json={
-        "configured_profile_id": "fortinet_fortiswitchos"
+        "configured_profile_id": "fortinet_fortiswitch_fortilink"
     })
     assert not_selectable.status_code == 409
     assert not_selectable.json()["detail"]["code"] == "driver_profile_not_selectable"
     connection_bypass = client.put(path + "/connection-settings", json={
         "collector": "fortinet",
-        "configured_profile_id": "fortinet_fortiswitchos",
+        "configured_profile_id": "fortinet_fortiswitch_fortilink",
         "management_mode": "standalone",
     })
     assert connection_bypass.status_code == 409
     assert connection_bypass.json()["detail"]["code"] == "driver_profile_not_selectable"
-    legacy_connection_bypass = client.put(path + "/connection-settings", json={
-        "collector": "dell_force10",
-    })
-    assert legacy_connection_bypass.status_code == 409
-    assert legacy_connection_bypass.json()["detail"]["code"] == "driver_profile_not_selectable"
     for injected in (
         {"identity_evidence": {"vendor": "Fortinet"}},
         {"validation_level": "physical_validated"},

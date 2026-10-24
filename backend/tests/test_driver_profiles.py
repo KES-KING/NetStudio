@@ -25,7 +25,7 @@ S00 = json.loads(
 SNAPSHOT = json.loads(
     (Path(__file__).parent / "snapshots" / "driver_catalog_v2.json").read_text()
 )
-LEGACY_V1_SHA256 = "82b9a2eb2257d0dba90d9c74b8463cc0c0bd3a455daf85633c316ff6ce8413d9"
+LEGACY_V1_SHA256 = "6bdbf6359709e2fc18395e2a6129dba9bbfdd7dbb9b07302c37a5432998ade82"
 
 
 def _snapshot(value: dict) -> dict:
@@ -71,8 +71,8 @@ def test_registry_has_exact_s00_scope_and_statuses_do_not_regress():
             assert profile.release_status == "experimental"
     bindings = REGISTRY.legacy_bindings
     assert len(bindings) == 16
-    assert sum(binding.available for binding in bindings) == 11
-    assert sum(not binding.available for binding in bindings) == 5
+    assert sum(binding.available for binding in bindings) == 15
+    assert sum(not binding.available for binding in bindings) == 1
     expected_aliases = {
         entry["legacy_id"]: (
             entry["target_profile_id"], entry["resolution"], entry["automatic"]

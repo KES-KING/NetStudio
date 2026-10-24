@@ -41,8 +41,14 @@ Bir markanın katalogda yer alması bütün modellerinin desteklendiği anlamın
 | HPE Comware 7 | Text CLI; 64-bit sayaç, identity, VLAN/FDB/ARP/LLDP, health/environment ve inventory | JH390A/7.1.070 proje-sentetik fixture; H3C kimliğinden ayrı, fiziksel kabul yok |
 | H3C Comware V7 | Comware V7 alan mapper'ı ve ayrı H3C kimlik kapısı; V5/V9 fail-closed | S5560X-30C-EI/7.1.070 proje-sentetik fixture; fiziksel kabul yok |
 | MikroTik RouterOS | RouterOS `/... print` grameri; 64-bit sayaç, identity, bridge VLAN/FDB, ARP, LLDP, health ve RouterBOARD | CRS326-24G-2S+/7.15.3 proje-sentetik fixture; Cisco fallback/API yok, fiziksel kabul yok |
+| Dell SmartFabric OS10 | Ayrı OS10 manifesti; identity, interface/64-bit sayaç, VLAN/FDB/ARP/LLDP | S5248F-ON/10.5.6.1 proje-sentetik fixture; OS9/SONiC fail-closed, fiziksel kabul yok |
+| Dell Networking OS9/FTOS | Ayrı OS9 manifesti ve koşullu `dell_force10` çözümü; identity, interface/64-bit sayaç, VLAN/FDB/ARP/LLDP | S4048-ON/9.14(2.20) proje-sentetik fixture; secret/host key korunur, fiziksel kabul yok |
+| Dell Networking OS6 | Ayrı N-series komut/parser sözleşmesi; identity, interface/64-bit sayaç, VLAN/FDB/ARP/LLDP | N3248X-ON/6.8.1.0 proje-sentetik fixture; OS9/10 parser fallback'i yok, fiziksel kabul yok |
+| ExtremeXOS / Switch Engine | Ayrı EXOS manifesti; interface/64-bit sayaç, VLAN/FDB/ARP/LLDP | X465-48T/33.3.1.4 proje-sentetik fixture; OS alias metadata'sı açık, fiziksel kabul yok |
+| Extreme Fabric Engine / VOSS | Ayrı Fabric Engine manifesti ve koşullu `extreme_vsp` çözümü | 5520-48T/9.3.2.0 proje-sentetik fixture; SSH secure mode SNMP kısıtı görünür, fiziksel kabul yok |
+| Extreme SLX-OS | EXOS/VOSS'tan ayrı manifest ve CLI grameri; interface/64-bit sayaç, VLAN/FDB/ARP/LLDP | SLX 9150-48Y/20.6.3b proje-sentetik fixture; fiziksel kabul yok |
+| FortiSwitchOS standalone | Standalone kimlik kapısı; physical-port sayaçları, VLAN/FDB/ARP/LLDP | FortiSwitch-124F/7.6.2 proje-sentetik fixture; FortiLink/FortiOS ayrıdır, API kapalı, fiziksel kabul yok |
 | Linux | iproute2 JSON, sayaçlar, IP, ARP/NDP, uptime | Mevcut izole SSH sözleşmesi korunur |
-| FortiSwitchOS, Dell OS9/10, Extreme | Katalogda planlanan aileler | `available=false`; henüz çalışan sürücü olarak sunulmaz |
 
 NTC şablonları `ntc-templates==9.3.0` / `textfsm==2.1.0` ile sabittir.
 Sadece katalogdaki salt okunur komutlar çalıştırılır; şablon paketinin bütün
@@ -53,8 +59,9 @@ yalnız doğrulanmış alanlar ve güvenli hata kodlarıdır.
 
 `GET /api/v1/driver-catalog` additive v2 sözleşmesi döndürür:
 
-- `drivers`, 11 çalışan + 5 planlı legacy kimliği, komutları ve eski alanları
-  korur; legacy listede olmayan `h3c_comware7` kanonik `profiles` dizisinden
+- `drivers`, 15 çalışan + 1 çözülmemiş legacy kimliği, komutları ve eski
+  alanları korur; legacy listede olmayan `h3c_comware7`, `dell_os6`,
+  `extreme_slxos` ve `fortinet_fortiswitchos` kanonik `profiles` dizisinden
   seçilir;
 - `profiles`, uyumluluk programındaki 38 kanonik profili ayrı uygulama,
   doğrulama ve yayın durumlarıyla taşır;
@@ -97,7 +104,9 @@ additive tablo ekler: `device_driver_bindings`,
 
 `fortinet` otomatik profile çevrilmez. Kanıtsız `huawei_vrp`, `dell_force10` ve
 `extreme_vsp` binding'leri manuel çözüm bekler. Başarılı, kimliği doğrulayan
-collector/parser sonucu resolved profili günceller. Capability tablosu ham cihaz
+collector/parser sonucu resolved profili günceller. S07 ile OS9/FTOS ve
+Fabric Engine/VOSS kanıtı bulunan eski kayıtların kanonik çözümü mümkün olmuş,
+belirsiz kayıt davranışı değişmemiştir. Capability tablosu ham cihaz
 çıktısı veya hata metni değil; typed durum/reason, zaman, expiry ve SHA-256 digest
 saklar. Acceptance kaydı yoksa katalog veya cihaz görünümü destek seviyesini
 kendiliğinden yükseltmez.
@@ -149,8 +158,10 @@ oluşturma/profil değiştirme yollarında reddeder.
 
 SSH toplayıcısı profilin zorunlu inventory kimlik komutunu diğer komutlardan
 önce okur. IOS/IOS-XE, VRP V200/V600, klasik Junos/Junos Evolved, NX-OS,
-AOS-CX/AOS-Switch, EOS, HPE/H3C Comware ve RouterOS birbirine parser fallback'i
-yapmaz. H3C V5/V9, V7 parser'ına; RouterOS, Cisco parser'ına yönlendirilmez.
+AOS-CX/AOS-Switch, EOS, HPE/H3C Comware, RouterOS, Dell OS6/OS9/OS10/SONiC,
+Extreme EXOS/Fabric Engine/SLX ve FortiSwitch standalone/FortiLink/FortiOS
+birbirine parser fallback'i yapmaz. H3C V5/V9, V7 parser'ına; RouterOS, Cisco
+parser'ına yönlendirilmez.
 Gözlenen implemented profil farklıysa gerçek profilin allowlist'i kullanılır ve
 yapılandırılmış binding çelişki olarak kaydedilir; catalog-only ailede toplama
 `collector_platform_unsupported` ile durur. Tanınabilir SNMP `sysDescr` ayrı
@@ -275,11 +286,13 @@ sözleşmesini kendiliğinden genişletmez.
 | SFP/kısmi tablo düzeltmeleri, atomik grup ve alan bazlı son-doğru kaydı | Uygulandı; capability kaynak/saat provenance korunur |
 | Typed registry ve additive katalog v2 | Uygulandı; 38 profil sınıflı, eski 16 katalog kaydı geriye uyumlu |
 | P0 kanonik manifestleri; IOS/IOS-XE ayrımı, Huawei V200 alias, Junos/NX-OS | Uygulandı; bütün profiller deneysel ve fiziksel kabul bekliyor |
+| P1 AOS-CX/AOS-Switch, EOS, HPE/H3C Comware V7 ve RouterOS manifestleri | Uygulandı; proje-sentetik fixture doğrulandı, fiziksel kabul bekliyor |
+| S07 Dell OS6/9/10, Extreme EXOS/Fabric/SLX ve standalone FortiSwitchOS | Uygulandı; proje-sentetik fixture doğrulandı, controller/FortiLink ayrı ve fiziksel kabul bekliyor |
 | Host key keşfi/onayı, ortak SSH profilleri | Uygulandı; yerel gerçek SSH ve tarayıcı testi |
 | Kalıcı kuyruk, zamanlayıcı, worker, standard MIB SNMPv3 çekirdeği | Uygulandı; ortak fencing/deadline, bounded reader ve yerel gerçek UDP testi |
 | Arayüz, kalite tanıları, sınırlı geçmiş, saklama | Uygulandı; gerçek tarayıcı ve yerel saklama testleri |
 | Fiziksel pilot, 100 cihaz gerçek 24 saat kabulü | Çalıştırılmadı; kapasite/üretim kabulü değildir |
-| Sonraki üretici dalgaları | Planlandı; çalışan sürücü değil |
+| Controller/API, ileri/legacy NOS ve sınırlı protokol dalgaları | Planlandı; çalışan sürücü değil |
 
 - Birim/yerel SSH testleri fiziksel cihaz kabulü değildir. 100 cihaz ×24 saat
   hızlandırılmış zamanlayıcı testi gerçek 24 saatlik PostgreSQL/ağ yük testi
@@ -310,6 +323,9 @@ sözleşmesini kendiliğinden genişletmez.
 - [Huawei interface commands](https://info.support.huawei.com/enterprise/en/doc/EDOC1100333403/cdd85713/basic-interface-configuration-commands)
 - [Junos XML mapping](https://www.juniper.net/documentation/us/en/software/junos/netconf/junos-xml-protocol/topics/task/junos-xml-protocol-rpcs-and-xml-mapping.html)
 - [NX-OS structured output](https://www.cisco.com/c/en/us/td/docs/dcn/nx-os/nexus9000/103x/command-reference/show/b_n9k_show_commands_103x/m_show_xml.html)
+- [Dell SmartFabric OS10 LLDP CLI](https://www.dell.com/support/manuals/en-us/dell-emc-smartfabric-os10/smartfabric-os-user-guide-10-5-2-6/show-lldp-neighbors?guid=guid-cf4a7765-02fd-4278-9bcb-c49088ba61e5&lang=en-us)
+- [Extreme Fabric Engine SSH secure mode](https://documentation.extremenetworks.com/Fabric%20Engine%20v9.3%20User%20Guide/content/documents/Switch_Operating_Systems/VOSS_and_Fabric_Engine/fabric_engine_user_guide/ssh_version_2.shtml)
+- [FortiSwitchOS CLI reference](https://docs.fortinet.com/document/fortiswitch/7.6.2/fortiswitchos-cli-reference/896953/get)
 - [AsyncSSH API](https://asyncssh.readthedocs.io/en/latest/api.html#asyncssh.get_server_host_key)
 - [IF-MIB / RFC 2863](https://www.rfc-editor.org/info/rfc2863/)
 - [Q-BRIDGE-MIB / RFC 4363](https://www.rfc-editor.org/info/rfc4363/)

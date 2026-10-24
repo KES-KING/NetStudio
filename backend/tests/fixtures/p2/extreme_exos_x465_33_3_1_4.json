@@ -1,0 +1,20 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "extreme_exos",
+  "runtime_driver_id": "extreme_exos",
+  "model": "X465-48T",
+  "os_version": "33.3.1.4",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "show version": "Extreme Networks Switch Engine\nSwitch : X465-48T\nExtremeXOS version 33.3.1.4\nSystem Serial Number : TEST-EXOS-001\n",
+    "show ports statistics no-refresh": "Port : 1:1\n Admin State : Enabled\n Link State : Active\n Port Speed : 10000 Mbps\n Duplex : Full\n Rx Byte Count : 8589934596\n Tx Byte Count : 8589934696\n Rx Error Count : 1\n Rx Discard Count : 2\n Tx Error Count : 3\n Tx Discard Count : 4\n",
+    "show vlan": "10 | Users | 1:1 | untagged\n",
+    "show fdb": "10 | 02:00:00:00:33:10 | dynamic | 1:1\n",
+    "show iparp": "192.0.2.10 | 02:00:00:00:33:10 | 1:1\n",
+    "show lldp neighbors": "1:1 | 02:00:00:00:33:02 | 1:2 | exos-peer.example.test\n"
+  },
+  "expected": {"vendor": "Extreme Networks", "model": "X465-48T", "parsed_os_version": "33.3.1.4", "serial": "TEST-EXOS-001", "interface_name": "1:1"}
+}

@@ -24,6 +24,9 @@ describe("device-specific command helper", () => {
     expect(
       commandDriverFor({ ...baseDevice, collector: "juniper_junos" }),
     ).toEqual({ id: "juniper_junos", source: "configured" });
+    expect(
+      commandDriverFor({ ...baseDevice, collector: "dell_os6" }),
+    ).toEqual({ id: "dell_os6", source: "configured" });
   });
 
   it("maps explicit vendor and platform identity when collection is external", () => {

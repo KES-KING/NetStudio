@@ -17,6 +17,19 @@ const supportedCollectors = new Set<DeviceCollector>([
   "cisco_iosxe",
   "cisco_nxos",
   "juniper_junos",
+  "aruba_aoscx",
+  "hp_procurve",
+  "arista_eos",
+  "hp_comware",
+  "h3c_comware7",
+  "mikrotik_routeros",
+  "dell_os10",
+  "dell_force10",
+  "dell_os6",
+  "extreme_exos",
+  "extreme_vsp",
+  "extreme_slxos",
+  "fortinet_fortiswitchos",
 ]);
 
 export function commandDriverFor(device: Device): CommandDriverMatch | null {
@@ -70,7 +83,7 @@ const commandGroupOrder: DriverCommand["group"][] = [
   "network",
 ];
 
-export function groupedCommands(entry: DriverCatalogEntry) {
+export function groupedCommands(entry: Pick<DriverCatalogEntry, "commands">) {
   return commandGroupOrder
     .map((group) => ({
       group,

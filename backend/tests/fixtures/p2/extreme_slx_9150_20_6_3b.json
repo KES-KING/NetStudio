@@ -1,0 +1,20 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "extreme_slxos",
+  "runtime_driver_id": "extreme_slxos",
+  "model": "SLX 9150-48Y",
+  "os_version": "20.6.3b",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "show version": "Extreme SLX-OS Operating System\nSystem Type : SLX 9150-48Y\nSLX-OS Version : 20.6.3b\nChassis Serial Number : TEST-SLX-001\n",
+    "show interface": "Ethernet 1/0/1 is up, line protocol is up\n LineSpeed : 25000 Mbps\n Duplex : Full\n Input octets : 8589934598\n Output octets : 8589934698\n Input errors : 1\n Input discards : 2\n Output errors : 3\n Output discards : 4\n",
+    "show vlan brief": "10 | Users | Eth 1/0/1 | untagged\n",
+    "show mac-address-table": "10 | 02:00:00:00:20:10 | dynamic | Eth 1/0/1\n",
+    "show arp": "192.0.2.10 | 02:00:00:00:20:10 | Eth 1/0/1\n",
+    "show lldp neighbors detail": "Eth 1/0/1 | 02:00:00:00:20:02 | Eth 1/0/2 | slx-peer.example.test\n"
+  },
+  "expected": {"vendor": "Extreme Networks", "model": "SLX 9150-48Y", "parsed_os_version": "20.6.3b", "serial": "TEST-SLX-001", "interface_name": "Ethernet 1/0/1"}
+}

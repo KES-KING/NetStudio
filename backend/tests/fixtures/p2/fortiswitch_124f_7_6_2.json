@@ -1,0 +1,20 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "fortinet_fortiswitchos",
+  "runtime_driver_id": "fortinet_fortiswitchos",
+  "model": "FortiSwitch-124F",
+  "os_version": "7.6.2",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "get system status": "Version: FortiSwitch-124F v7.6.2,build1071,250326\nSerial-Number: TEST-FSW-001\nManagement mode: standalone\n",
+    "diagnose switch physical-ports list": "Port(port1) is Admin up, line protocol is up\n full-duplex, 1000 Mb/s, link type is auto\n input : 8589934599 bytes, 100 packets, 1 errors, 2 drops\n output : 8589934699 bytes, 101 packets, 3 errors, 4 drops\n",
+    "get switch vlan": "10 | Users | port1 | untagged\n",
+    "diagnose switch mac-address list": "10 | 02:00:00:00:76:10 | dynamic | port1\n",
+    "get system arp": "192.0.2.10 | 02:00:00:00:76:10 | port1\n",
+    "diagnose lldprx neighbor summary": "port1 | 02:00:00:00:76:02 | port2 | fortiswitch-peer.example.test\n"
+  },
+  "expected": {"vendor": "Fortinet", "model": "FortiSwitch-124F", "parsed_os_version": "7.6.2", "serial": "TEST-FSW-001", "interface_name": "port1"}
+}

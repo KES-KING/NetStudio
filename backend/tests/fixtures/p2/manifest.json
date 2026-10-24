@@ -1,0 +1,26 @@
+{
+  "fixture_set": "S07-P2-ENTERPRISE-CLI-SYNTHETIC-001",
+  "generated_at": "2026-10-24T00:00:00+03:00",
+  "source_permission": "project_generated_test_fixture",
+  "sanitization_method": "deterministic_project_synthetic_v1",
+  "review_status": "project_synthetic_no_external_raw_evidence",
+  "capabilities": ["identity", "interfaces", "64_bit_counters", "vlan", "fdb", "arp", "lldp", "inventory"],
+  "known_exceptions": [
+    "fixtures exercise bounded parser contracts and are not recordings of vendor devices",
+    "vendor output fidelity, SSH transport behavior and physical hardware behavior are not asserted",
+    "Fabric Engine ssh secure mode can block SNMP and is surfaced as a transport constraint",
+    "FortiLink-managed FortiSwitch and FortiOS remain outside the standalone runtime profile"
+  ],
+  "sensitive_term_scan": "manual_bounded_pattern_scan_pass",
+  "physical_acceptance": false,
+  "production_accepted": false,
+  "files": [
+    {"path": "dell_os10_s5248f_10_5_6_1.json", "sha256": "5ecbbf55547d996c69a3f0702ce6694d353976fdeddc3d2b0c6a52f56ba67fae"},
+    {"path": "dell_os9_s4048_9_14_2_20.json", "sha256": "d14b9aee07f0974579212c6076b2147d361dd9caaf88a9c2c38fbc512fdcf13c"},
+    {"path": "dell_os6_n3248x_6_8_1_0.json", "sha256": "28fcbbf695bb9fb402c08ee583ac16ee6b9a46dec903977c2626cfdc9244752d"},
+    {"path": "extreme_exos_x465_33_3_1_4.json", "sha256": "94b0ed6b5327aa9825011bf5ec0cfd94a7ef36b85d31307ad3e09114c849bba9"},
+    {"path": "extreme_fabric_5520_9_3_2_0.json", "sha256": "c55f965cd947ab4cf38b0a4a069ded13a400bb7691c86102900edab461d56552"},
+    {"path": "extreme_slx_9150_20_6_3b.json", "sha256": "0673f1a55ee6bb97ad2f7a9444c09eeeb0879f7c73ff32fa4a1bc50495bc6e33"},
+    {"path": "fortiswitch_124f_7_6_2.json", "sha256": "1e4884b6b91ef6096780f7b40a9494bcdee9f6e08b5e994bc471dfb0bb2b738f"}
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "dell_os10",
+  "runtime_driver_id": "dell_os10",
+  "model": "S5248F-ON",
+  "os_version": "10.5.6.1",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "show version": "Dell EMC SmartFabric OS10\nProduct : S5248F-ON\nOS Version : 10.5.6.1\nService Tag : TEST-OS10-001\n",
+    "show interface": "Ethernet 1/1/1 is up, line protocol is up\n Speed : 10000 Mbps\n Duplex : Full\n Input bytes : 8589934593\n Output bytes : 8589934693\n Input errors : 1\n Input discards : 2\n Output errors : 3\n Output discards : 4\n",
+    "show vlan": "10 | Users | ethernet1/1/1 | untagged\n",
+    "show mac address-table": "10 | 02:00:00:00:10:10 | dynamic | ethernet1/1/1\n",
+    "show ip arp": "192.0.2.10 | 02:00:00:00:10:10 | ethernet1/1/1\n",
+    "show lldp neighbors": "ethernet1/1/1 | 02:00:00:00:10:02 | ethernet1/1/2 | os10-peer.example.test\n"
+  },
+  "expected": {"vendor": "Dell Technologies", "model": "S5248F-ON", "parsed_os_version": "10.5.6.1", "serial": "TEST-OS10-001", "interface_name": "ethernet1/1/1"}
+}

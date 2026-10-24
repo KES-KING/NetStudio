@@ -25,11 +25,18 @@ export function CommandHelper({
   );
   const [copyMessage, setCopyMessage] = useState("");
   const match = commandDriverFor(device);
-  const driver = match
+  const legacyDriver = match
     ? data?.drivers.find(
         (candidate) => candidate.id === match.id && candidate.available,
       )
     : undefined;
+  const canonicalProfile = match
+    ? data?.profiles?.find(
+        (candidate) =>
+          candidate.runtime_selection_id === match.id && candidate.selectable,
+      )
+    : undefined;
+  const driver = legacyDriver ?? canonicalProfile;
 
   async function copyCommand(command: string) {
     try {
@@ -77,8 +84,14 @@ export function CommandHelper({
             <div className="command-helper-meta">
               <span>{match && matchSourceLabels[match.source]}</span>
               <span>
-                {validationLabels[driver.validation_level] ??
-                  driver.validation_level}
+                {validationLabels[
+                  "validation_level" in driver
+                    ? driver.validation_level
+                    : driver.verification_status
+                ] ??
+                  ("validation_level" in driver
+                    ? driver.validation_level
+                    : driver.verification_status)}
               </span>
             </div>
             {driver.commands.length === 0 ? (

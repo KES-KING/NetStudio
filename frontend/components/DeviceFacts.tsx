@@ -20,6 +20,10 @@ const collectors: Record<string, string> = {
   aruba_aoscx: "Aruba AOS-CX", hp_procurve: "Aruba AOS-Switch",
   arista_eos: "Arista EOS", hp_comware: "HPE Comware",
   h3c_comware7: "H3C Comware V7", mikrotik_routeros: "MikroTik RouterOS",
+  dell_os10: "Dell SmartFabric OS10", dell_force10: "Dell Networking OS9",
+  dell_os6: "Dell Networking OS6", extreme_exos: "Extreme Switch Engine",
+  extreme_vsp: "Extreme Fabric Engine", extreme_slxos: "Extreme SLX-OS",
+  fortinet_fortiswitchos: "Fortinet FortiSwitchOS",
 };
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return <div><dt>{label}</dt><dd>{children}</dd></div>;
