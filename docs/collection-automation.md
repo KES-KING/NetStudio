@@ -35,8 +35,14 @@ Bir markanın katalogda yer alması bütün modellerinin desteklendiği anlamın
 | Cisco IOS-XE | IOS'tan bağımsız manifest; doğrulanmış IOS-benzeri read-only alt küme | C9200L/17.12.3 ve C9300/17.9.5 proje-sentetik fixture; deneysel, fiziksel kabul yok |
 | Junos | Güvenli XML; arayüz/sayaç/IP, routing-engine ve environment, FDB/ARP, LLDP, sürüm/chassis/modül | Sentetik unit corpus; Junos Evolved fail-closed, fiziksel kabul yok |
 | NX-OS | JSON arayüz/sayaç, sürüm/kaynak, FDB, LLDP ve inventory | Sentetik unit corpus; ARP/VLAN CLI capability'si ilan edilmez, fiziksel kabul yok |
+| Aruba AOS-CX | Ayrı JSON CLI manifesti; 64-bit sayaç, identity, VLAN/FDB/ARP/LLDP, health/environment ve inventory | JL658A/FL.10.13.1030 proje-sentetik fixture; REST uygulanmadı, fiziksel kabul yok |
+| Aruba AOS-Switch | Ayrı text CLI manifesti; 64-bit sayaç, identity, VLAN/FDB/ARP/LLDP ve inventory | JL253A/WC.16.11.0016 proje-sentetik fixture; `hp_procurve` alias korunur, fiziksel kabul yok |
+| Arista EOS | SSH içi JSON CLI; 64-bit sayaç, identity, VLAN/FDB/ARP/LLDP, health/environment ve inventory | DCS-7050SX3-48YC8/4.31.2F proje-sentetik fixture; eAPI uygulanmadı, fiziksel kabul yok |
+| HPE Comware 7 | Text CLI; 64-bit sayaç, identity, VLAN/FDB/ARP/LLDP, health/environment ve inventory | JH390A/7.1.070 proje-sentetik fixture; H3C kimliğinden ayrı, fiziksel kabul yok |
+| H3C Comware V7 | Comware V7 alan mapper'ı ve ayrı H3C kimlik kapısı; V5/V9 fail-closed | S5560X-30C-EI/7.1.070 proje-sentetik fixture; fiziksel kabul yok |
+| MikroTik RouterOS | RouterOS `/... print` grameri; 64-bit sayaç, identity, bridge VLAN/FDB, ARP, LLDP, health ve RouterBOARD | CRS326-24G-2S+/7.15.3 proje-sentetik fixture; Cisco fallback/API yok, fiziksel kabul yok |
 | Linux | iproute2 JSON, sayaçlar, IP, ARP/NDP, uptime | Mevcut izole SSH sözleşmesi korunur |
-| Aruba AOS-CX/AOS-Switch, Comware, EOS, RouterOS, FortiSwitchOS, Dell OS9/10, Extreme | Katalogda planlanan aileler | `available=false`; henüz çalışan sürücü olarak sunulmaz |
+| FortiSwitchOS, Dell OS9/10, Extreme | Katalogda planlanan aileler | `available=false`; henüz çalışan sürücü olarak sunulmaz |
 
 NTC şablonları `ntc-templates==9.3.0` / `textfsm==2.1.0` ile sabittir.
 Sadece katalogdaki salt okunur komutlar çalıştırılır; şablon paketinin bütün
@@ -47,8 +53,9 @@ yalnız doğrulanmış alanlar ve güvenli hata kodlarıdır.
 
 `GET /api/v1/driver-catalog` additive v2 sözleşmesi döndürür:
 
-- `drivers`, önceki 6 çalışan + 10 planlı kimliği, komutları ve eski alanları
-  aynı değerlerle korur;
+- `drivers`, 11 çalışan + 5 planlı legacy kimliği, komutları ve eski alanları
+  korur; legacy listede olmayan `h3c_comware7` kanonik `profiles` dizisinden
+  seçilir;
 - `profiles`, uyumluluk programındaki 38 kanonik profili ayrı uygulama,
   doğrulama ve yayın durumlarıyla taşır;
 - `infrastructure_adapters`, `linux_ssh` değerini NOS profillerinden ayrı tutar;
@@ -140,13 +147,15 @@ oluşturma/profil değiştirme yollarında reddeder.
 
 ### Profil kimliği ve yeniden çözümleme
 
-P0 SSH toplayıcısı profilin zorunlu inventory kimlik komutunu diğer komutlardan
-önce okur. IOS/IOS-XE, VRP V200/V600, klasik Junos/Junos Evolved ve NX-OS
-birbirine parser fallback'i yapmaz. Gözlenen implemented profil farklıysa gerçek
-profilin allowlist'i kullanılır ve yapılandırılmış binding çelişki olarak
-kaydedilir; catalog-only ailede toplama `collector_platform_unsupported` ile
-durur. Tanınabilir SNMP `sysDescr` ayrı kimlik kanıtıdır; SSH ve SNMP farklı
-kanonik profil gösterirse `transport_identity_mismatch` ile fail-closed olur.
+SSH toplayıcısı profilin zorunlu inventory kimlik komutunu diğer komutlardan
+önce okur. IOS/IOS-XE, VRP V200/V600, klasik Junos/Junos Evolved, NX-OS,
+AOS-CX/AOS-Switch, EOS, HPE/H3C Comware ve RouterOS birbirine parser fallback'i
+yapmaz. H3C V5/V9, V7 parser'ına; RouterOS, Cisco parser'ına yönlendirilmez.
+Gözlenen implemented profil farklıysa gerçek profilin allowlist'i kullanılır ve
+yapılandırılmış binding çelişki olarak kaydedilir; catalog-only ailede toplama
+`collector_platform_unsupported` ile durur. Tanınabilir SNMP `sysDescr` ayrı
+kimlik kanıtıdır; SSH ve SNMP farklı kanonik profil gösterirse
+`transport_identity_mismatch` ile fail-closed olur.
 
 Önceden eşleşmiş vendor/model/OS ailesi veya sürümü değiştiğinde, profil
 revizyonu değiştiğinde ya da SNMP uptime reboot gösterdiğinde çözüm yeniden

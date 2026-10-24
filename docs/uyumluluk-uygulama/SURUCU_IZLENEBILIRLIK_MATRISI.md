@@ -49,12 +49,12 @@ proje-sentetik parser girdileridir.
 
 | Hedef profil | Eski/mevcut karşılık | Mevcut durum | Hedef transport | Sprint | Minimum destek çıkışı |
 |---|---|---|---|---|---|
-| `aruba_aoscx` | Aynı ID planned | C; `available=false`, adapter yok | SSH/structured API + SNMPv3 | S06, S11 | Exact CX model/sürümde identity/interfaces/FDB/VLAN/LLDP P |
-| `aruba_aoss` | `hp_procurve` | C; eski etiket, adapter yok | SSH + SNMPv3 | S01, S02, S06, S11 | Alias migration ve exact AOS-S model/sürüm P |
-| `arista_eos` | Aynı ID planned | C; adapter yok | eAPI/SSH + SNMPv3 | S06, S11 | API güven kapısı + exact EOS tuple P |
-| `hpe_comware` | `hp_comware` | C; adapter yok | SSH + SNMPv3 | S01, S02, S06, S11 | HPE marka/OS kanıtı + exact tuple P |
-| `h3c_comware7` | Ortak planned Comware dışında ayrı ID yok | Not implemented | SSH + SNMPv3 | S06, S11 | H3C kimliği ve exact V7 tuple P |
-| `mikrotik_routeros` | Aynı ID planned | C; adapter yok | SSH/API adayı + SNMPv3 | S06, S11 | Exact RouterOS v6/v7 + CRS tuple ayrı kabul |
+| `aruba_aoscx` | Aynı runtime ID | I+F; rev2 JSON CLI manifesti, JL658A/FL.10.13.1030 sentetik fixture; `experimental` | SSH JSON + SNMPv3; REST uygulanmadı | S06 tamamlandı, S11 | Exact CX tuple'da fiziksel P |
+| `aruba_aoss` | `hp_procurve` runtime/alias | I+F; rev2 text manifesti, JL253A/WC.16.11.0016 sentetik fixture; secret/host key koruma testi; `experimental` | SSH + SNMPv3 | S01, S02, S06 tamamlandı, S11 | Exact AOS-S tuple'da fiziksel P |
+| `arista_eos` | Aynı runtime ID | I+F; rev2 JSON CLI manifesti, 7050SX3/4.31.2F sentetik fixture; `experimental` | SSH JSON + SNMPv3; eAPI ADR-COMPAT-004 ile kapalı | S06 tamamlandı, S11 | Exact EOS tuple ve API seçilirse güven kapısı P |
+| `hpe_comware` | `hp_comware` runtime/alias | I+F; rev2 HPE kimlik sınırı, JH390A/7.1.070 sentetik fixture; `experimental` | SSH + SNMPv3 | S01, S02, S06 tamamlandı, S11 | HPE marka/OS exact tuple fiziksel P |
+| `h3c_comware7` | Ayrı kanonik/runtime ID | I+F; rev2 H3C V7 kimliği, S5560X/7.1.070 sentetik fixture; V5/V9 fail-closed; `experimental` | SSH + SNMPv3 | S06 tamamlandı, S11 | H3C V7 exact tuple fiziksel P |
+| `mikrotik_routeros` | Aynı runtime ID | I+F; rev2 RouterOS grameri, CRS326/7.15.3 sentetik fixture; Cisco fallback yok; `experimental` | SSH + SNMPv3; API ADR-COMPAT-004 ile kapalı | S06 tamamlandı, S11 | RouterOS v6/v7 ve CRS tuple'ları ayrı fiziksel P |
 
 ## 4. P2 — Dell, Extreme, Fortinet ve kampüs ekosistemi
 

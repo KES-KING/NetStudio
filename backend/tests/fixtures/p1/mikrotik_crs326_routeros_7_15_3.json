@@ -1,0 +1,22 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "mikrotik_routeros",
+  "runtime_driver_id": "mikrotik_routeros",
+  "model": "CRS326-24G-2S+",
+  "os_version": "7.15.3 (stable)",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "/system resource print without-paging": "uptime: 1w2d3h4m5s\nversion: 7.15.3 (stable)\nfree-memory: 768.0MiB\ntotal-memory: 1024.0MiB\ncpu-load: 7%\nboard-name: CRS326-24G-2S+\nplatform: MikroTik\n",
+    "/interface print stats-detail without-paging": "0 R name=ether1 type=ether disabled=false running=true link-speed=1Gbps ifindex=1 rx-byte=4294967306 tx-byte=4294967406 rx-error=0 rx-drop=0 tx-error=0 tx-drop=0\n",
+    "/system health print detail without-paging": "temperature: 40C\nvoltage: 24.1V\n",
+    "/interface bridge vlan print detail without-paging": "0 bridge=bridge vlan-ids=10 untagged=ether1 tagged=\"\"\n",
+    "/interface bridge host print detail without-paging": "0 D mac-address=02:00:00:00:00:10 vid=10 on-interface=ether1\n",
+    "/ip arp print detail without-paging": "0 D address=192.0.2.10 mac-address=02:00:00:00:00:10 interface=ether1\n",
+    "/ip neighbor print detail without-paging": "0 interface=ether1 mac-address=02:00:00:00:00:02 interface-name=Ethernet1 identity=peer.example.test\n",
+    "/system routerboard print without-paging": "routerboard: yes\nmodel: CRS326-24G-2S+\nserial-number: TEST-ROS-001\n"
+  },
+  "expected": {"vendor": "MikroTik", "model": "CRS326-24G-2S+", "parsed_os_version": "7.15.3 (stable)", "serial": "TEST-ROS-001", "interface_name": "ether1"}
+}

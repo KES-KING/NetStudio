@@ -12,17 +12,23 @@ from typing import Literal, Sequence
 from pydantic import BaseModel, ConfigDict, Field
 
 from .driver_manifests import (
+    arista_eos as eos_manifest,
+    aruba_aoscx as aoscx_manifest,
+    aruba_aoss as aoss_manifest,
     cisco_ios as ios_manifest,
     cisco_iosxe as iosxe_manifest,
     cisco_nxos as nxos_manifest,
+    h3c_comware7 as h3c_comware7_manifest,
+    hpe_comware as hpe_comware_manifest,
     huawei_vrp_v200 as vrp_v200_manifest,
     juniper_junos as junos_manifest,
     linux_ssh as linux_manifest,
+    mikrotik_routeros as routeros_manifest,
 )
 
 
-DRIVER_VERSION = "2026.10.23.4"
-CATALOG_REVISION = "2026.10.23.3"
+DRIVER_VERSION = "2026.10.24.1"
+CATALOG_REVISION = "2026.10.24.1"
 NTC_VERSION = "9.3.0"
 GROUPS = ("fast", "health", "network", "inventory")
 DATA_CONTRACT = {
@@ -49,6 +55,11 @@ REFERENCES = {
     "huawei": "https://info.support.huawei.com/enterprise/en/doc/EDOC1100333403/cdd85713/basic-interface-configuration-commands",
     "junos": "https://www.juniper.net/documentation/us/en/software/junos/netconf/junos-xml-protocol/topics/task/junos-xml-protocol-rpcs-and-xml-mapping.html",
     "nxos": "https://www.cisco.com/c/en/us/td/docs/dcn/nx-os/nexus9000/103x/command-reference/show/b_n9k_show_commands_103x/m_show_xml.html",
+    "aoscx": "https://arubanetworking.hpe.com/techdocs/AOS-CX/10.16/HTML/cli_6300-6400/index.html",
+    "aoss": "https://arubanetworking.hpe.com/techdocs/AOS-S/16.11/MCG/YC/content/index.htm",
+    "eos": "https://www.arista.com/en/um-eos/eos-section-1-3-command-api-overview",
+    "comware": "https://www.h3c.com/en/Support/Resource_Center/EN/Switches/Catalog/S5560X/S5560X-EI/Technical_Documents/Reference_Guides/Command_References/H3C_S5560X-EI_CR_R65xx-18865/",
+    "routeros": "https://help.mikrotik.com/docs/spaces/ROS/pages/328134/Command+Line+Interface",
 }
 IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
 
@@ -194,6 +205,12 @@ IOSXE = commands("cisco", iosxe_manifest.COMMAND_ROWS)
 VRP = commands("huawei", vrp_v200_manifest.COMMAND_ROWS)
 JUNOS = commands("junos", junos_manifest.COMMAND_ROWS)
 NXOS = commands("nxos", nxos_manifest.COMMAND_ROWS)
+AOSCX = commands("aoscx", aoscx_manifest.COMMAND_ROWS)
+AOSS = commands("aoss", aoss_manifest.COMMAND_ROWS)
+EOS = commands("eos", eos_manifest.COMMAND_ROWS)
+HPE_COMWARE = commands("comware", hpe_comware_manifest.COMMAND_ROWS)
+H3C_COMWARE7 = commands("comware", h3c_comware7_manifest.COMMAND_ROWS)
+ROUTEROS = commands("routeros", routeros_manifest.COMMAND_ROWS)
 
 P0_CAPABILITIES = {
     "cisco_ios": ios_manifest.CAPABILITIES,
@@ -201,6 +218,15 @@ P0_CAPABILITIES = {
     "cisco_nxos": nxos_manifest.CAPABILITIES,
     "huawei_vrp_v200": vrp_v200_manifest.CAPABILITIES,
     "juniper_junos": junos_manifest.CAPABILITIES,
+}
+
+P1_CAPABILITIES = {
+    "aruba_aoscx": aoscx_manifest.CAPABILITIES,
+    "aruba_aoss": aoss_manifest.CAPABILITIES,
+    "arista_eos": eos_manifest.CAPABILITIES,
+    "hpe_comware": hpe_comware_manifest.CAPABILITIES,
+    "h3c_comware7": h3c_comware7_manifest.CAPABILITIES,
+    "mikrotik_routeros": routeros_manifest.CAPABILITIES,
 }
 
 
@@ -359,12 +385,66 @@ PROFILES = (
         profile_revision=2,
         tested_versions=("Classic Junos XML synthetic parser corpus",),
     ),
-    _profile("aruba_aoscx", "Aruba AOS-CX", "P1", _identity("HPE Aruba Networking", "AOS-CX"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("aruba_aoss", "Aruba AOS-Switch", "P1", _identity("HPE Aruba Networking", "AOS-Switch"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("arista_eos", "Arista EOS", "P1", _identity("Arista Networks", "EOS"), (SSH_PLANNED, SNMP_PLANNED, API_BLOCKED)),
-    _profile("hpe_comware", "HPE Comware", "P1", _identity("HPE Aruba Networking", "Comware"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("h3c_comware7", "H3C Comware V7", "P1", _identity("H3C", "Comware V7"), (SSH_PLANNED, SNMP_PLANNED)),
-    _profile("mikrotik_routeros", "MikroTik RouterOS", "P1", _identity("MikroTik", "RouterOS"), (SSH_PLANNED, SNMP_PLANNED, API_BLOCKED)),
+    _profile(
+        "aruba_aoscx", "Aruba AOS-CX", "P1",
+        _identity("HPE Aruba Networking", "AOS-CX", models=("JL658A", "6300M*"), versions=("FL.10.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED, API_BLOCKED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="aruba_aoscx", adapter="ssh_cli_json",
+        command_plan=AOSCX, capability_groups=P1_CAPABILITIES["aruba_aoscx"],
+        tested_versions=("JL658A 6300M / AOS-CX FL.10.13.1030 project-synthetic fixture",),
+        profile_revision=2,
+    ),
+    _profile(
+        "aruba_aoss", "Aruba AOS-Switch", "P1",
+        _identity("HPE Aruba Networking", "AOS-Switch", models=("JL253A", "2930F*"), versions=("WC.16.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="hp_procurve", adapter="ssh_cli",
+        command_plan=AOSS, capability_groups=P1_CAPABILITIES["aruba_aoss"],
+        tested_versions=("JL253A 2930F-24G / ArubaOS-Switch WC.16.11.0016 project-synthetic fixture",),
+        profile_revision=2,
+    ),
+    _profile(
+        "arista_eos", "Arista EOS", "P1",
+        _identity("Arista Networks", "EOS", models=("DCS-7050SX3-*",), versions=("4.31.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED, API_BLOCKED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="arista_eos", adapter="ssh_cli_json",
+        command_plan=EOS, capability_groups=P1_CAPABILITIES["arista_eos"],
+        tested_versions=("DCS-7050SX3-48YC8 / EOS 4.31.2F project-synthetic fixture",),
+        profile_revision=2,
+    ),
+    _profile(
+        "hpe_comware", "HPE Comware", "P1",
+        _identity("HPE Aruba Networking", "Comware", models=("JH390A", "5940*"), versions=("7.1.070*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="hp_comware", adapter="ssh_cli",
+        command_plan=HPE_COMWARE, capability_groups=P1_CAPABILITIES["hpe_comware"],
+        tested_versions=("JH390A 5940 / Comware 7.1.070 R6715P06 project-synthetic fixture",),
+        profile_revision=2,
+    ),
+    _profile(
+        "h3c_comware7", "H3C Comware V7", "P1",
+        _identity("H3C", "Comware V7", models=("S5560X-30C-EI",), versions=("7.1.070*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="h3c_comware7", adapter="ssh_cli",
+        command_plan=H3C_COMWARE7, capability_groups=P1_CAPABILITIES["h3c_comware7"],
+        tested_versions=("S5560X-30C-EI / Comware 7.1.070 R6526P01 project-synthetic fixture",),
+        profile_revision=2,
+    ),
+    _profile(
+        "mikrotik_routeros", "MikroTik RouterOS", "P1",
+        _identity("MikroTik", "RouterOS", models=("CRS326-24G-2S+",), versions=("7.*",)),
+        (SSH_IMPLEMENTED, SNMP_IMPLEMENTED, API_BLOCKED), implementation="implemented",
+        verification="fixture_verified", release="experimental",
+        runtime_driver_id="mikrotik_routeros", adapter="ssh_cli_routeros",
+        command_plan=ROUTEROS, capability_groups=P1_CAPABILITIES["mikrotik_routeros"],
+        tested_versions=("CRS326-24G-2S+ / RouterOS 7.15.3 project-synthetic fixture",),
+        profile_revision=2,
+    ),
     _profile("dell_os10", "Dell SmartFabric OS10", "P2", _identity("Dell Technologies", "SmartFabric OS10"), (SSH_PLANNED, SNMP_PLANNED)),
     _profile("dell_os9", "Dell Networking OS9", "P2", _identity("Dell Technologies", "OS9"), (SSH_PLANNED, SNMP_PLANNED)),
     _profile("dell_os6", "Dell Networking OS6", "P2", _identity("Dell Technologies", "OS6"), (SSH_PLANNED, SNMP_PLANNED)),
@@ -463,23 +543,23 @@ LEGACY_CATALOG_BINDINGS = (
         adapter_id="linux_ssh",
     ),
     LegacyCatalogBinding(
-        id="aruba_aoscx", label="Aruba AOS-CX", available=False,
+        id="aruba_aoscx", label="Aruba AOS-CX", available=True,
         profile_id="aruba_aoscx",
     ),
     LegacyCatalogBinding(
-        id="hp_procurve", label="Aruba AOS-Switch", available=False,
+        id="hp_procurve", label="Aruba AOS-Switch", available=True,
         profile_id="aruba_aoss",
     ),
     LegacyCatalogBinding(
-        id="hp_comware", label="HPE Comware", available=False,
+        id="hp_comware", label="HPE Comware", available=True,
         profile_id="hpe_comware",
     ),
     LegacyCatalogBinding(
-        id="arista_eos", label="Arista EOS", available=False,
+        id="arista_eos", label="Arista EOS", available=True,
         profile_id="arista_eos",
     ),
     LegacyCatalogBinding(
-        id="mikrotik_routeros", label="MikroTik RouterOS", available=False,
+        id="mikrotik_routeros", label="MikroTik RouterOS", available=True,
         profile_id="mikrotik_routeros",
     ),
     LegacyCatalogBinding(

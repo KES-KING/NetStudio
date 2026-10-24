@@ -1,0 +1,24 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "h3c_comware7",
+  "runtime_driver_id": "h3c_comware7",
+  "model": "S5560X-30C-EI",
+  "os_version": "7.1.070 R6526P01",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "display version": "H3C Comware Software, Version 7.1.070, Release R6526P01\nDevice model : S5560X-30C-EI\nDevice serial number : TEST-H3C-CW7-001\n",
+    "display interface": "GigabitEthernet1/0/1 current state: UP\n Line protocol current state: UP\n Speed : 1000Mbps\n Duplex : Full\n PVID : 10\n Internet Address : 192.0.2.1/24\n Input: 4294967305 bytes, 0 errors, 0 discards\n Output: 4294967405 bytes, 0 errors, 0 discards\n",
+    "display cpu-usage": "CPU usage in last 5 seconds: 13%\n",
+    "display memory": "Memory usage: 33%\n",
+    "display environment": "Temperature : 43\nFan 1: Normal\nPower 1: Normal\n",
+    "display vlan all": "10 Users GE1/0/1 untagged\n",
+    "display mac-address": "0200-0000-0010 10 GE1/0/1 dynamic\n",
+    "display arp": "192.0.2.10 0200-0000-0010 GE1/0/1\n",
+    "display lldp neighbor-information": "GE1/0/1 | 02:00:00:00:00:02 | Ethernet1 | peer.example.test\n",
+    "display device manuinfo": "Chassis | H3C S5560X | S5560X-30C-EI | TEST-H3C-CW7-001\n"
+  },
+  "expected": {"vendor": "H3C", "model": "S5560X-30C-EI", "parsed_os_version": "7.1.070 R6526P01", "serial": "TEST-H3C-CW7-001", "interface_name": "GigabitEthernet1/0/1"}
+}

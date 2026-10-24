@@ -145,6 +145,15 @@ test("catalog-driven add form exposes supported, experimental, planned and unsup
   await dialog.locator('select[name="method"]').selectOption("private_key");
   await expect(dialog.getByLabel("Özel anahtar", { exact: true })).toHaveValue("");
 
+  await vendor.selectOption({ value: "HPE Aruba Networking" });
+  await expect(profile.locator("option[value=aruba_aoscx]")).toBeEnabled();
+  await expect(profile.locator("option[value=aruba_aoss]")).toBeEnabled();
+  await expect(profile.locator("option[value=hpe_comware]")).toBeEnabled();
+  await vendor.selectOption({ value: "H3C" });
+  await expect(profile.locator("option[value=h3c_comware7]")).toBeEnabled();
+  await expect(profile.locator("option[value=h3c_comware5]")).toHaveAttribute("disabled", "");
+  await expect(profile.locator("option[value=h3c_comware9]")).toHaveAttribute("disabled", "");
+
   await vendor.selectOption({ value: "TP-Link" });
   await expect(profile.locator("option[value=tplink_omada_managed]")).toHaveAttribute("disabled", "");
   await expect(profile.locator("option[value=tplink_easy_smart]")).toHaveAttribute("disabled", "");

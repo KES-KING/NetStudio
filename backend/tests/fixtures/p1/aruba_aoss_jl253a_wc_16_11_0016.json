@@ -1,0 +1,22 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "aruba_aoss",
+  "runtime_driver_id": "hp_procurve",
+  "model": "JL253A",
+  "os_version": "WC.16.11.0016",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "show version": "ArubaOS-Switch Software\nProduct : JL253A\nPrimary Image : WC.16.11.0016\nSerial Number : TEST-AOSS-001\n",
+    "show interfaces": "Port : 1\n Admin Status : Up\n Link Status : Up\n Mode : 1000FDx\n Bytes Rx : 4294967302\n Bytes Tx : 4294967402\n Errors Rx : 0\n Drops Rx : 0\n Errors Tx : 0\n Drops Tx : 0\n",
+    "show vlans": "10 Users 1 Untagged\n",
+    "show mac-address": "02:00:00:00:00:10 10 1 dynamic\n",
+    "show arp": "192.0.2.10 02:00:00:00:00:10 1\n",
+    "show lldp info remote-device": "1 | 02:00:00:00:00:02 | Ethernet1 | peer.example.test\n",
+    "show system information": "System Name : aos-switch.example.test\n",
+    "show modules": "Chassis | Aruba 2930F-24G | JL253A | TEST-AOSS-001\n"
+  },
+  "expected": {"vendor": "HPE Aruba Networking", "model": "JL253A", "parsed_os_version": "WC.16.11.0016", "serial": "TEST-AOSS-001", "interface_name": "1"}
+}

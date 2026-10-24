@@ -1,0 +1,24 @@
+{
+  "fixture_set": "S06-P1-ENTERPRISE-SYNTHETIC-001",
+  "generated_at": "2026-10-24T00:00:00+03:00",
+  "source_permission": "project_generated_test_fixture",
+  "sanitization_method": "deterministic_project_synthetic_v1",
+  "review_status": "project_synthetic_no_external_raw_evidence",
+  "capabilities": ["identity", "interfaces", "64_bit_counters", "vlan", "fdb", "arp", "lldp", "inventory", "health_when_declared"],
+  "known_exceptions": [
+    "fixtures exercise bounded parser contracts and are not recordings of vendor devices",
+    "vendor output fidelity, SSH transport behavior and physical hardware behavior are not asserted",
+    "eAPI and REST transports remain blocked by ADR-COMPAT-004"
+  ],
+  "sensitive_term_scan": "manual_bounded_pattern_scan_pass",
+  "physical_acceptance": false,
+  "production_accepted": false,
+  "files": [
+    {"path": "aruba_aoscx_jl658a_fl_10_13_1030.json", "sha256": "daba0bea5bd82df488021275ae16b9b7a48fecc20472320336ff08c6d9e5ec08"},
+    {"path": "aruba_aoss_jl253a_wc_16_11_0016.json", "sha256": "38e1709cd631f4ed5364444e61f600ac2a8f320d68ca1d95d64d9bcbd95e8b6e"},
+    {"path": "arista_eos_7050sx3_4_31_2f.json", "sha256": "351166f7a8d5830696a26a6dfcc6c4ac953afdd32f1f4544efac4b30f1112762"},
+    {"path": "hpe_comware_jh390a_7_1_070_r6715p06.json", "sha256": "624689f6a84cb2c26a88bb477a0b1facc8b8ceb687fcc9fa7c4cc7c4fb9f0923"},
+    {"path": "h3c_comware7_s5560x_7_1_070_r6526p01.json", "sha256": "2ae69631543884a592a78963c4a94901d814af089ac89b9098c57f39661d0999"},
+    {"path": "mikrotik_crs326_routeros_7_15_3.json", "sha256": "e5fb82fc09d40eaf8c5f1385f96f39c26168644f1b0c8a2ec2bf599b238650f0"}
+  ]
+}

@@ -13,44 +13,50 @@ incelenerek hazırlanmıştır.
 
 ## Okuma sırası
 
-1. [S05 teslim raporu](S05_TESLIM_RAPORU.md) — P0 kanonik manifestleri,
+1. [S06 teslim raporu](S06_TESLIM_RAPORU.md) — P1 kurumsal platform
+   manifestleri, altı exact-tuple fixture ve fail-closed kimlik sınırları.
+2. [P1 sürücü profilleri](P1_SURUCU_PROFILLERI.md) — salt-okunur komutlar,
+   minimum RBAC, API karar kapıları ve fiziksel kabul sınırı.
+3. [S05 teslim raporu](S05_TESLIM_RAPORU.md) — P0 kanonik manifestleri,
    IOS/IOS-XE ayrımı, NX-OS/Junos eşlemeleri ve kimlik yeniden çözümü.
-2. [P0 sürücü profilleri](P0_SURUCU_PROFILLERI.md) — salt-okunur komutlar,
+4. [P0 sürücü profilleri](P0_SURUCU_PROFILLERI.md) — salt-okunur komutlar,
    minimum erişim, transport alanları ve bilinen kabul sınırları.
-3. [S04 teslim raporu](S04_TESLIM_RAPORU.md) — ortak transport context'i,
+5. [S04 teslim raporu](S04_TESLIM_RAPORU.md) — ortak transport context'i,
    bounded SNMPv3 reader, standard MIB mapper'ları, field-level merge ve kanal
    geri kazanımı.
-4. [S03 teslim raporu](S03_TESLIM_RAPORU.md) — katalog tabanlı cihaz/bağlantı
+6. [S03 teslim raporu](S03_TESLIM_RAPORU.md) — katalog tabanlı cihaz/bağlantı
    akışı, uyumluluk paneli, seçilebilirlik kapıları ve browser kanıtı.
-5. [S02 teslim raporu](S02_TESLIM_RAPORU.md) — additive veri modeli, güvenli
+7. [S02 teslim raporu](S02_TESLIM_RAPORU.md) — additive veri modeli, güvenli
    profil çözümü, API/RBAC, migration ve rollback kanıtı.
-6. [S01 teslim raporu](S01_TESLIM_RAPORU.md) — typed registry, additive katalog
+8. [S01 teslim raporu](S01_TESLIM_RAPORU.md) — typed registry, additive katalog
    v2, geriye uyumluluk ve test kanıtı.
-7. [S00 teslim raporu](S00_TESLIM_RAPORU.md) — dondurulan kapsam, kabul edilen
+9. [S00 teslim raporu](S00_TESLIM_RAPORU.md) — dondurulan kapsam, kabul edilen
    kararlar, açık karar kapıları ve doğrulama sonucu.
-8. [Başlangıç uyumluluk raporu](BASLANGIC_UYUMLULUK_RAPORU.md) — katalog,
+10. [Başlangıç uyumluluk raporu](BASLANGIC_UYUMLULUK_RAPORU.md) — katalog,
    sözleşme, frontend ve migration kaynak snapshot'ı.
-9. [Profil ve alias kararları](PROFIL_VE_ALIAS_KARARLARI.md) ve
+11. [Profil ve alias kararları](PROFIL_VE_ALIAS_KARARLARI.md) ve
    [makinece doğrulanabilir S00 kaydı](S00_KAPSAM_KARARLARI.json) — 38 kanonik
    profil, altyapı adaptörleri ve eski kimlik davranışı.
-10. [ADR dizini](adr/README.md) — kabul edilen ve bekleyen mimari/güvenlik
+12. [ADR dizini](adr/README.md) — kabul edilen ve bekleyen mimari/güvenlik
    kararları.
-11. [Fixture ve kanıt politikası](FIXTURE_VE_KANIT_POLITIKASI.md) — fixture
+13. [Fixture ve kanıt politikası](FIXTURE_VE_KANIT_POLITIKASI.md) — fixture
    temizleme, ham kanıt, inceleme ve secret tarama kapısı.
-12. [Implementasyon raporu](IMPLEMENTASYON_RAPORU.md) — mevcut durum, boşluklar,
+14. [Implementasyon raporu](IMPLEMENTASYON_RAPORU.md) — mevcut durum, boşluklar,
    hedef mimari, veri/API/UI sözleşmeleri, güvenlik, migration ve yayın yaklaşımı.
-13. [Sprint planı](SPRINT_PLANI.md) — bağımlılık sıralı sprintler, iş paketleri,
+15. [Sprint planı](SPRINT_PLANI.md) — bağımlılık sıralı sprintler, iş paketleri,
    testler, kabul kapıları ve teslim kanıtları.
-14. [Sürücü izlenebilirlik matrisi](SURUCU_IZLENEBILIRLIK_MATRISI.md) — kaynak
+16. [Sürücü izlenebilirlik matrisi](SURUCU_IZLENEBILIRLIK_MATRISI.md) — kaynak
    matristeki her hedef sürücü kimliğinin mevcut karşılığı, hedef sprinti ve kabul
    gereksinimi.
-15. [Kabul ve kanıt şablonu](KABUL_VE_KANIT_SABLONU.md) — fixture, taşıma
+17. [Kabul ve kanıt şablonu](KABUL_VE_KANIT_SABLONU.md) — fixture, taşıma
    laboratuvarı, fiziksel cihaz ve performans kabulünde doldurulacak kayıt.
 
 ## Belge statüleri
 
 | Belge | Statü | Kod uygulanmış mı? |
 |---|---|---|
+| S06 teslim raporu | Uygulanmış altı P1 profil manifesti, parser ve katalog/UI sözleşmesi | Evet; proje-sentetik fixture kanıtı, fiziksel vendor kabulü değil |
+| P1 sürücü profilleri | Uygulanmış kullanıcı/operatör sözleşmesi | Evet; SSH/SNMP ve API karar kapısı sınırı |
 | S05 teslim raporu | Uygulanmış P0 profil manifestleri, parser eşlemeleri ve yeniden çözümleme | Evet; fixture/unit/lab kanıtı, fiziksel vendor kabulü değil |
 | P0 sürücü profilleri | Uygulanmış kullanıcı/operatör sözleşmesi | Evet; komut/RBAC/sınır referansı |
 | S04 teslim raporu | Uygulanmış ortak transport/SNMPv3 çekirdeği ve standard MIB mapper'ları | Evet; yalnız transport laboratuvarı, fiziksel vendor kabulü değil |

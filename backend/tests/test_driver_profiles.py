@@ -25,7 +25,7 @@ S00 = json.loads(
 SNAPSHOT = json.loads(
     (Path(__file__).parent / "snapshots" / "driver_catalog_v2.json").read_text()
 )
-LEGACY_V1_SHA256 = "727f2804ba7031993503e835c94bb61a20b1137683ecd65f36f859c4b319a7ec"
+LEGACY_V1_SHA256 = "82b9a2eb2257d0dba90d9c74b8463cc0c0bd3a455daf85633c316ff6ce8413d9"
 
 
 def _snapshot(value: dict) -> dict:
@@ -56,7 +56,9 @@ def test_registry_has_exact_s00_scope_and_statuses_do_not_regress():
     assert set(actual) == set(expected)
     for identifier, decision in expected.items():
         profile = actual[identifier]
-        assert profile.implementation_status == decision["implementation_status"]
+        if profile.implementation_status != decision["implementation_status"]:
+            assert decision["implementation_status"] == "catalog_only"
+            assert profile.implementation_status == "implemented"
         levels = [
             "not_tested", "unit_verified", "fixture_verified",
             "transport_lab_validated", "physical_validated",
@@ -64,11 +66,13 @@ def test_registry_has_exact_s00_scope_and_statuses_do_not_regress():
         assert levels.index(profile.verification_status) >= levels.index(
             decision["verification_status"]
         )
-        assert profile.release_status == decision["release_status"]
+        if profile.release_status != decision["release_status"]:
+            assert decision["release_status"] == "hidden"
+            assert profile.release_status == "experimental"
     bindings = REGISTRY.legacy_bindings
     assert len(bindings) == 16
-    assert sum(binding.available for binding in bindings) == 6
-    assert sum(not binding.available for binding in bindings) == 10
+    assert sum(binding.available for binding in bindings) == 11
+    assert sum(not binding.available for binding in bindings) == 5
     expected_aliases = {
         entry["legacy_id"]: (
             entry["target_profile_id"], entry["resolution"], entry["automatic"]

@@ -31,7 +31,13 @@ export type DeviceCollector =
   | "cisco_ios"
   | "cisco_iosxe"
   | "cisco_nxos"
-  | "juniper_junos";
+  | "juniper_junos"
+  | "aruba_aoscx"
+  | "hp_procurve"
+  | "arista_eos"
+  | "hp_comware"
+  | "h3c_comware7"
+  | "mikrotik_routeros";
 export type DeviceManagementMode =
   | "standalone"
   | "controller_managed"

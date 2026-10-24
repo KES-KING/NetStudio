@@ -17,6 +17,9 @@ const collectors: Record<string, string> = {
   external: "Harici gözlem", auto: "Otomatik sürücü", linux_ssh: "Linux · salt okunur SSH",
   huawei_vrp: "Huawei VRP", cisco_ios: "Cisco IOS", cisco_iosxe: "Cisco IOS-XE",
   cisco_nxos: "Cisco NX-OS", juniper_junos: "Juniper Junos",
+  aruba_aoscx: "Aruba AOS-CX", hp_procurve: "Aruba AOS-Switch",
+  arista_eos: "Arista EOS", hp_comware: "HPE Comware",
+  h3c_comware7: "H3C Comware V7", mikrotik_routeros: "MikroTik RouterOS",
 };
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return <div><dt>{label}</dt><dd>{children}</dd></div>;

@@ -55,18 +55,18 @@ def test_old_and_canonical_device_payloads_coexist(system):
     assert explicit_external.status_code == 409
     assert explicit_external.json()["detail"]["code"] == "driver_profile_collector_conflict"
 
-    catalog_only_response = client.post("/api/v1/devices", json={
+    p1_response = client.post("/api/v1/devices", json={
         "name": "Catalog only", "management_address": "127.0.0.2",
         "site": "lab", "configured_profile_id": "aruba_aoss",
     })
+    assert p1_response.status_code == 201
+    assert p1_response.json()["collector"] == "hp_procurve"
+    catalog_only_response = client.post("/api/v1/devices", json={
+        "name": "Catalog only", "management_address": "127.0.0.4",
+        "site": "lab", "configured_profile_id": "dell_os10",
+    })
     assert catalog_only_response.status_code == 409
     assert catalog_only_response.json()["detail"]["code"] == "driver_profile_not_selectable"
-    legacy_catalog_only = client.post("/api/v1/devices", json={
-        "name": "Legacy bypass", "management_address": "127.0.0.2",
-        "site": "lab", "collector": "hp_procurve",
-    })
-    assert legacy_catalog_only.status_code == 409
-    assert legacy_catalog_only.json()["detail"]["code"] == "driver_profile_not_selectable"
 
     conflict = client.post("/api/v1/devices", json={
         "name": "Conflict", "management_address": "127.0.0.1", "site": "lab",
@@ -121,7 +121,7 @@ def test_compatibility_is_site_scoped_and_profile_mutation_is_strict(system):
     assert connection_bypass.status_code == 409
     assert connection_bypass.json()["detail"]["code"] == "driver_profile_not_selectable"
     legacy_connection_bypass = client.put(path + "/connection-settings", json={
-        "collector": "hp_procurve",
+        "collector": "dell_force10",
     })
     assert legacy_connection_bypass.status_code == 409
     assert legacy_connection_bypass.json()["detail"]["code"] == "driver_profile_not_selectable"

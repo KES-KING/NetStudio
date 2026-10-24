@@ -1,0 +1,24 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "hpe_comware",
+  "runtime_driver_id": "hp_comware",
+  "model": "JH390A",
+  "os_version": "7.1.070 R6715P06",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "display version": "HPE Comware Software, Version 7.1.070, Release R6715P06\nDevice model : JH390A\nDevice serial number : TEST-HPE-CW7-001\n",
+    "display interface": "GigabitEthernet1/0/1 current state: UP\n Line protocol current state: UP\n Speed : 1000Mbps\n Duplex : Full\n PVID : 10\n Internet Address : 192.0.2.1/24\n Input: 4294967304 bytes, 0 errors, 0 discards\n Output: 4294967404 bytes, 0 errors, 0 discards\n",
+    "display cpu-usage": "CPU usage in last 5 seconds: 11%\n",
+    "display memory": "Memory usage: 35%\n",
+    "display environment": "Temperature : 41\nFan 1: Normal\nPower 1: Normal\n",
+    "display vlan all": "10 Users GE1/0/1 untagged\n",
+    "display mac-address": "0200-0000-0010 10 GE1/0/1 dynamic\n",
+    "display arp": "192.0.2.10 0200-0000-0010 GE1/0/1\n",
+    "display lldp neighbor-information": "GE1/0/1 | 02:00:00:00:00:02 | Ethernet1 | peer.example.test\n",
+    "display device manuinfo": "Chassis | HPE 5940 | JH390A | TEST-HPE-CW7-001\n"
+  },
+  "expected": {"vendor": "HPE Aruba Networking", "model": "JH390A", "parsed_os_version": "7.1.070 R6715P06", "serial": "TEST-HPE-CW7-001", "interface_name": "GigabitEthernet1/0/1"}
+}

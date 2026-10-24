@@ -491,6 +491,18 @@ Her profil aşağıdaki mini-dikey dilimi ayrı tamamlar:
 - HPE Comware ve H3C Comware ortak kod paylaşsa bile farklı identity/acceptance
   tuple'ları kullanır.
 
+### Uygulama durumu
+
+**Tamamlandı — 24 Ekim 2026.** S06-01–S06-07; altı bağımsız manifest,
+profil-bazlı text/JSON CLI parser'ları, standard SNMPv3 kaynak alanları, exact
+model+sürüm proje-sentetik fixture'ları ve negatif identity/permission/timeout
+testleriyle uygulanmıştır. Ayrıntılar [`S06_TESLIM_RAPORU.md`](S06_TESLIM_RAPORU.md),
+operatör sözleşmesi [`P1_SURUCU_PROFILLERI.md`](P1_SURUCU_PROFILLERI.md)
+içindedir. Fiziksel cihaz kanıtı bulunmadığı için altı profil de
+`experimental`, production kabulü `false` kalır. REST/eAPI seçilmemiş ve
+ADR-COMPAT-004 kapısı korunmuştur. `Ana tasarım etkisi: yok`; README ekran
+görüntüleri yenilenmemiştir.
+
 ---
 
 ## S07 — P2: Dell, Extreme ve FortiSwitch standalone

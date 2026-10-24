@@ -1,0 +1,23 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "aruba_aoscx",
+  "runtime_driver_id": "aruba_aoscx",
+  "model": "JL658A",
+  "os_version": "FL.10.13.1030",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "show version": "ArubaOS-CX\nProduct Name : JL658A\nVersion : FL.10.13.1030\nSerial Number : TEST-AOSCX-001\n",
+    "show interface | json": "{\"interfaces\":{\"1/1/1\":{\"admin_state\":\"up\",\"link_state\":\"up\",\"speed\":1000,\"speed_unit\":\"mbps\",\"duplex\":\"full\",\"ifindex\":1,\"ipv4\":[\"192.0.2.1/24\"],\"statistics\":{\"rx_bytes\":4294967301,\"tx_bytes\":4294967401,\"rx_errors\":0,\"rx_discards\":0,\"tx_errors\":0,\"tx_discards\":0}}}}",
+    "show system resource-utilization | json": "{\"cpu_percent\":12,\"memory_percent\":37}",
+    "show environment | json": "{\"temperature_c\":42,\"fan\":\"Fan 1: OK\",\"power_supply\":\"PSU 1: OK\"}",
+    "show vlan | json": "{\"vlans\":{\"10\":{\"name\":\"Users\",\"untagged\":[\"1/1/1\"],\"tagged\":[]}}}",
+    "show mac-address-table | json": "{\"mac_table\":[{\"mac\":\"02:00:00:00:00:10\",\"vlan\":10,\"interface\":\"1/1/1\",\"type\":\"dynamic\"}]}",
+    "show arp | json": "{\"arp_entries\":[{\"address\":\"192.0.2.10\",\"mac\":\"02:00:00:00:00:10\",\"interface\":\"1/1/1\"}]}",
+    "show lldp neighbor-info | json": "{\"neighbors\":[{\"interface\":\"1/1/1\",\"chassis\":\"02:00:00:00:00:02\",\"port\":\"Ethernet1\",\"name\":\"peer.example.test\"}]}",
+    "show inventory | json": "{\"inventory\":[{\"name\":\"Chassis\",\"description\":\"Aruba 6300M\",\"partNumber\":\"JL658A\",\"serialNumber\":\"TEST-AOSCX-001\"}]}"
+  },
+  "expected": {"vendor": "HPE Aruba Networking", "model": "JL658A", "parsed_os_version": "FL.10.13.1030", "serial": "TEST-AOSCX-001", "interface_name": "1/1/1"}
+}

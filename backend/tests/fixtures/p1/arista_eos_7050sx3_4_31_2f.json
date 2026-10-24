@@ -1,0 +1,23 @@
+{
+  "fixture_schema": 1,
+  "profile_id": "arista_eos",
+  "runtime_driver_id": "arista_eos",
+  "model": "DCS-7050SX3-48YC8",
+  "os_version": "4.31.2F",
+  "management_mode": "standalone",
+  "transport": "ssh",
+  "evidence_kind": "project_synthetic_sanitized",
+  "source_permission": "project_generated_test_fixture",
+  "outputs": {
+    "show version | json": "{\"manufacturer\":\"Arista Networks\",\"modelName\":\"DCS-7050SX3-48YC8\",\"version\":\"4.31.2F\",\"serialNumber\":\"TEST-EOS-001\",\"systemMacAddress\":\"02:00:00:00:00:01\"}",
+    "show interfaces | json": "{\"interfaces\":{\"Ethernet1\":{\"interfaceStatus\":\"connected\",\"lineProtocolStatus\":\"up\",\"bandwidth\":10000000000,\"duplex\":\"duplexFull\",\"interfaceIndex\":1,\"interfaceAddress\":[\"192.0.2.1/24\"],\"interfaceCounters\":{\"inOctets\":4294967303,\"outOctets\":4294967403,\"inputErrorsDetail\":0,\"inDiscards\":0,\"outputErrorsDetail\":0,\"outDiscards\":0}}}}",
+    "show processes top once | json": "{\"cpuPercent\":9,\"memoryPercent\":28}",
+    "show environment all | json": "{\"temperatureC\":39,\"fanStatus\":\"all fans OK\",\"powerSupplyStatus\":\"all PSUs OK\"}",
+    "show vlans | json": "{\"vlans\":{\"10\":{\"name\":\"Users\",\"untagged\":[\"Ethernet1\"],\"tagged\":[]}}}",
+    "show mac address-table | json": "{\"unicastTable\":{\"tableEntries\":[{\"macAddress\":\"02:00:00:00:00:10\",\"vlanId\":10,\"interface\":\"Ethernet1\",\"entryType\":\"dynamic\"}]}}",
+    "show arp | json": "{\"ipV4Neighbors\":[{\"ipAddress\":\"192.0.2.10\",\"hwAddress\":\"02:00:00:00:00:10\",\"interface\":\"Ethernet1\"}]}",
+    "show lldp neighbors detail | json": "{\"lldpNeighbors\":[{\"localInterface\":\"Ethernet1\",\"chassisId\":\"02:00:00:00:00:02\",\"neighborPort\":\"Ethernet1\",\"neighborDevice\":\"peer.example.test\"}]}",
+    "show inventory | json": "{\"inventory\":[{\"name\":\"Chassis\",\"description\":\"7050SX3\",\"partNumber\":\"DCS-7050SX3-48YC8\",\"serialNumber\":\"TEST-EOS-001\"}]}"
+  },
+  "expected": {"vendor": "Arista Networks", "model": "DCS-7050SX3-48YC8", "parsed_os_version": "4.31.2F", "serial": "TEST-EOS-001", "interface_name": "Ethernet1"}
+}

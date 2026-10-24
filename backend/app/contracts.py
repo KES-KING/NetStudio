@@ -32,7 +32,7 @@ class Credentials(StrictModel):
 Collector = Literal[
     "external", "auto", "linux_ssh", "huawei_vrp", "cisco_ios", "cisco_iosxe",
     "cisco_nxos", "juniper_junos", "arista_eos", "aruba_aoscx", "hp_procurve",
-    "hp_comware", "mikrotik_routeros", "fortinet", "dell_os10", "dell_force10",
+    "hp_comware", "h3c_comware7", "mikrotik_routeros", "fortinet", "dell_os10", "dell_force10",
     "extreme_exos", "extreme_vsp",
 ]
 SSHProfile = Literal["auto", "standard", "huawei_legacy", "legacy_sha1", "legacy_cbc", "advanced"]

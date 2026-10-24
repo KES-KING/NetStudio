@@ -17,6 +17,7 @@ from .collector import linux_snapshot, read_limited
 from .contracts import Health, InterfaceSample
 from .database import now
 from .driver_catalog import DRIVERS, GROUPS, SUPPORTED, VERSION
+from .p1_parsers import P1_DRIVERS, parse_p1
 from .ssh import ConnectionPolicyError, connect
 from .structured_parsers import parse_structured
 from .fixture_drivers import DeviceDriver, FixtureDriver, GenericReadOnlyDriver, UnsupportedCapability
@@ -65,9 +66,9 @@ class Reader(cisco.IOSReader):
         lines = output.splitlines()
         if lines and lines[0].strip() == command:
             output = "\n".join(lines[1:])
-        if re.search(r"authorization failed|not authorized|permission denied|insufficient privilege|no permission", output, re.I):
+        if re.search(r"authorization failed|not authorized|permission denied|insufficient privilege|no permission|not enough permissions", output, re.I):
             raise ConnectionPolicyError("collector_permission_denied")
-        if re.search(r"^\s*(?:%\s*(?:Invalid|Incomplete|Ambiguous|Unrecognized)|Error\s*:|Unrecognized command|syntax error)", output, re.I | re.M):
+        if re.search(r"^\s*(?:%\s*(?:Invalid|Incomplete|Ambiguous|Unrecognized)|Error\s*:|Unrecognized command|syntax error|bad command name|expected end of command|failure:)", output, re.I | re.M):
             raise ConnectionPolicyError("collector_command_unsupported")
         return output
 
@@ -99,6 +100,27 @@ class PlatformIdentity:
 
 def identify_platform(outputs):
     text = "\n".join(outputs.values())
+    if re.search(r"ArubaOS[- ]CX|AOS-CX|\bFL\.10\.\d+", text, re.I):
+        return PlatformIdentity("aruba_aoscx", "aruba_aoscx", "HPE Aruba Networking", "AOS-CX")
+    if re.search(r"ArubaOS-Switch|ProVision|\bWC\.16\.\d+", text, re.I):
+        return PlatformIdentity("aruba_aoss", "hp_procurve", "HPE Aruba Networking", "AOS-Switch")
+    if (
+        re.search(r"\bArista\b", text, re.I)
+        and re.search(r"\bEOS\b|Software image version|\"systemMacAddress\"\s*:", text, re.I)
+    ):
+        return PlatformIdentity("arista_eos", "arista_eos", "Arista Networks", "EOS")
+    if re.search(r"HP(?:E)?\s+Comware Software,\s*Version\s+7\.", text, re.I):
+        return PlatformIdentity("hpe_comware", "hp_comware", "HPE Aruba Networking", "Comware")
+    if re.search(r"H3C\s+Comware Software,\s*Version\s+7\.", text, re.I):
+        return PlatformIdentity("h3c_comware7", "h3c_comware7", "H3C", "Comware V7")
+    if re.search(r"H3C\s+Comware Software,\s*Version\s+5\.", text, re.I):
+        return PlatformIdentity("h3c_comware5", None, "H3C", "Comware V5")
+    if re.search(r"H3C\s+Comware Software,\s*Version\s+9\.", text, re.I):
+        return PlatformIdentity("h3c_comware9", None, "H3C", "Comware V9")
+    if re.search(r"^\s*platform\s*:\s*MikroTik\s*$", text, re.I | re.M) and re.search(
+        r"^\s*version\s*:\s*(?:6|7)\.", text, re.I | re.M
+    ):
+        return PlatformIdentity("mikrotik_routeros", "mikrotik_routeros", "MikroTik", "RouterOS")
     if re.search(r"IOS[ -]?XE|CAT9K_IOSXE", text, re.I):
         return PlatformIdentity("cisco_iosxe", "cisco_iosxe", "Cisco", "IOS-XE")
     if re.search(r"VRP[^\n]{0,100}\bV600\b|CloudEngine[^\n]{0,100}\bV600\b", text, re.I):
@@ -173,12 +195,14 @@ async def collect(store, vault, device, groups=GROUPS, authorize=lambda: None):
         async with connect(store, vault, device) as connection:
             authorize()
             process = await connection.create_process(term_type="vt100", term_size=(240, 60))
-            all_commands = {c.text for _, plan, _, _ in DRIVERS.values() for c in plan} | {"show version", "display version"}
+            all_commands = {c.text for _, plan, _, _ in DRIVERS.values() for c in plan} | {
+                "show version", "display version", "/system resource print without-paging",
+            }
             reader = Reader(process, all_commands)
             try:
                 await asyncio.wait_for(reader.read_prompt(), 20)
                 if not driver:
-                    for probe in ("show version", "display version"):
+                    for probe in ("show version", "display version", "/system resource print without-paging"):
                         authorize()
                         try:
                             outputs[probe] = await reader.command(probe)
@@ -241,7 +265,9 @@ async def collect(store, vault, device, groups=GROUPS, authorize=lambda: None):
         result.observed_profile_id = identity_failure.profile_id
         result.identity_evidence = _identity_evidence(identity_failure, device)
         return result
-    if driver in {"juniper_junos", "cisco_nxos"}:
+    if driver in P1_DRIVERS:
+        result = parse_p1(device, driver, outputs, unavailable, requested)
+    elif driver in {"juniper_junos", "cisco_nxos"}:
         result = parse_structured(device, driver, outputs, unavailable, requested)
     else:
         result = parse_text(device, driver, outputs, unavailable, requested)

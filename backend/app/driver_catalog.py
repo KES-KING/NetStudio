@@ -4,9 +4,14 @@ import os
 
 from .driver_profiles import (
     CATALOG_REVISION,
+    AOSCX,
+    AOSS,
     DATA_CONTRACT,
     DRIVER_VERSION,
+    EOS,
     GROUPS,
+    H3C_COMWARE7,
+    HPE_COMWARE,
     IOS,
     IOSXE,
     JUNOS,
@@ -14,6 +19,7 @@ from .driver_profiles import (
     NXOS,
     REFERENCES,
     REGISTRY,
+    ROUTEROS,
     VRP,
     AcceptanceSummary,
     Command,
@@ -38,7 +44,8 @@ def _legacy_validation(level: str) -> str:
     }[level]
 
 
-# Preserve the old order, labels and IDs until persisted collectors move in S02.
+# Runtime collectors include every implemented canonical profile. Legacy
+# bindings remain the source of the v1 projection and preserve its order/IDs.
 DRIVERS = {}
 PLANNED = {}
 for binding in REGISTRY.legacy_bindings:
@@ -62,6 +69,18 @@ for binding in REGISTRY.legacy_bindings:
         _legacy_validation(profile.verification_status),
     )
 
+for profile in REGISTRY.profiles:
+    if (
+        profile.implementation_status == "implemented"
+        and profile.runtime_driver_id not in DRIVERS
+    ):
+        DRIVERS[profile.runtime_driver_id] = (
+            profile.label,
+            profile.commands,
+            list(profile.tested_versions),
+            _legacy_validation(profile.verification_status),
+        )
+
 
 def _profile_capabilities(profile_id: str) -> dict[str, list[str]]:
     profile = REGISTRY.profile(profile_id)
@@ -71,17 +90,17 @@ def _profile_capabilities(profile_id: str) -> dict[str, list[str]]:
     }}
 
 
-SUPPORTED = {
-    "cisco_ios": _profile_capabilities("cisco_ios"),
-    "cisco_iosxe": _profile_capabilities("cisco_iosxe"),
-    "huawei_vrp": _profile_capabilities("huawei_vrp_v200"),
-    "juniper_junos": _profile_capabilities("juniper_junos"),
-    "cisco_nxos": _profile_capabilities("cisco_nxos"),
-    "linux_ssh": {**{group: [] for group in GROUPS}, **{
-        capability.group: list(capability.fields)
-        for capability in REGISTRY.adapter("linux_ssh").capabilities
-    }},
-}
+SUPPORTED = {}
+for identifier in DRIVERS:
+    adapter = REGISTRY.adapter(identifier)
+    if adapter:
+        SUPPORTED[identifier] = {**{group: [] for group in GROUPS}, **{
+            capability.group: list(capability.fields)
+            for capability in adapter.capabilities
+        }}
+        continue
+    profile = REGISTRY.runtime_profile(identifier)
+    SUPPORTED[identifier] = _profile_capabilities(profile.id)
 
 
 def legacy_catalog() -> dict:
@@ -92,19 +111,21 @@ def legacy_catalog() -> dict:
         "data_contract": CAPABILITIES,
         "drivers": [
             {
-                "id": key,
-                "label": name,
+                "id": binding.id,
+                "label": binding.label,
                 "available": True,
                 "validation_level": level,
                 "tested_versions": tested,
-                "capabilities": SUPPORTED[key],
+                "capabilities": SUPPORTED[binding.id],
                 "commands": [asdict(command) for command in plan],
             }
-            for key, (name, plan, tested, level) in DRIVERS.items()
+            for binding in REGISTRY.legacy_bindings
+            if binding.available
+            for _, plan, tested, level in (DRIVERS[binding.id],)
         ] + [
             {
-                "id": key,
-                "label": name,
+                "id": binding.id,
+                "label": binding.label,
                 "available": False,
                 "validation_level": "experimental",
                 "tested_versions": [],
@@ -112,7 +133,8 @@ def legacy_catalog() -> dict:
                 "commands": [],
                 "reason": "driver_not_implemented",
             }
-            for key, name in PLANNED.items()
+            for binding in REGISTRY.legacy_bindings
+            if not binding.available
         ],
     }
 
@@ -219,7 +241,8 @@ def catalog(*, include_v2: bool | None = None) -> dict:
 
 __all__ = [
     "CAPABILITIES", "CATALOG_REVISION", "Command", "DRIVERS", "GROUPS",
-    "IOS", "IOSXE", "JUNOS", "NTC_VERSION", "NXOS", "PLANNED", "SUPPORTED", "VERSION",
+    "AOSCX", "AOSS", "EOS", "H3C_COMWARE7", "HPE_COMWARE", "IOS", "IOSXE",
+    "JUNOS", "NTC_VERSION", "NXOS", "PLANNED", "ROUTEROS", "SUPPORTED", "VERSION",
     "REFERENCES", "VRP", "catalog", "catalog_v2_enabled", "commands",
     "legacy_catalog",
 ]
