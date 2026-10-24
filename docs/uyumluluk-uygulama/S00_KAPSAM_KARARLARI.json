@@ -318,10 +318,10 @@
     {
       "id": "mikrotik_swos",
       "wave": "P4",
-      "current_runtime_id": null,
-      "implementation_status": "blocked",
-      "verification_status": "not_tested",
-      "release_status": "hidden"
+      "current_runtime_id": "mikrotik_swos",
+      "implementation_status": "implemented",
+      "verification_status": "transport_lab_validated",
+      "release_status": "experimental"
     },
     {
       "id": "cisco_meraki_ms",
@@ -414,21 +414,10 @@
   "accepted_adrs": [
     "ADR-COMPAT-001",
     "ADR-COMPAT-002",
+    "ADR-COMPAT-003",
     "ADR-COMPAT-004",
     "ADR-COMPAT-005",
     "ADR-COMPAT-006"
   ],
-  "pending_decision_gates": [
-    {
-      "id": "ADR-COMPAT-003",
-      "topic": "SNMPv2c opt-in policy",
-      "owner_roles": [
-        "security_owner",
-        "backend_transport_owner"
-      ],
-      "deadline_milestone": "before_S10_definition_of_ready",
-      "blocks": "S10",
-      "does_not_block": "S01"
-    }
-  ]
+  "pending_decision_gates": []
 }

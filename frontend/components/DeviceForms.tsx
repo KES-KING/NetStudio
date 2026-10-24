@@ -588,8 +588,9 @@ export function AddDevice({
         )}
         {credentialTransport === "snmp" && (
           <p className="notice" role="status">
-            Cihaz kaydedildikten sonra Bağlantı bilgileri ekranından SNMPv3
-            authPriv hesabını ekleyin. Sır alanları API cevabından doldurulmaz.
+            {selectedProfile?.transports.snmp?.versions.includes("v2c")
+              ? "Cihaz kaydedildikten sonra Bağlantı bilgileri ekranında superadmin SNMPv2c riskini, kaynak ACL’sini ve yönetim ağı izolasyonunu onaylamalıdır. Community API cevabında gösterilmez."
+              : "Cihaz kaydedildikten sonra Bağlantı bilgileri ekranından SNMPv3 authPriv hesabını ekleyin. Sır alanları API cevabından doldurulmaz."}
           </p>
         )}
         {credentialTransport === "api" && (
@@ -635,6 +636,7 @@ export function ConnectionSettings({
     api,
   );
   const currentProfile = profileForDevice(driverCatalog, device);
+  const revocableV2c = currentProfile?.id === "mikrotik_swos" && device.snmp_version === "v2c";
   const availableTransports = currentProfile
     ? implementedTransports(currentProfile)
     : device.collector === "external"
@@ -833,8 +835,13 @@ export function ConnectionSettings({
           </fieldset>
           </form></details>
         </>}
-        {selectedTransport === "snmp" && (
-          <SNMPSettings device={device} onSaved={onSaved} />
+        {(selectedTransport === "snmp" || revocableV2c) && (
+          <SNMPSettings
+            device={device}
+            version={currentProfile?.transports.snmp?.versions.includes("v2c") ? "v2c" : "v3"}
+            installationEnabled={driverCatalog?.features?.snmp_v2c_enabled === true}
+            onSaved={onSaved}
+          />
         )}
         {selectedTransport === "api" && (
           <ControllerSettings device={device} profileId={currentProfile?.id ?? ""} onSaved={onSaved} />

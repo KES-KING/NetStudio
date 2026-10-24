@@ -27,6 +27,7 @@ from .driver_profiles import (
     commands,
     profile_catalog_entry,
 )
+from .snmp_policy import SNMP_V2C_PROFILE, snmp_v2c_enabled
 
 
 # Public compatibility names used by collectors and existing tests.
@@ -216,17 +217,29 @@ def catalog(*, include_v2: bool | None = None) -> dict:
     enabled = catalog_v2_enabled() if include_v2 is None else include_v2
     if not enabled:
         return legacy
+    v2c_enabled = snmp_v2c_enabled()
+    profiles = [profile_catalog_entry(profile) for profile in REGISTRY.profiles]
+    if not v2c_enabled:
+        swos = next(entry for entry in profiles if entry["id"] == SNMP_V2C_PROFILE)
+        swos.update(
+            available=False,
+            selectable=False,
+            availability_reason="snmp_v2c_installation_disabled",
+        )
+        swos["transports"]["snmp"] = {
+            **swos["transports"]["snmp"],
+            "state": "unsupported_by_policy",
+        }
     return {
         **legacy,
         "schema_version": 2,
         "catalog_revision": CATALOG_REVISION,
+        "features": {"snmp_v2c_enabled": v2c_enabled},
         "drivers": [
             {**entry, **_legacy_v2_metadata(entry["id"])}
             for entry in legacy["drivers"]
         ],
-        "profiles": [
-            profile_catalog_entry(profile) for profile in REGISTRY.profiles
-        ],
+        "profiles": profiles,
         "infrastructure_adapters": [
             adapter_catalog_entry(adapter) for adapter in REGISTRY.adapters
         ],

@@ -125,32 +125,78 @@ export function HostDiscovery({ device, onSaved }: { device: Device; onSaved: ()
   </fieldset>;
 }
 
-export function SNMPSettings({ device, onSaved }: { device: Device; onSaved: () => void }) {
-  const [busy, setBusy] = useState(false), [failure, setFailure] = useState<string>(), [protocol, setProtocol] = useState("sha256");
+export function SNMPSettings({ device, version, installationEnabled = true, onSaved }: {
+  device: Device; version: "v3" | "v2c"; installationEnabled?: boolean; onSaved: () => void;
+}) {
+  const session = useSession();
+  const [busy, setBusy] = useState(false), [failure, setFailure] = useState<string>();
+  const [message, setMessage] = useState<string>(), [protocol, setProtocol] = useState("sha256");
+  const isV2c = version === "v2c";
+  const canApproveV2c = session.roles.includes("superadmin");
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget, values = new FormData(form);
-    setBusy(true); setFailure(undefined);
+    setBusy(true); setFailure(undefined); setMessage(undefined);
     try {
-      await api(`/api/v1/devices/${device.id}/snmp-credentials`, { method: "PUT", body: JSON.stringify({
-        username: values.get("username"), port: Number(values.get("port")), context: values.get("context"),
-        auth_protocol: protocol, privacy_protocol: "aes128", auth_password: values.get("auth_password"),
-        privacy_password: values.get("privacy_password"), legacy_auth_confirmed: values.get("legacy_auth_confirmed") === "on",
-      }) }); form.reset(); onSaved();
+      if (isV2c) {
+        await api(`/api/v1/devices/${device.id}/snmp-v2c-credentials`, { method: "PUT", body: JSON.stringify({
+          community: values.get("community"), port: Number(values.get("port")),
+          read_only_confirmed: values.get("read_only_confirmed") === "on",
+          acl_confirmed: values.get("acl_confirmed") === "on",
+          management_isolation_confirmed: values.get("management_isolation_confirmed") === "on",
+          unencrypted_confirmed: values.get("unencrypted_confirmed") === "on",
+        }) });
+        setMessage("SNMPv2c risk onayı ve şifreli community kaydı cihaz için oluşturuldu.");
+      } else {
+        await api(`/api/v1/devices/${device.id}/snmp-credentials`, { method: "PUT", body: JSON.stringify({
+          username: values.get("username"), port: Number(values.get("port")), context: values.get("context"),
+          auth_protocol: protocol, privacy_protocol: "aes128", auth_password: values.get("auth_password"),
+          privacy_password: values.get("privacy_password"), legacy_auth_confirmed: values.get("legacy_auth_confirmed") === "on",
+        }) });
+        setMessage("SNMPv3 authPriv bilgileri kaydedildi.");
+      }
+      form.reset(); onSaved();
     } catch (e) { setFailure(errorMessage(e)); } finally { setBusy(false); }
   }
-  return <details><summary>İsteğe bağlı SNMPv3 · {device.snmp_configured ? "Tanımlı" : "Tanımlı değil"}</summary>
-    <p className="field-help">Yalnız authPriv. Cihazda SNMP açılmaz; mevcut salt okunur kullanıcınızı girin. SNMPv1/v2c’ye geçiş yapılmaz.</p>
-    <form onSubmit={save}><div className="form-grid">
-      <label>SNMP kullanıcı adı<input name="username" required maxLength={32} autoComplete="off" /></label>
-      <label>SNMP portu<input name="port" type="number" min={1} max={65535} defaultValue={161} required /></label>
-      <label>SNMP context<input name="context" maxLength={128} /></label>
-      <label>Kimlik doğrulama algoritması<select aria-label="Kimlik doğrulama algoritması" value={protocol} onChange={e => setProtocol(e.target.value)}>
-        <option value="sha256">SHA-256 / AES-128</option><option value="sha1">Eski SHA-1 / AES-128</option></select></label>
-      <label>SNMP doğrulama parolası<input name="auth_password" type="password" minLength={8} maxLength={128} autoComplete="new-password" required /></label>
-      <label>SNMP gizlilik parolası<input name="privacy_password" type="password" minLength={8} maxLength={128} autoComplete="new-password" required /></label>
-    </div>{protocol === "sha1" && <label className="checkbox"><input name="legacy_auth_confirmed" type="checkbox" required />Bu cihaz için eski SHA-1 kullanımını onaylıyorum.</label>}
-      <button disabled={busy}>SNMPv3 bilgilerini kaydet</button>
-      {failure && <p role="alert">{failure}</p>}
-    </form></details>;
+  async function remove() {
+    setBusy(true); setFailure(undefined); setMessage(undefined);
+    try {
+      await api(`/api/v1/devices/${device.id}/snmp-credentials`, { method: "DELETE" });
+      setMessage(isV2c ? "SNMPv2c risk onayı ve community kaydı kaldırıldı." : "SNMPv3 bilgileri kaldırıldı.");
+      onSaved();
+    } catch (e) { setFailure(errorMessage(e)); } finally { setBusy(false); }
+  }
+  return <details><summary>{isV2c ? "SNMPv2c · şifrelenmemiş uyumluluk istisnası" : "İsteğe bağlı SNMPv3"} · {device.snmp_configured ? "Tanımlı" : "Tanımlı değil"}</summary>
+    {isV2c ? <>
+      <p className="notice warning">SNMPv2c kimlik doğrulama ve şifreleme sağlamaz. Yalnız SNMPv3 sunmayan SwOS cihazında; kaynak IP ACL’si ve ayrılmış yönetim VLAN/VRF’siyle kullanın. SNMPv1 ve SET desteklenmez.</p>
+      {!installationEnabled ? <p className="notice warning">Kurulum genelinde SNMPv2c kapalıdır. Yeni community kaydedilemez; mevcut cihaz onayı aşağıdan geri çekilebilir.</p> :
+      !canApproveV2c ? <p className="notice warning">Bu risk istisnasını yalnız superadmin onaylayabilir veya geri çekebilir.</p> :
+      <form onSubmit={save}><div className="form-grid">
+        <label>SNMP community<input name="community" type="password" minLength={8} maxLength={128} autoComplete="new-password" required /></label>
+        <label>SNMP portu<input name="port" type="number" min={1} max={65535} defaultValue={161} required /></label>
+      </div>
+        <label className="checkbox"><input name="read_only_confirmed" type="checkbox" required />Cihazda yalnız GET, GETNEXT ve GETBULK erişimi olduğunu doğruladım.</label>
+        <label className="checkbox"><input name="acl_confirmed" type="checkbox" required />Cihaz ACL’si SNMP erişimini NetStudio kaynak IP’siyle sınırlar.</label>
+        <label className="checkbox"><input name="management_isolation_confirmed" type="checkbox" required />Trafik ayrılmış yönetim VLAN/VRF’sinde taşınır.</label>
+        <label className="checkbox"><input name="unencrypted_confirmed" type="checkbox" required />Community ve SNMP yanıtlarının ağda şifrelenmediğini kabul ediyorum.</label>
+        <button disabled={busy}>SNMPv2c riskini onayla ve kaydet</button>
+      </form>}
+    </> : <>
+      <p className="field-help">Yalnız authPriv. Cihazda SNMP açılmaz; mevcut salt okunur kullanıcınızı girin. SNMPv1/v2c’ye otomatik geçiş yapılmaz.</p>
+      <form onSubmit={save}><div className="form-grid">
+        <label>SNMP kullanıcı adı<input name="username" required maxLength={32} autoComplete="off" /></label>
+        <label>SNMP portu<input name="port" type="number" min={1} max={65535} defaultValue={161} required /></label>
+        <label>SNMP context<input name="context" maxLength={128} /></label>
+        <label>Kimlik doğrulama algoritması<select aria-label="Kimlik doğrulama algoritması" value={protocol} onChange={e => setProtocol(e.target.value)}>
+          <option value="sha256">SHA-256 / AES-128</option><option value="sha1">Eski SHA-1 / AES-128</option></select></label>
+        <label>SNMP doğrulama parolası<input name="auth_password" type="password" minLength={8} maxLength={128} autoComplete="new-password" required /></label>
+        <label>SNMP gizlilik parolası<input name="privacy_password" type="password" minLength={8} maxLength={128} autoComplete="new-password" required /></label>
+      </div>{protocol === "sha1" && <label className="checkbox"><input name="legacy_auth_confirmed" type="checkbox" required />Bu cihaz için eski SHA-1 kullanımını onaylıyorum.</label>}
+        <button disabled={busy}>SNMPv3 bilgilerini kaydet</button>
+      </form>
+    </>}
+    {device.snmp_configured && (!isV2c || canApproveV2c) && <button type="button" className="danger" disabled={busy} onClick={remove}>{isV2c ? "SNMPv2c onayını ve community kaydını kaldır" : "SNMPv3 bilgilerini kaldır"}</button>}
+    {failure && <p role="alert" className="notice error">{failure}</p>}
+    {message && <p role="status" className="notice success">{message}</p>}
+  </details>;
 }

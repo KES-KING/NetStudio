@@ -23,8 +23,12 @@ Bir markanın katalogda yer alması bütün modellerinin desteklendiği anlamın
    toplama politikası worker tarafından işlenir; tarayıcının açık kalması gerekmez.
 4. Cihaz detayında grup bazlı kaynak, son doğru ölçüm, hata/eksik alanlar ve
    istenen–etkin aralık gösterilir. Otomatik toplamayı aynı yerden durdurabilirsiniz.
-5. SNMPv3 isteğe bağlıdır. Mevcut salt okunur `authPriv` hesabını girin.
-   Cihaz üzerinde SNMP etkinleştirilmez; SNMPv1/v2c kullanılmaz.
+5. SNMPv3 isteğe bağlı ve varsayılan yöntemdir. Mevcut salt okunur `authPriv`
+   hesabını girin. Yalnız SNMPv3 sunmayan MikroTik SwOS için kurulum sahibi
+   `NETSTUDIO_ALLOW_SNMP_V2C=1` ayarını açtıktan sonra superadmin cihaz bazında
+   şifrelenmemiş protokol riskini, read-only community'yi, kaynak ACL'sini ve
+   ayrılmış yönetim VLAN/VRF'sini onaylar. SNMPv1, SET ve otomatik v3→v2c
+   downgrade yoktur. Cihaz üzerinde SNMP'yi NetStudio etkinleştirmez.
 6. Controller/API profillerinde cihazı kaydettikten sonra bağlantı bilgilerinden
    site-scoped controller kaydı, read-only token ve controller cihaz kimliği
    eşlemesini tamamlayın. URL/hostname kabul edilmez; ayrıntılar
@@ -65,6 +69,8 @@ Bir markanın katalogda yer alması bütün modellerinin desteklendiği anlamın
 | NVIDIA Cumulus Linux | NVUE JSON interface ve kernel/front-panel/breakout mapper'ı | Bond/bridge/VRF fiziksel değildir; SN3700C/5.14 sentetik fixture, fiziksel kabul yok |
 | NVIDIA Onyx | Cumulus'tan ayrı Onyx CLI/kimlik grameri | SN2700/3.10.4404 proje-sentetik fixture; NVUE fallback yok |
 | Cisco Business | CBS+firmware kimlik kapısı; interface/64-bit sayaç ve network tabloları | CBS350/3.4.0.17 sentetik fixture; IOS/Meraki değildir, SNMP exact tuple'a koşullu |
+| MikroTik SwOS | Varsayılan kapalı SNMPv2c; exact SwOS kimliği, mantıksal IF/IF-X sayaçları ve Q-BRIDGE FDB/VLAN | CSS610-8G-2S+/2.19 proje-sentetik fixture ve izole gerçek UDP v2c agent; fiziksel cihaz/production kabulü yok |
+| TP-Link Easy Smart / yönetilemeyen switch | Çalışan transport veya credential formu yok | `unsupported_by_protocol`; komşu LLDP/FDB gözlemi doğrudan cihaz yönetimi sayılmaz |
 | Linux | iproute2 JSON, sayaçlar, IP, ARP/NDP, uptime | Genel altyapı adapter'ı; Cumulus/SONiC tam NOS desteği değildir |
 
 NTC şablonları `ntc-templates==9.3.0` / `textfsm==2.1.0` ile sabittir.
@@ -86,6 +92,9 @@ yalnız doğrulanmış alanlar ve güvenli hata kodlarıdır.
   hedefi güvenle seçilemeyen kayıtları yayımlar;
 - `acceptance.production_accepted` varsayılan olarak `false` kalır ve fixture/lab
   sonucundan yükseltilmez.
+- `features.snmp_v2c_enabled`, kurulum bayrağının etkin durumunu yayımlar;
+  kapalıyken `mikrotik_swos` profili `snmp_v2c_installation_disabled`
+  gerekçesiyle seçilemez.
 - capability özetindeki `source_fields`, her alanın SSH/SNMP/API taşıma
   sınırını ayrıca yayımlar; union `fields` tek başına her transportun o alanı
   ürettiği anlamına gelmez.
@@ -260,6 +269,8 @@ Ek API'ler:
 - `GET /api/v1/devices/{id}/host-key-candidates/{candidate}`
 - Mevcut `PUT .../host-key`: elle alanlar veya `candidate_id`
 - `GET/PUT .../polling`, `PUT/DELETE .../snmp-credentials`
+- `PUT .../snmp-v2c-credentials`: yalnız superadmin ve yalnız açık SwOS
+  istisnası; dört risk doğrulaması zorunlu, community hiçbir yanıtta dönmez
 - `GET .../metrics?hours=1&resolution=auto` (en fazla 2880 nokta)
 - `GET .../overview`: yalnız ilgili cihazın ayrıntısı
 - `GET /api/v1/overview/summary`, `/api/v1/overview/traffic`: ayrı güncel
@@ -306,11 +317,13 @@ sözleşmesini kendiliğinden genişletmez.
 | P1 AOS-CX/AOS-Switch, EOS, HPE/H3C Comware V7 ve RouterOS manifestleri | Uygulandı; proje-sentetik fixture doğrulandı, fiziksel kabul bekliyor |
 | S07 Dell OS6/9/10, Extreme EXOS/Fabric/SLX ve standalone FortiSwitchOS | Uygulandı; proje-sentetik fixture doğrulandı, controller/FortiLink ayrı ve fiziksel kabul bekliyor |
 | S08 controller/cloud API, UniFi/Omada/FortiLink/Meraki ve EdgeSwitch | Uygulandı; ayrı controller secret/site binding, izole TLS ve sentetik fixture doğrulandı; Instant On politika gereği kapalı, fiziksel kabul bekliyor |
+| S09 ileri/legacy NOS ve Linux tabanlı profiller | Uygulandı; dokuz ayrı manifest/fixture, legacy ve distribution sınırları; fiziksel kabul bekliyor |
+| S10 SwOS SNMPv2c ve protokol kapsamı dışı profiller | Uygulandı; kurulum+cihaz opt-in, bounded read-only transport ve izole UDP kanıtı; varsayılan kapalı, fiziksel kabul bekliyor |
 | Host key keşfi/onayı, ortak SSH profilleri | Uygulandı; yerel gerçek SSH ve tarayıcı testi |
 | Kalıcı kuyruk, zamanlayıcı, worker, standard MIB SNMPv3 çekirdeği | Uygulandı; ortak fencing/deadline, bounded reader ve yerel gerçek UDP testi |
 | Arayüz, kalite tanıları, sınırlı geçmiş, saklama | Uygulandı; gerçek tarayıcı ve yerel saklama testleri |
 | Fiziksel pilot, 100 cihaz gerçek 24 saat kabulü | Çalıştırılmadı; kapasite/üretim kabulü değildir |
-| İleri/legacy NOS ve sınırlı protokol dalgaları | Planlandı; çalışan sürücü değil |
+| S11 fiziksel kabul ve destek yayını | Planlandı; fixture/lab sonucu production kabulü değildir |
 
 - Birim/yerel SSH testleri fiziksel cihaz kabulü değildir. 100 cihaz ×24 saat
   hızlandırılmış zamanlayıcı testi gerçek 24 saatlik PostgreSQL/ağ yük testi
@@ -325,6 +338,10 @@ sözleşmesini kendiliğinden genişletmez.
   UDP/SHA-256/AES-128 GET/GETNEXT/GETBULK, auth/context negatifleri ve büyük
   tablo sınırlarını doğrular; fiziksel vendor agent ve üretici MIB sağlık
   ölçümleri ayrıca kabul gerektirir.
+- SwOS SNMPv2c yolu aynı bounded sayısal OID reader'ını kullanır; v2c
+  `mpModel=1`, gerçek loopback UDP agent, exact kimlik, IF/IF-X ve FDB akışı
+  doğrulanmıştır. SNMPv1/SET kod yolu yoktur. Bu laboratuvar kanıtı fiziksel
+  MikroTik cihaz kabulü değildir.
 - SNMP uptime/counter epoch değişimi envanteri öne alır. SNMP kimlik hatası yalnız
   SNMP kanalını duraklatır; otomatik kaynak seçimi SSH ile devam edebilir ve bunu
   grup tanısında belirtir. Açık SNMP tercihinde başarısız hızlı ölçümün yerine
@@ -348,6 +365,8 @@ sözleşmesini kendiliğinden genişletmez.
 - [IF-MIB / RFC 2863](https://www.rfc-editor.org/info/rfc2863/)
 - [Q-BRIDGE-MIB / RFC 4363](https://www.rfc-editor.org/info/rfc4363/)
 - [TimeFilter uygulama notları / RFC 2021](https://www.rfc-editor.org/info/rfc2021/)
+- [MikroTik CSS610 SwOS SNMP sınırları](https://help.mikrotik.com/docs/spaces/SWOS/pages/76939305/CSS610+series+Manual)
+- [SNMPv2 protokol operasyonları / RFC 3416](https://www.rfc-editor.org/info/rfc3416/)
 - [PySNMP](https://github.com/lextudio/pysnmp)
 - [PostgreSQL row locking](https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE)
 - [NTC parser test guide](https://github.com/networktocode/ntc-templates/blob/master/docs/dev/dev_parser.md)

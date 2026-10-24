@@ -6,15 +6,22 @@ from fastapi import Query, Request
 import sqlalchemy as sa
 
 from .auth import fail
-from .contracts import ManagedDevice, PollingSettings, SNMPCredentials
+from .contracts import ManagedDevice, PollingSettings, SNMPCredentials, SNMPV2cCredentials
 from .database import now
 from .driver_catalog import DRIVERS, catalog as driver_catalog
 from .profile_resolution import acceptance_records, catalog_acceptance_summaries
 from .history import history
 from .queue import enqueue, transaction
 from .scheduler import ensure_policy
-from .security import Permission
-from .ssh import target_allowed
+from .security import Permission, Role
+from .snmp_policy import (
+    SNMP_V2C_PROFILE,
+    device_profile_id,
+    require_snmp_v2c_device,
+    require_snmp_v3_device,
+    snmp_v2c_enabled,
+)
+from .ssh import ConnectionPolicyError, target_allowed
 from .ssh_profiles import catalog as ssh_catalog, target_signature
 from .telemetry import projection
 
@@ -133,12 +140,21 @@ def install(app, context, device_for):
         ready = []
         if "api" in transports and device.api_configured:
             ready.append("api")
-        if "snmp" in transports and device.snmp_configured:
+        if (
+            "snmp" in transports and device.snmp_configured
+            and (device.snmp_version != "v2c" or device.snmp_v2c_risk_accepted)
+        ):
             ready.append("snmp")
         if "ssh" in transports and device.credential_configured and device.host_key_fingerprint:
             ready.append("ssh")
         row["readiness"] = ("external" if device.collector == "external" else
             "collector_platform_unsupported" if device.collector not in {"auto", *DRIVERS} else
+            "snmp_v2c_installation_disabled" if (
+                device_profile_id(device) == SNMP_V2C_PROFILE and not snmp_v2c_enabled()
+            ) else
+            "snmp_v2c_device_approval_required" if (
+                device.snmp_version == "v2c" and not device.snmp_v2c_risk_accepted
+            ) else
             "ready" if ready else
             "controller_credentials_missing" if transports == {"api"} else
             "credentials_missing" if "ssh" in transports and not device.credential_configured else
@@ -167,27 +183,86 @@ def install(app, context, device_for):
     @app.put("/api/v1/devices/{device_id}/snmp-credentials")
     def snmp_credentials(device_id: str, value: SNMPCredentials, request: Request):
         auth, device = device_for(request, device_id, Permission.CREDENTIAL_MANAGE, True)
+        try:
+            require_snmp_v3_device(device)
+        except ConnectionPolicyError as error:
+            fail(str(error), 409)
         values = value.model_dump(exclude={"legacy_auth_confirmed", "auth_password", "privacy_password"})
         secret = {**values, "auth_password": value.auth_password.get_secret_value(),
                   "privacy_password": value.privacy_password.get_secret_value()}
         with app.state.store.engine.begin() as conn:
+            conn.execute(app.state.store.protocol_secrets.delete().where(
+                app.state.store.protocol_secrets.c.device_id == device.id,
+                app.state.store.protocol_secrets.c.protocol == "snmp_v2c",
+            ))
             app.state.vault.save_protocol(device.id, "snmp", secret, values, conn)
             changed(app.state.store, device.id, conn)
             app.state.store.record(auth.user.user_id, "snmp.credentials.updated", "succeeded", device.id,
                 details={"auth_protocol": value.auth_protocol, "privacy_protocol": value.privacy_protocol}, conn=conn)
         app.state.ssh.revoke(device_id=device.id)
         secret.clear()
-        return {"snmp_configured": True}
+        return {"snmp_configured": True, "snmp_version": "v3", "snmp_v2c_risk_accepted": False}
+
+    @app.put("/api/v1/devices/{device_id}/snmp-v2c-credentials")
+    def snmp_v2c_credentials(device_id: str, value: SNMPV2cCredentials, request: Request):
+        auth, device = device_for(request, device_id, Permission.CREDENTIAL_MANAGE, True)
+        if Role.SUPERADMIN not in auth.user.roles:
+            fail("snmp_v2c_superadmin_required", 403)
+        try:
+            require_snmp_v2c_device(device)
+        except ConnectionPolicyError as error:
+            fail(str(error), 409)
+        secret = {
+            "version": "v2c", "port": value.port,
+            "community": value.community.get_secret_value(),
+        }
+        safeguards = {
+            "read_only": value.read_only_confirmed,
+            "source_acl": value.acl_confirmed,
+            "management_isolation": value.management_isolation_confirmed,
+            "unencrypted_risk": value.unencrypted_confirmed,
+        }
+        metadata = {
+            "version": "v2c", "port": value.port, "risk_accepted": True,
+            "safeguards": safeguards, "approved_by": auth.user.user_id,
+            "approved_at": now().isoformat(),
+        }
+        with app.state.store.engine.begin() as conn:
+            conn.execute(app.state.store.protocol_secrets.delete().where(
+                app.state.store.protocol_secrets.c.device_id == device.id,
+                app.state.store.protocol_secrets.c.protocol == "snmp",
+            ))
+            app.state.vault.save_protocol(device.id, "snmp_v2c", secret, metadata, conn)
+            changed(app.state.store, device.id, conn)
+            app.state.store.record(
+                auth.user.user_id, "snmp.v2c.risk_accepted", "succeeded", device.id,
+                details={"version": "v2c", "port": value.port, "safeguards": safeguards},
+                conn=conn,
+            )
+        secret.clear()
+        return {"snmp_configured": True, "snmp_version": "v2c", "snmp_v2c_risk_accepted": True}
 
     @app.delete("/api/v1/devices/{device_id}/snmp-credentials")
     def delete_snmp(device_id: str, request: Request):
         auth, device = device_for(request, device_id, Permission.CREDENTIAL_MANAGE, True)
         with app.state.store.engine.begin() as conn:
+            has_v2c = conn.execute(sa.select(sa.exists().where(
+                app.state.store.protocol_secrets.c.device_id == device.id,
+                app.state.store.protocol_secrets.c.protocol == "snmp_v2c",
+            ))).scalar_one()
+            if has_v2c and Role.SUPERADMIN not in auth.user.roles:
+                fail("snmp_v2c_superadmin_required", 403)
             conn.execute(app.state.store.protocol_secrets.delete().where(
-                app.state.store.protocol_secrets.c.device_id == device.id, app.state.store.protocol_secrets.c.protocol == "snmp"))
+                app.state.store.protocol_secrets.c.device_id == device.id,
+                app.state.store.protocol_secrets.c.protocol.in_(("snmp", "snmp_v2c"))))
             changed(app.state.store, device.id, conn)
-            app.state.store.record(auth.user.user_id, "snmp.credentials.deleted", "succeeded", device.id, conn=conn)
-        return {"snmp_configured": False}
+            app.state.store.record(
+                auth.user.user_id,
+                "snmp.v2c.risk_withdrawn" if has_v2c else "snmp.credentials.deleted",
+                "succeeded", device.id,
+                details={"version": "v2c" if has_v2c else device.snmp_version}, conn=conn,
+            )
+        return {"snmp_configured": False, "snmp_version": None, "snmp_v2c_risk_accepted": False}
 
     @app.get("/api/v1/devices/{device_id}/metrics")
     def metrics(device_id: str, request: Request, hours: int = Query(1, ge=1, le=2160),

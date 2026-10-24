@@ -13,61 +13,67 @@ incelenerek hazırlanmıştır.
 
 ## Okuma sırası
 
-1. [S09 teslim raporu](S09_TESLIM_RAPORU.md) — ileri/legacy NOS manifestleri,
+1. [S10 teslim raporu](S10_TESLIM_RAPORU.md) — kontrollü SNMPv2c istisnası,
+   SwOS transport/mapper kanıtı ve protokol dışı profil sonuçları.
+2. [P4 SNMPv2c ve protokol sınırları](P4_SNMPV2C_VE_PROTOKOL_SINIRLARI.md) —
+   kurulum/cihaz opt-in akışı, operatör kontrolleri ve rollback.
+3. [S09 teslim raporu](S09_TESLIM_RAPORU.md) — ileri/legacy NOS manifestleri,
    Linux/front-panel ayrımı ve cross-profile negatif kanıtlar.
-2. [P3 sürücü profilleri](P3_SURUCU_PROFILLERI.md) — legacy SSH opt-in,
+4. [P3 sürücü profilleri](P3_SURUCU_PROFILLERI.md) — legacy SSH opt-in,
    SONiC distribution ve Cumulus breakout sözleşmesi.
-3. [S08 teslim raporu](S08_TESLIM_RAPORU.md) — controller/cloud API güven
+5. [S08 teslim raporu](S08_TESLIM_RAPORU.md) — controller/cloud API güven
    modeli, kampüs profilleri, EdgeSwitch ve negatif transport kanıtları.
-4. [Controller/API profilleri](CONTROLLER_API_PROFILLERI.md) — kayıt, TLS/CA,
+6. [Controller/API profilleri](CONTROLLER_API_PROFILLERI.md) — kayıt, TLS/CA,
    read-only token, site binding ve operatör akışı.
-5. [S07 teslim raporu](S07_TESLIM_RAPORU.md) — Dell, Extreme ve standalone
+7. [S07 teslim raporu](S07_TESLIM_RAPORU.md) — Dell, Extreme ve standalone
    FortiSwitch manifestleri, exact-tuple fixture'lar ve fail-closed OS/mode
    sınırları.
-6. [P2 sürücü profilleri](P2_SURUCU_PROFILLERI.md) — salt-okunur komutlar,
+8. [P2 sürücü profilleri](P2_SURUCU_PROFILLERI.md) — salt-okunur komutlar,
    alias/management-mode kararları ve fiziksel kabul sınırı.
-7. [S06 teslim raporu](S06_TESLIM_RAPORU.md) — P1 kurumsal platform
+9. [S06 teslim raporu](S06_TESLIM_RAPORU.md) — P1 kurumsal platform
    manifestleri, altı exact-tuple fixture ve fail-closed kimlik sınırları.
-8. [P1 sürücü profilleri](P1_SURUCU_PROFILLERI.md) — salt-okunur komutlar,
+10. [P1 sürücü profilleri](P1_SURUCU_PROFILLERI.md) — salt-okunur komutlar,
    minimum RBAC, API karar kapıları ve fiziksel kabul sınırı.
-9. [S05 teslim raporu](S05_TESLIM_RAPORU.md) — P0 kanonik manifestleri,
+11. [S05 teslim raporu](S05_TESLIM_RAPORU.md) — P0 kanonik manifestleri,
    IOS/IOS-XE ayrımı, NX-OS/Junos eşlemeleri ve kimlik yeniden çözümü.
-10. [P0 sürücü profilleri](P0_SURUCU_PROFILLERI.md) — salt-okunur komutlar,
+12. [P0 sürücü profilleri](P0_SURUCU_PROFILLERI.md) — salt-okunur komutlar,
    minimum erişim, transport alanları ve bilinen kabul sınırları.
-11. [S04 teslim raporu](S04_TESLIM_RAPORU.md) — ortak transport context'i,
+13. [S04 teslim raporu](S04_TESLIM_RAPORU.md) — ortak transport context'i,
    bounded SNMPv3 reader, standard MIB mapper'ları, field-level merge ve kanal
    geri kazanımı.
-12. [S03 teslim raporu](S03_TESLIM_RAPORU.md) — katalog tabanlı cihaz/bağlantı
+14. [S03 teslim raporu](S03_TESLIM_RAPORU.md) — katalog tabanlı cihaz/bağlantı
    akışı, uyumluluk paneli, seçilebilirlik kapıları ve browser kanıtı.
-13. [S02 teslim raporu](S02_TESLIM_RAPORU.md) — additive veri modeli, güvenli
+15. [S02 teslim raporu](S02_TESLIM_RAPORU.md) — additive veri modeli, güvenli
    profil çözümü, API/RBAC, migration ve rollback kanıtı.
-14. [S01 teslim raporu](S01_TESLIM_RAPORU.md) — typed registry, additive katalog
+16. [S01 teslim raporu](S01_TESLIM_RAPORU.md) — typed registry, additive katalog
    v2, geriye uyumluluk ve test kanıtı.
-15. [S00 teslim raporu](S00_TESLIM_RAPORU.md) — dondurulan kapsam, kabul edilen
+17. [S00 teslim raporu](S00_TESLIM_RAPORU.md) — dondurulan kapsam, kabul edilen
    kararlar, açık karar kapıları ve doğrulama sonucu.
-16. [Başlangıç uyumluluk raporu](BASLANGIC_UYUMLULUK_RAPORU.md) — katalog,
+18. [Başlangıç uyumluluk raporu](BASLANGIC_UYUMLULUK_RAPORU.md) — katalog,
    sözleşme, frontend ve migration kaynak snapshot'ı.
-17. [Profil ve alias kararları](PROFIL_VE_ALIAS_KARARLARI.md) ve
+19. [Profil ve alias kararları](PROFIL_VE_ALIAS_KARARLARI.md) ve
    [makinece doğrulanabilir S00 kaydı](S00_KAPSAM_KARARLARI.json) — 38 kanonik
    profil, altyapı adaptörleri ve eski kimlik davranışı.
-18. [ADR dizini](adr/README.md) — kabul edilen ve bekleyen mimari/güvenlik
+20. [ADR dizini](adr/README.md) — kabul edilen ve bekleyen mimari/güvenlik
    kararları.
-19. [Fixture ve kanıt politikası](FIXTURE_VE_KANIT_POLITIKASI.md) — fixture
+21. [Fixture ve kanıt politikası](FIXTURE_VE_KANIT_POLITIKASI.md) — fixture
    temizleme, ham kanıt, inceleme ve secret tarama kapısı.
-20. [Implementasyon raporu](IMPLEMENTASYON_RAPORU.md) — mevcut durum, boşluklar,
+22. [Implementasyon raporu](IMPLEMENTASYON_RAPORU.md) — mevcut durum, boşluklar,
    hedef mimari, veri/API/UI sözleşmeleri, güvenlik, migration ve yayın yaklaşımı.
-21. [Sprint planı](SPRINT_PLANI.md) — bağımlılık sıralı sprintler, iş paketleri,
+23. [Sprint planı](SPRINT_PLANI.md) — bağımlılık sıralı sprintler, iş paketleri,
    testler, kabul kapıları ve teslim kanıtları.
-22. [Sürücü izlenebilirlik matrisi](SURUCU_IZLENEBILIRLIK_MATRISI.md) — kaynak
+24. [Sürücü izlenebilirlik matrisi](SURUCU_IZLENEBILIRLIK_MATRISI.md) — kaynak
    matristeki her hedef sürücü kimliğinin mevcut karşılığı, hedef sprinti ve kabul
    gereksinimi.
-23. [Kabul ve kanıt şablonu](KABUL_VE_KANIT_SABLONU.md) — fixture, taşıma
+25. [Kabul ve kanıt şablonu](KABUL_VE_KANIT_SABLONU.md) — fixture, taşıma
    laboratuvarı, fiziksel cihaz ve performans kabulünde doldurulacak kayıt.
 
 ## Belge statüleri
 
 | Belge | Statü | Kod uygulanmış mı? |
 |---|---|---|
+| S10 teslim raporu | Kontrollü SwOS SNMPv2c ve protokol dışı profil sınırları uygulandı | Evet; izole UDP/fixture/browser kanıtı, fiziksel vendor kabulü değil |
+| P4 SNMPv2c ve protokol sınırları | Uygulanmış güvenlik ve operatör sözleşmesi | Evet; varsayılan kapalı flag, superadmin cihaz onayı ve rollback dahil |
 | S09 teslim raporu | Dokuz P3 profil manifesti, parser, fixture ve cross-profile koruması uygulandı | Evet; proje-sentetik fixture kanıtı, fiziksel vendor kabulü değil |
 | P3 sürücü profilleri | Uygulanmış ileri/legacy/Linux-NOS operatör sözleşmesi | Evet; legacy opt-in ve distribution/breakout sınırları dahil |
 | S08 teslim raporu | Controller/cloud API ve kampüs profilleri uygulandı | Evet; fixture/izole TLS kanıtı, fiziksel vendor kabulü değil |

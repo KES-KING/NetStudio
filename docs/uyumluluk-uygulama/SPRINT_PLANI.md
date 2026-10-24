@@ -160,8 +160,9 @@ güvenlik kararlarını tek anlamlı hale getirmek.
 **Tamamlandı — 23 Ekim 2026.** S00-01–S00-08 teslimleri
 [`S00_TESLIM_RAPORU.md`](S00_TESLIM_RAPORU.md) içinde, makinece doğrulanabilir
 kapsam ve kapılar [`S00_KAPSAM_KARARLARI.json`](S00_KAPSAM_KARARLARI.json)
-içinde kaydedildi. `ADR-COMPAT-003` ve `ADR-COMPAT-004` tasarım gereği karar
-bekler; sırasıyla S10 ve S08'i bloklar, S01'i bloklamaz.
+içinde kaydedildi. S00 teslim tarihinde `ADR-COMPAT-003` ve `ADR-COMPAT-004`
+karar bekliyordu ve sırasıyla S10/S08'i blokluyordu; daha sonra ilgili
+sprintlerde kabul edilip uygulandı. Bu tarihsel kapı S01'i bloklamadı.
 
 ### Kapsam dışı
 
@@ -717,6 +718,23 @@ SNMPv1 bu sprintte uygulanmaz.
 - ADR sonucu kod, UI ve belgede aynıdır.
 - v2c varsa varsayılan kapalıdır, v1/SET yoktur ve secret leak testleri geçer.
 - Protokol kapsamı dışı cihazlar “hata” değil açık destek sınırı olarak görünür.
+
+### Uygulama durumu
+
+**Tamamlandı — 24 Ekim 2026.** `ADR-COMPAT-003` kontrollü kabul kararıyla
+sonuçlandırıldı. `mikrotik_swos`, yalnız kurulum geneli
+`NETSTUDIO_ALLOW_SNMP_V2C=1` ve superadmin cihaz risk onayı birlikteyken
+seçilebilen, bounded GET/GETNEXT/GETBULK SNMPv2c profili olarak uygulandı.
+Community ayrı AAD ile şifrelenir ve read API/audit/UI'da geri verilmez; onay
+geri çekilebilir. Exact SwOS kimliği, mantıksal IF/IF-X ve Q-BRIDGE FDB akışı
+proje-sentetik CSS610/2.19 fixture'ı ve izole gerçek UDP v2c agent ile
+doğrulandı. SNMPv1, SET ve v3→v2c downgrade yoktur. Easy Smart ve unmanaged
+profilleri `unsupported_by_protocol`; UniFi no-SNMP ve Instant On sınırları S08
+kararıyla tutarlı kalmıştır. Ayrıntılar
+[`S10_TESLIM_RAPORU.md`](S10_TESLIM_RAPORU.md) ve
+[`P4_SNMPV2C_VE_PROTOKOL_SINIRLARI.md`](P4_SNMPV2C_VE_PROTOKOL_SINIRLARI.md)
+içindedir. Fiziksel cihaz ve production kabulü yapılmamıştır. `Ana tasarım
+etkisi: yok`; README ekran görüntüleri yenilenmemiştir.
 
 ---
 

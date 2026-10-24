@@ -51,7 +51,7 @@
 | Fortinet | **FortiSwitchOS**, bağımsız (standalone) | Evet | v1/v2c/v3 | **Deneysel / fixture doğrulandı** | `fortinet_fortiswitchos` | FortiOS/FortiLink'ten ayrı; FortiSwitch-124F/7.6.2 sentetik fixture, fiziksel kabul yok | [Fortinet](https://docs.fortinet.com/document/fortiswitch/8.0.0/fortiswitchos-administration-guide/261585/snmp) |
 | Fortinet | **FortiSwitchOS**, FortiLink/FortiGate yönetiminde | Koşullu; erişim yönetim politikasına bağlı | Koşullu; FortiLink/FortiGate üzerinden konfigürasyon gerekebilir | **Deneysel controller API / fixture doğrulandı** | `fortinet_fortiswitch_fortilink` | Standalone ve managed kimliği ayrıdır; fiziksel kabul yok | [Fortinet](https://docs.fortinet.com/document/fortigate/7.6.2/cli-reference/308952696/config-switch-controller-managed-switch) |
 | MikroTik | **RouterOS v6/v7** (CRS vb.) | Evet | v1/v2c/v3 | **Deneysel / v7 fixture doğrulandı** | `mikrotik_routeros` | Ayrı RouterOS terminal parser'ı; v6 fiziksel/fixture kabulü hâlâ açık | [MikroTik](https://help.mikrotik.com/docs/spaces/ROS/pages/8978519/SNMP) |
-| MikroTik | **SwOS / SwOS Lite** (CSS, bazı CRS) | **Hayır** | **Yalnız v1/v2c; v3 yok** | **Yeni SNMPv2c salt-okunur adaptör** | `mikrotik_swos` | SNMP GET/GETNEXT/GETBULK; SET ve trap yok | [MikroTik](https://help.mikrotik.com/docs/spaces/SWOS/pages/76415036/CRS3xx%2Band%2BCSS3xx%2Bseries%2BManual) |
+| MikroTik | **SwOS / SwOS Lite** (CSS, bazı CRS) | **Hayır** | **Yalnız v1/v2c; v3 yok** | **Deneysel, varsayılan kapalı SNMPv2c / transport-lab doğrulandı** | `mikrotik_swos` | Yalnız çift opt-in ile GET/GETNEXT/GETBULK; v1/SET/trap yok; fiziksel kabul yok | [MikroTik](https://help.mikrotik.com/docs/spaces/SWOS/pages/76939305/CSS610%2Bseries%2BManual) |
 | Ubiquiti | **UniFi switch firmware** (USW genel ailesi) | Koşullu; cihaz SSH/Debug erişimi var, esas yönetim yöntemi değil | v1/v2c/v3 (uyumlu modeller) | **Deneysel UniFi API / fixture doğrulandı** | `ubiquiti_unifi_switch` | Debug SSH management kanalı değildir; fiziksel kabul yok | [Ubiquiti](https://developer.ui.com/network/v9.4.17) |
 | Ubiquiti | **UniFi USW Flex / Ultra** istisnaları | Koşullu; debug/firmware | **Hayır** (resmî SNMP istisnası) | **Deneysel UniFi API / fixture doğrulandı** | `ubiquiti_unifi_no_snmp` | Ayrı no-SNMP profilidir; fiziksel kabul yok | [Ubiquiti](https://help.ui.com/hc/en-us/articles/33502980942615-SNMP-Monitoring-in-UniFi-Network) |
 | Ubiquiti | **EdgeSwitch firmware / EdgeSwitch OS** | Evet | v1/v2c/v3 (yönetilen modeller) | **Deneysel SSH/SNMP / fixture doğrulandı** | `ubiquiti_edgeswitch` | UniFi'dan ayrı gramer; ES-48/1.10.4 sentetik fixture, fiziksel kabul yok | [Ubiquiti](https://www.ui.com/edgemax/edgeswitch/) |
@@ -72,8 +72,8 @@
 | Temel sürücü/test | Cisco IOS (özellikle 2960-X), Huawei VRP (özellikle S5700 / VRP 5) | Örnek çıktı/ayrıştırıcı testleri var; gerçek cihazdan genel kabul iddia edilmiyor |
 | Deneysel | Cisco IOS XE, Cisco NX-OS, Juniper Junos; Aruba AOS-CX/AOS-Switch; Arista EOS; HPE/H3C Comware 7; MikroTik RouterOS; Dell OS6/OS9/OS10; Extreme EXOS/Fabric Engine/SLX-OS; standalone/FortiLink FortiSwitchOS; Meraki MS; UniFi; Omada/Pro; EdgeSwitch | Fixture/unit/izole transport kanıtı var; cihaz/sürüm bazlı fiziksel kabul eksik |
 | Genel Linux | Linux SSH salt-okunur kolektörü | Cumulus/SONiC için tam NOS özelliği anlamına gelmez |
-| Katalogda, kapalı | Aruba Instant On, ileri/legacy NOS ve sınırlı protokol profilleri | `available=false`; Instant On resmi genel API kanıtı bekler |
-| Kaynak protokol | SSH, opsiyonel **SNMPv3 authPriv** ve site-scoped controller API | Bugün **SNMPv1/v2c kullanılmıyor**; API secret/target sınırı ADR-COMPAT-004'tedir |
+| Katalogda, kapalı | Aruba Instant On, Easy Smart ve yönetilemeyen switch | Instant On resmi genel API kanıtı bekler; diğer ikisi unsupported-by-protocol |
+| Kaynak protokol | SSH, opsiyonel **SNMPv3 authPriv**, site-scoped controller API ve kontrollü SwOS SNMPv2c | SNMPv2c varsayılan kapalı, yalnız kurulum+superadmin cihaz onayıyla; SNMPv1/SET yok |
 
 Kaynak: [NetStudio koleksiyon otomasyon dokümanı](https://github.com/KES-KING/NetStudio/blob/main/docs/collection-automation.md), [NetStudio README](https://github.com/KES-KING/NetStudio).
 
@@ -144,7 +144,7 @@ Aynı örüntüde her driver için **protokol erişimi**, **metrik kapsaması**,
 | P1 | Aruba AOS-CX / AOS-Switch; Arista EOS; Comware V7; MikroTik RouterOS | CLI SSH kimlik doğrulama, sistem/port/MAC/VLAN/LLDP/sayaç ayrıştırması, SNMPv3 fallback |
 | P2 | Dell OS10/OS9/OS6, standalone/FortiLink FortiSwitchOS, Extreme EXOS/VOSS/SLX; Omada/Pro ve UniFi/EdgeSwitch | CLI ve controller API profilleri fixture doğrulandı; fiziksel kabul ayrıca |
 | P3 | H3C Comware V5/V9, Huawei V600, Junos Evolved, Dell SONiC, NVIDIA Cumulus/Onyx/SONiC, Cisco Business | İleri düzey NOS ve legacy sistem doğrulama, üretici API/CLI alternatifleri |
-| P4 | MikroTik SwOS, Meraki MS, Aruba Instant On, TP-Link'in sınırlı yönetilen aileleri | Meraki API fixture doğrulandı; Instant On API kanıtı yok ve kapalı; SNMPv2c S10 kararına bağlı |
+| P4 | MikroTik SwOS, Meraki MS, Aruba Instant On, TP-Link'in sınırlı yönetilen aileleri | SwOS v2c çift opt-in ile transport-lab doğrulandı; Meraki API fixture doğrulandı; Instant On kapalı; Easy Smart/unmanaged protokol dışında |
 
 **Kabul testlerinde:** Cihaz modeli, yazılım versiyonu, `sysObjectID`, SSH erişimi, SNMP protokolü, `ifIndex`–arayüz adı eşlemesi, VLAN/FDB, LLDP komşuluk, RX/TX 64-bit sayaç, yeniden başlatma sonrası kimlik, erişim hataları, eksik/pars edilemeyen alanların güvenli raporlanması ve performans ölçümleri ayrı ayrı sınanmalı. Çalışmayan sürücü üretime hazır olarak listelenmemeli.
 

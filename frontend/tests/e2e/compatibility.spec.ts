@@ -21,9 +21,11 @@ const evidenceDir = join(tmpdir(), "netstudio-qa");
 const viewer = `qa-compat-viewer-${suffix}`;
 const legacyName = `QA-Legacy-Huawei-${suffix}`;
 const controllerDeviceName = `QA-Meraki-Controller-${suffix}`;
+const swosDeviceName = `QA-MikroTik-SwOS-${suffix}`;
 let viewerId = "";
 let legacyDeviceId = "";
 let controllerDeviceId = "";
+let swosDeviceId = "";
 let controllerId = "";
 
 async function adminHeaders(request: APIRequestContext) {
@@ -85,6 +87,21 @@ test.beforeAll(async ({ request }) => {
   });
   expect(controllerDeviceResponse.status()).toBe(201);
   controllerDeviceId = (await controllerDeviceResponse.json()).id;
+
+  const swosDeviceResponse = await request.post("/api/v1/devices", {
+    headers,
+    data: {
+      name: swosDeviceName,
+      management_address: "192.0.2.242",
+      site: "TEST FIXTURE / isolated",
+      vendor: "MikroTik",
+      model: "CSS610-8G-2S+",
+      configured_profile_id: "mikrotik_swos",
+      management_mode: "standalone",
+    },
+  });
+  expect(swosDeviceResponse.status()).toBe(201);
+  swosDeviceId = (await swosDeviceResponse.json()).id;
   await request.post("/api/v1/session/logout", { headers });
 });
 
@@ -213,6 +230,11 @@ test("catalog-driven add form exposes supported, experimental, planned and unsup
   await expect(profile.locator("option[value=tplink_omada_managed]")).toBeEnabled();
   await expect(profile.locator("option[value=tplink_omada_pro]")).toBeEnabled();
   await expect(profile.locator("option[value=tplink_easy_smart]")).toHaveAttribute("disabled", "");
+  await vendor.selectOption({ value: "MikroTik" });
+  await expect(profile.locator("option[value=mikrotik_swos]")).toBeEnabled();
+  await profile.selectOption("mikrotik_swos");
+  await expect(dialog.getByRole("radio", { name: /SNMPv2c/ })).toBeEnabled();
+  await expect(dialog.getByText(/superadmin SNMPv2c riskini/)).toBeVisible();
   await vendor.selectOption({ value: "Cisco Meraki" });
   await profile.selectOption("cisco_meraki_ms");
   await expect(dialog.getByRole("radio", { name: /Üretici \/ controller API/ })).toBeEnabled();
@@ -228,6 +250,86 @@ test("catalog-driven add form exposes supported, experimental, planned and unsup
   expect(await dialog.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("SwOS SNMPv2c risk approval is explicit, redacted and revocable", async ({
+  page,
+}) => {
+  const errors = observeErrors(page);
+  await page.setViewportSize({ width: 1536, height: 900 });
+  await login(page, "qa-admin", "test-only-password-1234");
+  await page.goto(`/devices/${swosDeviceId}`);
+  await expect(page.getByRole("heading", { name: swosDeviceName, exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Bağlantı bilgileri", exact: true }).click();
+
+  const dialog = page.getByRole("dialog");
+  await dialog.getByText(/SNMPv2c · şifrelenmemiş uyumluluk istisnası/).click();
+  await expect(dialog.getByText(/SNMPv2c kimlik doğrulama ve şifreleme sağlamaz/)).toBeVisible();
+  await dialog.getByLabel("SNMP community", { exact: true }).fill("test-only-browser-community");
+  await dialog.getByLabel(/yalnız GET, GETNEXT ve GETBULK/).check();
+  await dialog.getByLabel(/Cihaz ACL’si/).check();
+  await dialog.getByLabel(/ayrılmış yönetim VLAN\/VRF/).check();
+  await dialog.getByLabel(/ağda şifrelenmediğini/).check();
+  const saved = page.waitForResponse((response) =>
+    response.url().endsWith(`/api/v1/devices/${swosDeviceId}/snmp-v2c-credentials`) &&
+    response.request().method() === "PUT",
+  );
+  await dialog.getByRole("button", { name: "SNMPv2c riskini onayla ve kaydet", exact: true }).click();
+  const savedResponse = await saved;
+  expect(savedResponse.status()).toBe(200);
+  expect(await savedResponse.text()).not.toContain("test-only-browser-community");
+  await expect(dialog.getByRole("status")).toContainText("risk onayı");
+  await expect(dialog.getByLabel("SNMP community", { exact: true })).toHaveValue("");
+  await expect(dialog.getByRole("button", { name: "SNMPv2c onayını ve community kaydını kaldır", exact: true })).toBeVisible();
+  await page.screenshot({
+    path: join(evidenceDir, "s10-snmpv2c-desktop.png"),
+    fullPage: false,
+    animations: "disabled",
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectNoHorizontalOverflow(page, 390);
+  const bounds = await dialog.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+  await page.screenshot({
+    path: join(evidenceDir, "s10-snmpv2c-mobile.png"),
+    fullPage: false,
+    animations: "disabled",
+  });
+
+  const catalogResponse = await page.request.get("/api/v1/driver-catalog");
+  expect(catalogResponse.ok()).toBeTruthy();
+  const disabledCatalog = await catalogResponse.json();
+  disabledCatalog.features.snmp_v2c_enabled = false;
+  const disabledSwos = disabledCatalog.profiles.find(
+    (candidate: { id: string }) => candidate.id === "mikrotik_swos",
+  );
+  disabledSwos.available = false;
+  disabledSwos.selectable = false;
+  disabledSwos.availability_reason = "snmp_v2c_installation_disabled";
+  disabledSwos.transports.snmp.state = "unsupported_by_policy";
+  await page.route("**/api/v1/driver-catalog", (route) =>
+    route.fulfill({ json: disabledCatalog }),
+  );
+  await page.reload();
+  await page.getByRole("button", { name: "Bağlantı bilgileri", exact: true }).click();
+  const disabledDialog = page.getByRole("dialog");
+  await disabledDialog.getByText(/SNMPv2c · şifrelenmemiş uyumluluk istisnası/).click();
+  await expect(disabledDialog.getByText(/Kurulum genelinde SNMPv2c kapalıdır/)).toBeVisible();
+  await expect(disabledDialog.getByLabel("SNMP community", { exact: true })).toHaveCount(0);
+  await expect(disabledDialog.getByRole("button", { name: "SNMPv2c onayını ve community kaydını kaldır", exact: true })).toBeVisible();
+
+  const removed = page.waitForResponse((response) =>
+    response.url().endsWith(`/api/v1/devices/${swosDeviceId}/snmp-credentials`) &&
+    response.request().method() === "DELETE",
+  );
+  await disabledDialog.getByRole("button", { name: "SNMPv2c onayını ve community kaydını kaldır", exact: true }).click();
+  expect((await removed).status()).toBe(200);
+  await expect(disabledDialog.getByRole("status")).toContainText("kaldırıldı");
+  await expect(page.locator("nextjs-portal")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

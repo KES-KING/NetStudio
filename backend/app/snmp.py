@@ -13,7 +13,9 @@ from .snmp_mappers import (
     parse_entity_mib, parse_if_mib, parse_lldp_mib, parse_system_mib,
 )
 from .snmp_mappers.common import column_map
-from .snmp_transport import BoundedSNMPReader, PysnmpV3Session, SNMPLimits
+from .snmp_policy import require_snmp_v2c_runtime, require_snmp_v3_device
+from .snmp_swos import identity as swos_identity, interfaces as swos_interfaces
+from .snmp_transport import BoundedSNMPReader, PysnmpV2cSession, PysnmpV3Session, SNMPLimits
 from .ssh import ConnectionPolicyError
 from .transport import TransportContext
 
@@ -60,13 +62,28 @@ async def collect_snmp(store, vault, device, authorize=lambda: None, groups=("fa
         store, vault, device, authorize, timeout_seconds=25
     )
     context.checkpoint()
-    credentials = vault.get_protocol(device.id, "snmp")
+    if device.snmp_configured and device.snmp_version is None:
+        # More than one stored SNMP protocol is an invalid state. Never turn
+        # that ambiguity into an implicit v3/v2c preference.
+        raise ConnectionPolicyError("snmp_protocol_conflict")
+    version = device.snmp_version or "v3"
+    if version == "v2c":
+        require_snmp_v2c_runtime(device)
+        credentials = vault.get_protocol(device.id, "snmp_v2c")
+        session_type = PysnmpV2cSession
+    elif version == "v3":
+        require_snmp_v3_device(device)
+        credentials = vault.get_protocol(device.id, "snmp")
+        session_type = PysnmpV3Session
+    else:
+        raise ConnectionPolicyError("snmp_protocol_conflict")
     session = None
     try:
-        session = await PysnmpV3Session(context, credentials).open()
+        session = await session_type(context, credentials).open()
         reader = BoundedSNMPReader(context, session, ALL_ROOTS, limits)
         identity = parse_system_mib(await reader.get(*SYSTEM_SCALARS))
-        result = ReadResult(device)
+        observed_device = device
+        platform = None
         if identity.sys_descr:
             # A recognized standard sysDescr is corroborating profile evidence;
             # unknown/free-form descriptions never become an automatic guess.
@@ -75,13 +92,26 @@ async def collect_snmp(store, vault, device, authorize=lambda: None, groups=("fa
                 platform = identify_platform({"sysDescr": identity.sys_descr})
             except ConnectionPolicyError:
                 platform = None
-            if platform:
-                result.observed_profile_id = platform.profile_id
-                result.identity_evidence = {
-                    "vendor": platform.vendor, "os_family": platform.os_family,
-                    "sys_object_id": identity.sys_object_id,
-                    "management_mode": device.management_mode,
-                }
+        if version == "v2c":
+            if not platform or platform.profile_id != "mikrotik_swos":
+                raise ConnectionPolicyError("snmp_swos_identity_mismatch")
+            details = swos_identity(identity.sys_descr)
+            observed_device = device.model_copy(update={
+                "vendor": details["vendor"], "model": details["model"],
+                "os_version": details["version"],
+            })
+        result = ReadResult(observed_device)
+        if platform:
+            result.observed_profile_id = platform.profile_id
+            result.identity_evidence = {
+                "vendor": platform.vendor, "os_family": platform.os_family,
+                "model": observed_device.model,
+                "os_version": observed_device.os_version,
+                "sys_object_id": identity.sys_object_id,
+                "management_mode": observed_device.management_mode,
+            }
+        if version == "v2c":
+            result.inventory_complete = True
         with store.engine.connect() as conn:
             previous_fast = conn.execute(sa.select(store.collection_groups.c.payload).where(
                 store.collection_groups.c.device_id == device.id,
@@ -94,8 +124,10 @@ async def collect_snmp(store, vault, device, authorize=lambda: None, groups=("fa
         if requested & {"fast", "network"}:
             definitions = IF_COLUMNS if "fast" in requested else {"name": IF_COLUMNS["name"]}
             interface_columns = await _columns(reader, definitions)
+            if version == "v2c":
+                result.device = swos_interfaces(result.device, interface_columns["name"])
             interface_payload, interface_complete = parse_if_mib(
-                device, interface_columns, identity.sys_uptime_ticks, previous_fast
+                result.device, interface_columns, identity.sys_uptime_ticks, previous_fast
             )
         if "fast" in requested:
             result.payloads["fast"] = interface_payload

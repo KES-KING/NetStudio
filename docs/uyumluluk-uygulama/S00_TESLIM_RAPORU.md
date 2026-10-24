@@ -46,9 +46,10 @@ işaretlenmiştir; S01 registry'si yerine kullanılamaz.
 
 [ADR-COMPAT-003](adr/ADR-COMPAT-003-snmpv2c-karar-kapisi.md) ve
 [ADR-COMPAT-004](adr/ADR-COMPAT-004-controller-api-guven-modeli.md) bilinçli
-olarak “karar bekliyor” durumundadır. İlki S10'u, ikincisi S08'i bloklar; ikisi de
-S01 typed registry çalışmasını bloklamaz. Karar verilene kadar mevcut güvenli
-varsayım korunur: SNMPv2c açılmaz ve controller/cloud API runtime yolu eklenmez.
+olarak S00 teslim tarihinde “karar bekliyor” durumundaydı ve sırasıyla S10/S08'i
+blokluyordu; S01 typed registry çalışmasını bloklamıyordu. Sonraki uygulama
+sprintlerinde ADR-COMPAT-004 S08 ile, ADR-COMPAT-003 ise S10 ile kabul edilip
+uygulandı. Güncel durum ilgili ADR ve sprint teslim raporundadır.
 
 ## 3. Otomatik doğrulama
 

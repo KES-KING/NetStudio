@@ -23,6 +23,7 @@ from .ssh_profiles import target_signature
 from .transport import SSHTransportAdapter, TransportContext
 from .vault import CredentialVault
 from .driver_profiles import REGISTRY
+from .snmp_policy import SNMP_V2C_PROFILE, device_profile_id, snmp_v2c_enabled
 
 
 def implemented_transports(device):
@@ -31,7 +32,10 @@ def implemented_transports(device):
     if not profile:
         # Legacy auto/external handling retains the existing SSH/SNMP behavior.
         return {"ssh", "snmp"}
-    return {item.kind for item in profile.transports if item.state == "implemented"}
+    transports = {item.kind for item in profile.transports if item.state == "implemented"}
+    if profile.id == SNMP_V2C_PROFILE and not snmp_v2c_enabled():
+        transports.discard("snmp")
+    return transports
 
 
 class Worker:
@@ -115,6 +119,11 @@ class Worker:
         channel_outcomes, reboot = {}, False
         try:
             authorize()
+            if (
+                (device_profile_id(device) == SNMP_V2C_PROFILE or device.collector == SNMP_V2C_PROFILE)
+                and not snmp_v2c_enabled()
+            ):
+                raise ConnectionPolicyError("snmp_v2c_installation_disabled")
             if job.kind == "ssh_discovery":
                 key, profile = await discover_host_key(self.store, device, authorize=authorize)
                 authorize()
@@ -133,6 +142,13 @@ class Worker:
                     )
                     await ControllerAPITransportAdapter().collect(transport_context, {"inventory"})
                     result = {"reachable": True, "source": "api"}
+                elif transports == {"snmp"}:
+                    from .snmp import SNMPTransportAdapter
+                    transport_context = TransportContext.create(
+                        self.store, self.vault, device, authorize, timeout_seconds=60
+                    )
+                    await SNMPTransportAdapter().collect(transport_context, {"inventory"})
+                    result = {"reachable": True, "source": "snmp"}
                 else:
                     async with connect(self.store, self.vault, device):
                         authorize()

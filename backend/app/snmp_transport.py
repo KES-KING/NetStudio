@@ -1,4 +1,4 @@
-"""Bounded numeric-OID SNMPv3 authPriv transport.
+"""Bounded numeric-OID SNMP transport with explicit v3/v2c policy sessions.
 
 MIB mapping is intentionally absent here.  The reader owns all request, row,
 varbind, byte and deadline limits so individual vendor/standard mappers cannot
@@ -129,6 +129,56 @@ class PysnmpV3Session:
             result = await snmp.next_cmd(*args, *objects, lookupMib=False)
         else:
             result = await snmp.bulk_cmd(*args, 0, max_repetitions, *objects, lookupMib=False)
+        indication, status, _, bindings = result
+        if code := safe_response_error(indication, status):
+            raise ConnectionPolicyError(code)
+        return list(bindings)
+
+    def close(self):
+        self.credentials.clear()
+        self.engine.close_dispatcher()
+
+
+class PysnmpV2cSession:
+    """Explicit SNMPv2c command-generator binding; mpModel=0/v1 is absent."""
+
+    def __init__(self, context: TransportContext, credentials: dict):
+        target_allowed(context.store, context.device)
+        self.context = context
+        self.credentials = credentials
+        self.engine = snmp.SnmpEngine()
+        self.user = snmp.CommunityData(
+            "netstudio-v2c", credentials["community"], mpModel=1,
+        )
+        self.context_data = snmp.ContextData()
+        self.context_name = ""
+        self.target = None
+
+    async def open(self):
+        device = self.context.device
+        transport_cls = snmp.Udp6TransportTarget if ":" in device.management_address else snmp.UdpTransportTarget
+        self.target = await self.context.wait(
+            transport_cls.create(
+                (device.management_address, self.credentials["port"]),
+                timeout=2, retries=0,
+            ),
+            timeout_seconds=2,
+        )
+        return self
+
+    async def request(self, operation: Operation, oids: tuple[OID, ...], *, max_repetitions: int):
+        if self.target is None:
+            raise RuntimeError("snmp_session_not_open")
+        objects = tuple(snmp.ObjectType(snmp.ObjectIdentity(value)) for value in oids)
+        args = (self.engine, self.user, self.target, self.context_data)
+        if operation == "get":
+            result = await snmp.get_cmd(*args, *objects, lookupMib=False)
+        elif operation == "getnext":
+            result = await snmp.next_cmd(*args, *objects, lookupMib=False)
+        else:
+            result = await snmp.bulk_cmd(
+                *args, 0, max_repetitions, *objects, lookupMib=False,
+            )
         indication, status, _, bindings = result
         if code := safe_response_error(indication, status):
             raise ConnectionPolicyError(code)

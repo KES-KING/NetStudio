@@ -172,6 +172,8 @@ def identify_platform(outputs):
         return PlatformIdentity("h3c_comware5", "h3c_comware5", "H3C", "Comware V5")
     if re.search(r"H3C\s+Comware Software,\s*Version\s+9\.", text, re.I):
         return PlatformIdentity("h3c_comware9", "h3c_comware9", "H3C", "Comware V9")
+    if re.search(r"\bMikroTik\s+CSS[0-9A-Za-z+._-]+\s+SwOS\s+[0-9]", text, re.I):
+        return PlatformIdentity("mikrotik_swos", "mikrotik_swos", "MikroTik", "SwOS")
     if re.search(r"^\s*platform\s*:\s*MikroTik\s*$", text, re.I | re.M) and re.search(
         r"^\s*version\s*:\s*(?:6|7)\.", text, re.I | re.M
     ):
@@ -240,6 +242,8 @@ async def collect(store, vault, device, groups=GROUPS, authorize=lambda: None):
     driver = device.resolved_collector if device.collector == "auto" else device.collector
     if driver and driver not in DRIVERS:
         raise ConnectionPolicyError("collector_platform_unsupported")
+    if driver == "mikrotik_swos":
+        raise ConnectionPolicyError("collector_requires_snmp_v2c")
     if driver == "linux_ssh":
         async with connect(store, vault, device) as connection:
             values = []

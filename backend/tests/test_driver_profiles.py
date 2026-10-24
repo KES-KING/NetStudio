@@ -25,7 +25,7 @@ S00 = json.loads(
 SNAPSHOT = json.loads(
     (Path(__file__).parent / "snapshots" / "driver_catalog_v2.json").read_text()
 )
-LEGACY_V1_SHA256 = "0ab9999a7497477a049ec22195b600f51f7d6375119088156813f77b762fdba3"
+LEGACY_V1_SHA256 = "baa9f3003336883cf0ec384a924b49fe1ada3cd205bd387a653c53419d71eb5f"
 
 
 def _snapshot(value: dict) -> dict:
@@ -86,7 +86,8 @@ def test_registry_has_exact_s00_scope_and_statuses_do_not_regress():
     assert actual_aliases == expected_aliases
 
 
-def test_catalog_v2_matches_reviewed_json_snapshot():
+def test_catalog_v2_matches_reviewed_json_snapshot(monkeypatch):
+    monkeypatch.setenv("NETSTUDIO_ALLOW_SNMP_V2C", "0")
     assert _snapshot(catalog(include_v2=True)) == SNAPSHOT
 
 

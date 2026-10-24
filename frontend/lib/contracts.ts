@@ -60,7 +60,8 @@ export type DeviceCollector =
   | "nvidia_cumulus_linux"
   | "nvidia_onyx"
   | "sonic_nos"
-  | "cisco_business";
+  | "cisco_business"
+  | "mikrotik_swos";
 export type DeviceManagementMode =
   | "standalone"
   | "controller_managed"
@@ -101,6 +102,8 @@ export type Device = {
   allow_legacy_ssh?: boolean;
   ssh_algorithms?: Record<string, string[]>;
   snmp_configured?: boolean;
+  snmp_version?: "v3" | "v2c" | null;
+  snmp_v2c_risk_accepted?: boolean;
   api_configured?: boolean;
   credential_configured: boolean;
   host_key_fingerprint: string | null;
@@ -427,6 +430,8 @@ export type DriverProfileCatalogEntry = {
   tested_versions: string[];
   commands: DriverCommand[];
   reason?: string;
+  availability_reason?: string;
+  operator_guidance?: string | null;
 };
 export type DriverInfrastructureAdapter = {
   schema_version: number;
@@ -495,6 +500,7 @@ export type DriverCatalog = {
   infrastructure_adapters?: DriverInfrastructureAdapter[];
   aliases?: DriverAlias[];
   unresolved_aliases?: DriverAlias[];
+  features?: { snmp_v2c_enabled: boolean };
 };
 export type Job = {
   id: string;

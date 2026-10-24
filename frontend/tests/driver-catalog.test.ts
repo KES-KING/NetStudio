@@ -8,6 +8,7 @@ import {
   catalogVendors,
   implementedTransports,
   needsExplicitProfileChoice,
+  profileOptionLabel,
   profilesForVendor,
   supportPresentation,
 } from "../lib/compatibility";
@@ -184,5 +185,23 @@ describe("additive driver catalog v2 contract", () => {
       private_key: "",
       passphrase: "",
     });
+  });
+
+  it("renders the SNMPv2c installation gate without inventing a transport", () => {
+    const swos = {
+      ...profile,
+      id: "mikrotik_swos",
+      label: "MikroTik SwOS",
+      implementation_status: "implemented",
+      availability_reason: "snmp_v2c_installation_disabled",
+      available: false,
+      selectable: false,
+      transports: {
+        ssh: { state: "unsupported_by_protocol", security: [], versions: [], decision_gate: null },
+        snmp: { state: "unsupported_by_policy", security: ["installation_opt_in"], versions: ["v2c"], decision_gate: "installation_and_device_risk_approval_required" },
+      },
+    } satisfies DriverProfileCatalogEntry;
+    expect(implementedTransports(swos)).toEqual([]);
+    expect(profileOptionLabel(swos)).toContain("NETSTUDIO_ALLOW_SNMP_V2C=1");
   });
 });

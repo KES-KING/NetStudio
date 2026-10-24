@@ -40,7 +40,7 @@ Collector = Literal[
     "ubiquiti_edgeswitch",
     "h3c_comware5", "h3c_comware9", "huawei_vrp_v600",
     "juniper_junos_evolved", "dell_sonic", "nvidia_cumulus_linux",
-    "nvidia_onyx", "sonic_nos", "cisco_business",
+    "nvidia_onyx", "sonic_nos", "cisco_business", "mikrotik_swos",
 ]
 SSHProfile = Literal["auto", "standard", "huawei_legacy", "legacy_sha1", "legacy_cbc", "advanced"]
 CollectionGroup = Literal["fast", "health", "network", "inventory"]
@@ -102,6 +102,34 @@ class SNMPCredentials(StrictModel):
         return self
 
 
+class SNMPV2cCredentials(StrictModel):
+    community: SecretStr = Field(min_length=8, max_length=128)
+    port: int = Field(default=161, ge=1, le=65535)
+    read_only_confirmed: bool = False
+    acl_confirmed: bool = False
+    management_isolation_confirmed: bool = False
+    unencrypted_confirmed: bool = False
+
+    @field_validator("community")
+    @classmethod
+    def printable_community(cls, value):
+        raw = value.get_secret_value()
+        if any(ord(character) < 0x21 or ord(character) > 0x7e for character in raw):
+            raise ValueError("snmp_v2c_community_invalid")
+        return value
+
+    @model_validator(mode="after")
+    def risk_confirmation(self):
+        if not all((
+            self.read_only_confirmed,
+            self.acl_confirmed,
+            self.management_isolation_confirmed,
+            self.unencrypted_confirmed,
+        )):
+            raise ValueError("snmp_v2c_risk_confirmation_required")
+        return self
+
+
 class ConnectionSettings(StrictModel):
     collector: Collector = "external"
     configured_profile_id: str | None = Field(
@@ -156,6 +184,8 @@ class ManagedDevice(Device):
     profile_resolution_status: ProfileResolutionStatus = "unresolved"
     validation_level: Literal["experimental", "fixture_tested", "lab_validated", "physical_validated"] = "experimental"
     snmp_configured: bool = False
+    snmp_version: Literal["v3", "v2c"] | None = None
+    snmp_v2c_risk_accepted: bool = False
     api_configured: bool = False
 
 

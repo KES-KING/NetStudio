@@ -5,7 +5,7 @@
 | Belge kimliği | `NETSTUDIO-COMPAT-TRACE-001` |
 | Kaynak kapsam | [Switch OS / SSH / SNMP uyumluluk matrisi](../NetStudio_Switch_OS_SSH_SNMP_Uyumluluk_Matrisi.md) |
 | Başlangıç kaynak kod tabanı | `fa1a40f` |
-| Güncel uygulama | S09, 24 Ekim 2026; katalog `2026.10.24.4`, uygulanan profil revizyonu `2` |
+| Güncel uygulama | S10, 24 Ekim 2026; katalog `2026.10.24.5`, uygulanan profil revizyonu `2` |
 | Kullanım | Her hedef profilin implementasyon, sprint ve kabul izini tutmak |
 
 ## 1. Okuma kuralı
@@ -92,11 +92,11 @@ proje-sentetik parser girdileridir.
 
 | Hedef profil | Eski/mevcut karşılık | Mevcut durum | Hedef transport | Sprint | Minimum çıkış |
 |---|---|---|---|---|---|
-| `mikrotik_swos` | Yok | Not implemented; mevcut güvenlik v2c'yi yasaklar | SNMPv2c read-only, ADR'ye bağlı | S10, S11 | ADR kabulü + security test + exact SwOS tuple P; ret halinde policy U |
+| `mikrotik_swos` | Yok | I+F+L; rev2 CSS610-8G-2S+/2.19 proje-sentetik fixture ve loopback v2c agent; kurulum+superadmin cihaz opt-in; `experimental` | SNMPv2c read-only; varsayılan kapalı | S10 tamamlandı, S11 | Exact fiziksel SwOS model/sürüm, ACL/izolasyon ve capability tuple P |
 | `cisco_meraki_ms` | `meraki_dashboard` | I+F; rev2 fixed-origin Dashboard API fixture; `experimental`; SSH yok | Dashboard API; SNMP planlı | S08 tamamlandı, S11 | Exact org/network/model/firmware mode P |
-| `aruba_instant_on` | Yok | `blocked`; resmi genel yönetim API sözleşmesi kanıtlanmadı | API policy U; SNMP S10 değerlendirmesi | S08 kararı tamamlandı, S10/S11 | Resmi local/cloud API kanıtı gelirse yeni ADR/P; aksi halde U |
-| `tplink_easy_smart` | Yok | Not implemented | Genel durumda yerel SSH/SNMP yok | S10 | Model bazlı kanıt yoksa U; yanlış credential formu gösterilmez |
-| `unmanaged_switch` | Yok | Yönetim adapter'ı mümkün değil | Yok | S10 | `unsupported_by_protocol`; yalnız dolaylı LLDP/FDB görünürlüğü açıklanır |
+| `aruba_instant_on` | Yok | `blocked`; resmi genel yönetim API sözleşmesi kanıtlanmadı; S10'da sınır yeniden doğrulandı | API policy U; kanıtlı local-mode SNMP profili yok | S08/S10 kararı tamamlandı, S11 | Resmi local/cloud API veya model/mode SNMP kanıtı gelirse yeni ADR/P; aksi halde U |
+| `tplink_easy_smart` | Yok | `unsupported_by_protocol`; seçilemez ve credential formu yok | Genel durumda yerel SSH/SNMP/API yok | S10 tamamlandı | Model/firmware bazlı istisna yeni profil+kanıt olmadan açılmaz |
+| `unmanaged_switch` | Yok | `unsupported_by_protocol`; seçilemez ve credential formu yok | Yok | S10 tamamlandı | Yalnız dolaylı LLDP/FDB görünürlüğü; doğrudan yönetim sayılmaz |
 
 ## 7. Eski kimlik geçiş tablosu
 

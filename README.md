@@ -22,7 +22,7 @@ Arayüz: Next.js 16 / React 19 / TypeScript, Apache ECharts, xterm.js ve SWR. Ba
 - Taralı Topoloji çalışma alanı: kişisel zone’lar, taşınabilir cihazlar, port bağlantısı çizimi ve kaynak/zaman bilgili MAC/IP uç düğümleri.
 - Apache ECharts ile RX/TX, port durumu ve kapasite gösterimleri; bilinmeyen/eski verinin açık ayrımı.
 - Cihaz detayına entegre SSH terminali; backend tarafında site/rol denetimi ve kayıtlı host key doğrulaması.
-- Harici envanter/telemetri aktarımı; katalog tabanlı üretici/OS/yönetim modu seçimi, cihaz bazlı uyumluluk/kanıt görünümü, salt okunur manuel ve zamanlanmış toplama, isteğe bağlı SNMPv3.
+- Harici envanter/telemetri aktarımı; katalog tabanlı üretici/OS/yönetim modu seçimi, cihaz bazlı uyumluluk/kanıt görünümü, salt okunur manuel ve zamanlanmış toplama, isteğe bağlı SNMPv3 ve varsayılan kapalı SwOS SNMPv2c istisnası.
 - Switch SVI ağlarından yönetici onayıyla türetilen, ayrı `NET_RAW` ajanıyla VLAN bilinçli IPv4 ARP eşleştirmesi; [kurulum ve güven sınırları](docs/network-probe.md).
 - Parola göndermeden host key keşfi, bir defalık açık güven onayı ve cihaz bazlı izinle otomatik SSH uyumluluk seçimi.
 - Kişisel profil/avatar/parola yönetimi; `viewer`, `engineer`, `superadmin` rolleri ve yalnız superadmin'e açık kullanıcı yönetimi/ayrıntılı audit.
@@ -402,7 +402,7 @@ Mevcut `POST /api/v1/devices/{id}/observations` gövdesi isteğe bağlı şu ala
 
 Bu parça tek başına tam telemetri isteği değildir; mevcut `observed_at`, `source` ve diğer alanlarla gönderilir. ID toplayıcıda kararlı tutulmalı; arayüz envanterde bulunmalıdır. `status`: `ok`, `partial`, `unknown`, `unsupported`, `error`; alan gönderilmemiş eski gözlemler **henüz toplanmadı**, başarılı boş tablo **kayıt yok** şeklinde ayrılır. Bir snapshot en fazla 2048 uç içerir; kısmi tabloda `partial` gönderin. MAC tekil yayın adresi olarak doğrulanır, IP’ler IPv4/IPv6 olarak ayrıştırılır. `discovery` FDB, ARP veya NDP’dir; `state` komşuluk durumudur, bilgisayarın çevrimiçi olduğunu varsaymaz. Zaman/kaynak ve güncellik telemetri snapshot’ından gelir.
 
-Linux toplayıcısı [iproute2 komşuluk tablosunu](https://github.com/iproute2/iproute2/blob/main/man/man8/ip-neighbour.8) salt okunur biçimde alır; FAILED/INCOMPLETE kayıtları uç olarak çizmez ve NUD STALE durumunu saklar. Bridge/SVI ARP kaydını tahminen fiziksel porta dağıtmaz. Switch FDB/ARP ve LLDP kapsamı sürücü kataloğunda belirtilir; SNMPv3 kanalı IF-MIB port/sayaç okumasıdır, bütün ağı taramaz. Yönetim IP’si veya eşleşen cihaz adı üzerinden kablo üretilmez.
+Linux toplayıcısı [iproute2 komşuluk tablosunu](https://github.com/iproute2/iproute2/blob/main/man/man8/ip-neighbour.8) salt okunur biçimde alır; FAILED/INCOMPLETE kayıtları uç olarak çizmez ve NUD STALE durumunu saklar. Bridge/SVI ARP kaydını tahminen fiziksel porta dağıtmaz. Switch FDB/ARP ve LLDP kapsamı sürücü kataloğunda belirtilir; SNMPv3 ve yalnız açıkça onaylanmış SwOS SNMPv2c kanalları IF-MIB port/sayaç okumasıdır, bütün ağı taramaz. Yönetim IP’si veya eşleşen cihaz adı üzerinden kablo üretilmez.
 
 Uç düğümlerin bilgisayar sembolü **uç kaydı** anlamındadır, donanım türü kanıtı değildir. IP bilinmiyorsa boşluğu açıkça gösterir. Seçimde MAC, tüm IP’ler, VLAN, arayüz, yalnız explicit eşlenmiş fiziksel port, kaynak, kanıt ve gözlem zamanı görünür. Aynı MAC farklı cihaz/port/VLAN’da gözlenirse kayıtlar birleştirilmez; arada switch/telefon/köprü bulunabilir.
 
@@ -439,7 +439,8 @@ Testler SQLite ile izole API/şifreleme/RBAC semantiğini ve geçici gerçek Asy
 ### Toplama otomasyonu
 
 Kalıcı PostgreSQL kuyruğu ve ayrı `collector-worker`, otomatik host key keşfi/onayı,
-cihaz bazlı SSH uyumluluk profilleri, grup bazlı kalite ve isteğe bağlı SNMPv3
+cihaz bazlı SSH uyumluluk profilleri, grup bazlı kalite, isteğe bağlı SNMPv3 ve
+varsayılan kapalı SwOS SNMPv2c istisnası
 eklendi. Kurulum, API sözleşmesi, destek matrisi, saklama politikası ve **henüz
 doğrulanmamış fiziksel/yük kabul kapıları** için [toplama otomasyonu rehberine](docs/collection-automation.md) bakın.
 Yeni tablolara geçiş `0006_collection_automation` migration'ıdır. Mevcut cihazlar,

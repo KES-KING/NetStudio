@@ -8,9 +8,13 @@
 | Kaynak kapsamı | Backend, frontend, migration, testler ve mevcut teknik belgeler |
 | Girdi matrisi | [`NetStudio_Switch_OS_SSH_SNMP_Uyumluluk_Matrisi.md`](../NetStudio_Switch_OS_SSH_SNMP_Uyumluluk_Matrisi.md) |
 | Çalışan ürün sözleşmesi | [`collection-automation.md`](../collection-automation.md) |
-| Belge durumu | Uygulama tasarımı ve teslim planı; S00–S01 uygulanmış, sonraki sprintler hedef durumdur |
+| Belge durumu | `fa1a40f` başlangıç analizi ve hedef tasarım; güncel uygulama S00–S10 teslim raporlarında izlenir |
 | Takvim | `REQUIRES ESTIMATION` |
 | Kapasite iddiaları | `REQUIRES BENCHMARK` |
+
+> **Tarihsel snapshot sınırı:** Bölüm 1–4'teki “mevcut” ifadeleri `fa1a40f`
+> başlangıç durumunu anlatır; çalışan güncel kapsam için sprint teslim raporları,
+> sürücü izlenebilirlik matrisi ve `docs/collection-automation.md` esastır.
 
 ## 1. Yönetici özeti
 
@@ -98,7 +102,7 @@ kabulü, fiziksel tek model testi de bütün OS ailesi desteği değildir.
 | API | `backend/app/api.py`, `backend/app/automation_api.py` | Katalog, bağlantı ayarı, SNMPv3 sırrı, polling ve ölçüm API'leri |
 | Arayüz | `frontend/components/DeviceForms.tsx`, `CollectionControls.tsx` | Çalışabilir sürücü seçenekleri sabit; SNMPv3 authPriv formu; katalogdan dinamik profil seçimi yok |
 | Migration | `backend/migrations/versions/0006_collection_automation.py` | Mevcut envanteri/sırları yeniden yazmayan eklemeli otomasyon şeması |
-| Güvenlik | `SECURITY.md`, `backend/app/ssh.py`, `ssh_profiles.py` | Kayıtlı hedef, site/rol, host-key pinning, cihaz bazlı legacy izni; SNMPv1/v2c ve SET yasak |
+| Güvenlik | `SECURITY.md`, `backend/app/ssh.py`, `ssh_profiles.py`, `snmp_policy.py` | Kayıtlı hedef, site/rol, host-key pinning, cihaz bazlı legacy izni; SNMPv1/SET yasak, SwOS v2c yalnız çift opt-in ile |
 
 ### 3.2. Mevcut destek tabanı
 
@@ -499,9 +503,8 @@ Ortak SNMP çekirdeği:
 
 ### 11.3. SNMPv2c karar kapısı
 
-SNMPv2c matristeki SwOS gibi bazı hedefler için gerekebilir; ancak mevcut
-`SECURITY.md` açıkça v1/v2c'yi yasaklar. Uygulama öncesi `ADR-COMPAT-003`
-onaylanmalıdır. Onaylanırsa minimum kontroller:
+`ADR-COMPAT-003`, S10'da yalnız `mikrotik_swos` için kontrollü kabul olarak
+sonuçlandırılmış ve aşağıdaki minimum kontroller birlikte uygulanmıştır:
 
 1. `NETSTUDIO_ALLOW_SNMP_V2C=0` varsayılanı,
 2. superadmin tarafından cihaz bazlı risk onayı,
@@ -781,7 +784,7 @@ label'ı olmaz. Audit olayları en az şunları içermelidir:
 |---|---|---|---|
 | [ADR-COMPAT-001](adr/ADR-COMPAT-001-kanonik-profil-ve-durum-modeli.md) | Kanonik profil ID, alias ve üç eksenli durum modeli | Kabul edildi | S01 |
 | [ADR-COMPAT-002](adr/ADR-COMPAT-002-provenance-ve-last-good.md) | Capability/provenance ve alan bazlı last-good | Kabul edildi | S02/S04 |
-| [ADR-COMPAT-003](adr/ADR-COMPAT-003-snmpv2c-karar-kapisi.md) | SNMPv2c açık opt-in kabul/reddetme kararı | Karar bekliyor | S10 Definition of Ready |
+| [ADR-COMPAT-003](adr/ADR-COMPAT-003-snmpv2c-karar-kapisi.md) | SNMPv2c açık opt-in kabul/reddetme kararı | Kabul edildi ve S10 ile uygulandı | Kurulum+cihaz opt-in, SwOS-only, v1/SET/downgrade yok |
 | [ADR-COMPAT-004](adr/ADR-COMPAT-004-controller-api-guven-modeli.md) | Controller/cloud API hedef ve TLS güven modeli | Kabul edildi ve S08 ile uygulandı | URL'siz hedef, TLS/CA, scope, site ve secret sınırı |
 | [ADR-COMPAT-005](adr/ADR-COMPAT-005-fiziksel-kabul-ve-yayin-kapisi.md) | Fiziksel kabul tuple'ı, expiry ve release statüsü | Kabul edildi | Bütün destek yayınları |
 | [ADR-COMPAT-006](adr/ADR-COMPAT-006-kod-sahipli-manifest.md) | İlk sürümde kod sahipli manifest | Kabul edildi | S01 |

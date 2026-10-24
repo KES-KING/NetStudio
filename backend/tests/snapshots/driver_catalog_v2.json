@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "catalog_revision": "2026.10.24.4",
+  "catalog_revision": "2026.10.24.5",
   "legacy_driver_ids": [
     "cisco_ios",
     "cisco_iosxe",
@@ -53,7 +53,7 @@
     {"id": "nvidia_onyx", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
     {"id": "sonic_nos", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
     {"id": "cisco_business", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
-    {"id": "mikrotik_swos", "implementation": "blocked", "verification": "not_tested", "release": "hidden", "available": false, "selectable": false},
+    {"id": "mikrotik_swos", "implementation": "implemented", "verification": "transport_lab_validated", "release": "experimental", "available": false, "selectable": false},
     {"id": "cisco_meraki_ms", "implementation": "implemented", "verification": "fixture_verified", "release": "experimental", "available": true, "selectable": true},
     {"id": "aruba_instant_on", "implementation": "blocked", "verification": "not_tested", "release": "hidden", "available": false, "selectable": false},
     {"id": "tplink_easy_smart", "implementation": "unsupported_by_protocol", "verification": "not_tested", "release": "hidden", "available": false, "selectable": false},

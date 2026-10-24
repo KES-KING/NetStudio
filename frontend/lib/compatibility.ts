@@ -53,6 +53,11 @@ export const transportStateLabels: Record<
   unsupported_by_policy: "Politika desteklemiyor",
 };
 
+export const availabilityReasonLabels: Record<string, string> = {
+  snmp_v2c_installation_disabled:
+    "Kurulum genelinde SNMPv2c kapalı; NETSTUDIO_ALLOW_SNMP_V2C=1 gerekir",
+};
+
 export const capabilityStatusLabels: Record<string, string> = {
   ok: "Başarılı",
   partial: "Kısmi",
@@ -90,7 +95,9 @@ export function profilesForVendor(
 }
 
 export function profileOptionLabel(profile: DriverProfileCatalogEntry): string {
-  const status = implementationLabels[profile.implementation_status];
+  const status = profile.availability_reason
+    ? availabilityReasonLabels[profile.availability_reason] ?? profile.availability_reason
+    : implementationLabels[profile.implementation_status];
   return `${profile.label} · ${status}`;
 }
 

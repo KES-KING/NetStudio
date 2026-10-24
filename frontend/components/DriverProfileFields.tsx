@@ -7,6 +7,7 @@ import type {
 } from "../lib/contracts";
 import {
   catalogVendors,
+  availabilityReasonLabels,
   implementedTransports,
   implementationLabels,
   managementModeLabels,
@@ -130,7 +131,10 @@ export function CatalogProfileFields({
           <ul>
             {unavailable.map((profile) => (
               <li key={profile.id}>
-                <strong>{profile.label}</strong> · {implementationLabels[profile.implementation_status]}
+                <strong>{profile.label}</strong> · {profile.availability_reason
+                  ? availabilityReasonLabels[profile.availability_reason] ?? profile.availability_reason
+                  : implementationLabels[profile.implementation_status]}
+                {profile.operator_guidance && <small>{profile.operator_guidance}</small>}
               </li>
             ))}
           </ul>
@@ -172,13 +176,16 @@ export function TransportPicker({
                     disabled={!enabled}
                     onChange={() => onChange(kind)}
                   />
-                  <span><strong>{transportLabels[kind]}</strong><small>{transportStateLabels[transport.state]}</small></span>
+                  <span><strong>{kind === "snmp" && transport.versions.includes("v2c") ? "SNMPv2c" : transportLabels[kind]}</strong><small>{transportStateLabels[transport.state]}</small></span>
                 </label>
               );
             })}
           </div>
           {!available.length && (
             <p className="notice warning">Bu profil için uygulanmış bir bağlantı kanalı yoktur.</p>
+          )}
+          {profile.operator_guidance && (
+            <p className="notice warning">{profile.operator_guidance}</p>
           )}
         </>
       )}

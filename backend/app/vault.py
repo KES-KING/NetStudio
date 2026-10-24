@@ -54,7 +54,7 @@ class CredentialVault:
             raise SecretStoreError("credential_decryption_failed") from error
 
     def save_protocol(self, device_id, protocol, credentials, metadata, conn):
-        if protocol != "snmp":
+        if protocol not in {"snmp", "snmp_v2c"}:
             raise SecretStoreError("unsupported_secret_protocol")
         table = self.store.protocol_secrets
         conn.execute(table.delete().where(table.c.device_id == device_id, table.c.protocol == protocol))

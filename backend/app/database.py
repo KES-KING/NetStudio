@@ -18,6 +18,21 @@ def now():
     return datetime.now(timezone.utc)
 
 
+def snmp_state(rows) -> tuple[bool, str | None, bool]:
+    """Project non-secret protocol metadata and fail closed on duplicate versions."""
+    values = list(rows)
+    if len(values) != 1:
+        return bool(values), None, False
+    row = values[0]
+    protocol = row["protocol"]
+    metadata = row["metadata"] or {}
+    if protocol == "snmp":
+        return True, "v3", False
+    if protocol == "snmp_v2c":
+        return True, "v2c", metadata.get("risk_accepted") is True
+    return False, None, False
+
+
 class Store:
     def __init__(self, url: str | None = None):
         url = url or os.getenv("DATABASE_URL")
@@ -165,7 +180,8 @@ class Store:
         values = {key: getattr(device, key) for key in (
             "id", "name", "management_address", "site", "vendor", "platform", "model", "serial", "read_only", "support_status")}
         values["payload"] = device.model_dump(mode="json", exclude={
-            "credential_configured", "host_key_fingerprint", "snmp_configured", "api_configured",
+            "credential_configured", "host_key_fingerprint", "snmp_configured",
+            "snmp_version", "snmp_v2c_risk_accepted", "api_configured",
             "configured_profile_id", "resolved_profile_id", "profile_revision",
             "management_mode", "profile_resolution_status",
         })
@@ -194,8 +210,13 @@ class Store:
             ).where(self.devices.c.payload.is_not(None))).mappings().all()
             credentials = set(conn.execute(sa.select(self.secrets.c.device_id)).scalars())
             keys = dict(conn.execute(sa.select(self.host_keys.c.device_id, self.host_keys.c.fingerprint)).all())
-            snmp = set(conn.execute(sa.select(self.protocol_secrets.c.device_id)
-                .where(self.protocol_secrets.c.protocol == "snmp")).scalars())
+            snmp_rows = conn.execute(sa.select(
+                self.protocol_secrets.c.device_id, self.protocol_secrets.c.protocol,
+                self.protocol_secrets.c.metadata,
+            ).where(self.protocol_secrets.c.protocol.in_(("snmp", "snmp_v2c")))).mappings()
+            snmp = {}
+            for row in snmp_rows:
+                snmp.setdefault(row["device_id"], []).append(row)
             api = set(conn.execute(sa.select(self.device_controller_bindings.c.device_id)
                 .join(self.api_controller_secrets,
                     self.api_controller_secrets.c.controller_id == self.device_controller_bindings.c.controller_id)
@@ -207,10 +228,13 @@ class Store:
             payload = row["payload"]
             if payload.get("support_status") == "demo_fixture":
                 continue
+            configured, version, risk = snmp_state(snmp.get(payload["id"], []))
             result.append(ManagedDevice.model_validate(payload).model_copy(update={
                 "credential_configured": payload["id"] in credentials,
                 "host_key_fingerprint": keys.get(payload["id"]),
-                "snmp_configured": payload["id"] in snmp,
+                "snmp_configured": configured,
+                "snmp_version": version,
+                "snmp_v2c_risk_accepted": risk,
                 "api_configured": payload["id"] in api,
                 "configured_profile_id": row["configured_profile_id"],
                 "resolved_profile_id": row["resolved_profile_id"],
@@ -236,8 +260,12 @@ class Store:
                 .outerjoin(self.host_keys, self.host_keys.c.device_id == self.devices.c.id)
                 .outerjoin(self.driver_bindings, self.driver_bindings.c.device_id == self.devices.c.id)
                 .where(self.devices.c.id == device_id)).mappings().first()
-            snmp = conn.execute(sa.select(self.protocol_secrets.c.device_id).where(
-                self.protocol_secrets.c.device_id == device_id, self.protocol_secrets.c.protocol == "snmp")).first()
+            snmp = list(conn.execute(sa.select(
+                self.protocol_secrets.c.protocol, self.protocol_secrets.c.metadata,
+            ).where(
+                self.protocol_secrets.c.device_id == device_id,
+                self.protocol_secrets.c.protocol.in_(("snmp", "snmp_v2c")),
+            )).mappings())
             api = conn.execute(sa.select(self.device_controller_bindings.c.device_id)
                 .join(self.api_controller_secrets,
                     self.api_controller_secrets.c.controller_id == self.device_controller_bindings.c.controller_id)
@@ -247,9 +275,11 @@ class Store:
                     self.api_controllers.c.enabled.is_(True))).first()
         if not row or not row["payload"] or row["payload"].get("support_status") == "demo_fixture":
             return None
+        configured, version, risk = snmp_state(snmp)
         return ManagedDevice.model_validate(row["payload"]).model_copy(update={
             "credential_configured": bool(row["credential_id"]),
-            "host_key_fingerprint": row["fingerprint"], "snmp_configured": bool(snmp),
+            "host_key_fingerprint": row["fingerprint"], "snmp_configured": configured,
+            "snmp_version": version, "snmp_v2c_risk_accepted": risk,
             "api_configured": bool(api),
             "configured_profile_id": row["configured_profile_id"],
             "resolved_profile_id": row["resolved_profile_id"],

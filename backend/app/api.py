@@ -35,6 +35,7 @@ from .network_probe import install as install_network_probe
 from .controller_api import install as install_controllers
 from .collection import upsert
 from .driver_profiles import REGISTRY
+from .snmp_policy import SNMP_V2C_PROFILE, snmp_v2c_enabled
 from .profile_resolution import (
     DriverProfileSelection,
     binding_values,
@@ -64,6 +65,8 @@ def selectable_profile(profile_id: str):
         fail("unknown_driver_profile", 422)
     if profile.implementation_status != "implemented":
         fail("driver_profile_not_selectable", 409)
+    if profile.id == SNMP_V2C_PROFILE and not snmp_v2c_enabled():
+        fail("snmp_v2c_installation_disabled", 409)
     return profile
 
 

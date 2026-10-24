@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "source_permission": "project_generated_test_fixture",
+  "physical_acceptance": false,
+  "production_accepted": false,
+  "files": [
+    {
+      "path": "mikrotik_swos_css610_2_19.json",
+      "sha256": "ab4dd129e643bddeab84991ec28605a1a94736d2e6e6eb06ccc57b5e6864bedc"
+    }
+  ]
+}

@@ -37,6 +37,7 @@ from .driver_manifests import (
     juniper_junos_evolved as junos_evolved_manifest,
     linux_ssh as linux_manifest,
     mikrotik_routeros as routeros_manifest,
+    mikrotik_swos as swos_manifest,
     nvidia_cumulus_linux as cumulus_manifest,
     nvidia_onyx as onyx_manifest,
     sonic_nos as sonic_manifest,
@@ -44,8 +45,8 @@ from .driver_manifests import (
 )
 
 
-DRIVER_VERSION = "2026.10.24.4"
-CATALOG_REVISION = "2026.10.24.4"
+DRIVER_VERSION = "2026.10.24.5"
+CATALOG_REVISION = "2026.10.24.5"
 NTC_VERSION = "9.3.0"
 GROUPS = ("fast", "health", "network", "inventory")
 DATA_CONTRACT = {
@@ -98,6 +99,7 @@ REFERENCES = {
     "onyx": "https://docs.nvidia.com/networking/display/onyxv3104006/commands",
     "sonic": "https://github.com/sonic-net/SONiC/blob/master/doc/user-manual/SONiC-User-Manual.md",
     "cisco_business": "https://www.cisco.com/c/en/us/td/docs/switches/lan/csbms/CBS_250_350/CLI/cbs-350-cli-/ethernet-configuration-commands.html",
+    "swos": "https://help.mikrotik.com/docs/spaces/SWOS/pages/76939305/CSS610+series+Manual",
 }
 IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
 
@@ -190,6 +192,7 @@ class DriverProfile(FrozenModel):
     adapter: str | None = None
     commands: tuple[Command, ...] = ()
     tested_versions: tuple[str, ...] = ()
+    operator_guidance: str | None = None
 
 
 class InfrastructureAdapter(FrozenModel):
@@ -268,6 +271,7 @@ CUMULUS = commands("cumulus", cumulus_manifest.COMMAND_ROWS)
 ONYX = commands("onyx", onyx_manifest.COMMAND_ROWS)
 SONIC = commands("sonic", sonic_manifest.COMMAND_ROWS)
 CISCO_BUSINESS = commands("cisco_business", cisco_business_manifest.COMMAND_ROWS)
+SWOS = commands("swos", swos_manifest.COMMAND_ROWS)
 
 P0_CAPABILITIES = {
     "cisco_ios": ios_manifest.CAPABILITIES,
@@ -307,6 +311,10 @@ P3_CAPABILITIES = {
     "nvidia_onyx": onyx_manifest.CAPABILITIES,
     "sonic_nos": sonic_manifest.CAPABILITIES,
     "cisco_business": cisco_business_manifest.CAPABILITIES,
+}
+
+P4_CAPABILITIES = {
+    "mikrotik_swos": swos_manifest.CAPABILITIES,
 }
 
 
@@ -374,8 +382,14 @@ SSH_CONTROLLER_UNSUPPORTED = _transport(
 SSH_UNSUPPORTED = _transport("ssh", "unsupported_by_protocol")
 SNMP_UNSUPPORTED = _transport("snmp", "unsupported_by_protocol")
 API_UNSUPPORTED = _transport("api", "unsupported_by_protocol")
-SNMP_V2C_BLOCKED = _transport(
-    "snmp", "blocked", versions=("v2c",), decision_gate="ADR-COMPAT-003",
+SNMP_V2C_DEVICE_OPT_IN = TransportSummary(
+    kind="snmp", state="implemented",
+    security=(
+        "read_only", "bounded_oid_allowlist", "installation_opt_in",
+        "superadmin_device_opt_in", "unencrypted_transport",
+    ),
+    versions=("v2c",),
+    decision_gate="installation_and_device_risk_approval_required",
 )
 
 MERAKI_API = commands("meraki_api", (
@@ -458,6 +472,7 @@ def _profile(
     capability_groups: dict[str, dict[TransportKind, Sequence[str]]] | None = None,
     tested_versions: tuple[str, ...] = (),
     profile_revision: int = 1,
+    operator_guidance: str | None = None,
 ) -> DriverProfile:
     return DriverProfile(
         id=identifier,
@@ -475,6 +490,7 @@ def _profile(
         adapter=adapter,
         commands=command_plan,
         tested_versions=tested_versions,
+        operator_guidance=operator_guidance,
     )
 
 
@@ -797,7 +813,18 @@ PROFILES = (
         command_plan=CISCO_BUSINESS, capability_groups=P3_CAPABILITIES["cisco_business"],
         tested_versions=("CBS350-24T-4G / 3.4.0.17 project-synthetic fixture",), profile_revision=2,
     ),
-    _profile("mikrotik_swos", "MikroTik SwOS", "P4", _identity("MikroTik", "SwOS"), (SSH_UNSUPPORTED, SNMP_V2C_BLOCKED), implementation="blocked"),
+    _profile(
+        "mikrotik_swos", "MikroTik SwOS", "P4",
+        _identity("MikroTik", "SwOS", models=("CSS610-8G-2S+",), versions=("2.19",)),
+        (SSH_UNSUPPORTED, SNMP_V2C_DEVICE_OPT_IN),
+        implementation="implemented", verification="transport_lab_validated",
+        release="experimental", runtime_driver_id="mikrotik_swos",
+        adapter="snmp_v2c_standard_mib", command_plan=SWOS,
+        capability_groups=P4_CAPABILITIES["mikrotik_swos"],
+        tested_versions=("CSS610-8G-2S+ / SwOS 2.19 project-synthetic fixture and loopback v2c transport",),
+        profile_revision=2,
+        operator_guidance="SNMPv2c şifreleme sağlamaz; kurulum bayrağı, superadmin cihaz onayı, kaynak ACL'si ve yönetim VLAN/VRF izolasyonu zorunludur.",
+    ),
     _profile(
         "cisco_meraki_ms", "Cisco Meraki MS", "P4",
         _identity("Cisco Meraki", "Meraki MS", ("cloud_managed",), models=("MS*",)),
@@ -813,8 +840,20 @@ PROFILES = (
         (API_VENDOR_BLOCKED, SNMP_PLANNED, SSH_UNSUPPORTED),
         implementation="blocked", verification="not_tested", release="hidden", profile_revision=2,
     ),
-    _profile("tplink_easy_smart", "TP-Link Easy Smart", "P4", _identity("TP-Link", "Easy Smart"), (SSH_UNSUPPORTED, SNMP_UNSUPPORTED, API_UNSUPPORTED), implementation="unsupported_by_protocol"),
-    _profile("unmanaged_switch", "Yönetilemeyen switch", "P4", _identity("Multiple", "Unmanaged switch", ("unknown",)), (SSH_UNSUPPORTED, SNMP_UNSUPPORTED, API_UNSUPPORTED), implementation="unsupported_by_protocol"),
+    _profile(
+        "tplink_easy_smart", "TP-Link Easy Smart", "P4",
+        _identity("TP-Link", "Easy Smart"),
+        (SSH_UNSUPPORTED, SNMP_UNSUPPORTED, API_UNSUPPORTED),
+        implementation="unsupported_by_protocol",
+        operator_guidance="Exact model ve firmware istisnası kanıtlanmadıkça yerel SSH, SNMP veya API kimlik bilgisi istenmez.",
+    ),
+    _profile(
+        "unmanaged_switch", "Yönetilemeyen switch", "P4",
+        _identity("Multiple", "Unmanaged switch", ("unknown",)),
+        (SSH_UNSUPPORTED, SNMP_UNSUPPORTED, API_UNSUPPORTED),
+        implementation="unsupported_by_protocol",
+        operator_guidance="Komşu cihazlardan gelen LLDP/FDB gözlemi dolaylı görünürlüktür; cihaz yönetimi veya doğrudan toplama değildir.",
+    ),
 )
 
 ALIASES = (
@@ -980,8 +1019,13 @@ def validate_registry(
                     DATA_CONTRACT[capability.group]
                 ):
                     raise ValueError(f"invalid_capability_source_fields:{profile.id}:{source}")
+        command_transport = any(
+            transport.state == "implemented" and transport.kind in {"ssh", "api"}
+            for transport in profile.transports
+        )
         if profile.implementation_status == "implemented" and (
-            not profile.runtime_driver_id or not profile.adapter or not profile.commands
+            not profile.runtime_driver_id or not profile.adapter
+            or (command_transport and not profile.commands)
         ):
             raise ValueError(f"implemented_profile_requires_adapter_and_command_plan:{profile.id}")
         command_names = [command.text for command in profile.commands]
@@ -989,7 +1033,7 @@ def validate_registry(
             raise ValueError(f"duplicate_profile_command:{profile.id}")
         if any(command.group not in GROUPS for command in profile.commands):
             raise ValueError(f"invalid_profile_command_group:{profile.id}")
-        if profile.implementation_status == "implemented" and not any(
+        if command_transport and not any(
             command.group == "inventory" and command.required
             for command in profile.commands
         ):
@@ -1179,6 +1223,7 @@ def profile_catalog_entry(profile: DriverProfile) -> dict:
         "acceptance": profile.acceptance.model_dump(mode="json"),
         "tested_versions": list(profile.tested_versions),
         "commands": [asdict(command) for command in profile.commands],
+        "operator_guidance": profile.operator_guidance,
     }
     reason = _reason(profile.implementation_status)
     if reason:
